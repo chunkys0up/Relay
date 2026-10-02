@@ -1,0 +1,4 @@
+{
+  "compilerOptions": {"target":"ES2022", "lib":["ES2022","DOM","DOM.Iterable"], "module":"ESNext", "moduleResolution":"Bundler", "jsx":"react-jsx", "strict":true, "noImplicitAny":true, "skipLibCheck":true, "esModuleInterop":true, "resolveJsonModule":true, "allowImportingTsExtensions":true, "noEmit":true, "baseUrl":".", "paths":{"@relay/shared":["frontend-shared/src/index.ts"]}, "types":["vite/client"]},
+  "include":["frontend-shared","client-frontend","advsior-frontend","tests","vite.config.ts","playwright.config.ts"]
+}

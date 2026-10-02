@@ -1,0 +1,21 @@
+import { describe,it,expect } from 'vitest';
+import { MockRelayAdapter } from './mock';
+import { advisor, founder } from './fixtures';
+import type { CaseSnapshot, VersionInput } from './types';
+function version(s:CaseSnapshot):VersionInput{const p=s.packets.find(p=>p.id===s.current_packet_version_id)!;return {expected_revision:s.revision,packet_version_id:p.id,packet_hash:p.hash};}
+describe('synthetic workflow boundary',()=>{
+ it('keeps founder private AI turns out of advisor snapshots',async()=>{const api=new MockRelayAdapter(0);const view=(await api.snapshot('advisor')).data;expect(view.messages.every(m=>m.owner_id!==founder.id||m.audience.kind==='human')).toBe(true);expect(view.tasks).toEqual([]);});
+ it('refuses uploads instead of fabricating a successful result',async()=>{const api=new MockRelayAdapter(0);await expect(api.mutate('founder',{kind:'upload',expected_revision:1,name:'test.pdf',bytes:1,mime_type:'application/pdf'},{key:'u'})).rejects.toMatchObject({code:'SIMULATED_UNAVAILABLE'});});
+ it('returns questions once, makes a new unapproved private version, rejects stale approval',async()=>{
+  const api=new MockRelayAdapter(0);let s=(await api.snapshot('advisor')).data;const old=version(s);
+  s=(await api.mutate('advisor',{kind:'preview',...old,text:'Confirm revenue?',recipient_id:founder.id,citations:[]},{key:'preview'})).data;const q=s.clarifications[0];
+  const cmd={kind:'review' as const,...version(s),decision:'questions_returned' as const,clarification_id:q.id,clarification_revision:q.revision};
+  s=(await api.mutate('advisor',cmd,{key:'return'})).data;await api.mutate('advisor',cmd,{key:'return'});expect((await api.snapshot('founder')).data.messages.filter(m=>m.text==='Confirm revenue?')).toHaveLength(1);
+  s=(await api.snapshot('founder')).data;const sent=s.clarifications[0];s=(await api.mutate('founder',{kind:'answer',...version(s),clarification_id:sent.id,clarification_revision:sent.revision,text:'2026 actual revenue is $240,000; reserve target is $60,000.'},{key:'answer'})).data;
+  expect(s.packets).toHaveLength(2);expect(s.packets[1].status).toBe('draft');expect((await api.snapshot('advisor')).data.packets).toHaveLength(1);
+  await expect(api.mutate('advisor',{kind:'review',...old,expected_revision:s.revision,decision:'approved'},{key:'stale'})).rejects.toMatchObject({code:'STALE_PACKET'});
+ });
+ it('requires preview content to match the confirmed send',async()=>{const api=new MockRelayAdapter(0);let s=(await api.snapshot('advisor')).data;s=(await api.mutate('advisor',{kind:'preview',...version(s),text:'Original?',recipient_id:founder.id,citations:[]},{key:'q'})).data;const q=s.clarifications[0];await expect(api.mutate('advisor',{kind:'send',...version(s),clarification_id:q.id,clarification_revision:1,text:'Changed?',recipient_id:founder.id},{key:'send'})).rejects.toMatchObject({code:'PREVIEW_CHANGED'});});
+ it('does not equate call join or consent with real capture',async()=>{const api=new MockRelayAdapter(0);let s=(await api.snapshot('founder')).data;s=(await api.mutate('founder',{kind:'invite',...version(s),recipient_id:advisor.id},{key:'invite'})).data;expect(s.call?.capture).toBe('off');s=(await api.mutate('founder',{kind:'consent',expected_revision:s.call!.revision,consent:'granted'},{key:'consent'})).data;expect(s.call?.participants.find(p=>p.actor.id===advisor.id)?.capture_consent).toBe('not_given');expect(s.call?.capture).not.toBe('capturing');s=(await api.mutate('founder',{kind:'consent',expected_revision:s.call!.revision,consent:'withdrawn'},{key:'withdraw'})).data;expect(s.call?.capture).toBe('off');});
+ it('aborted actions do not mutate fixture data',async()=>{const api=new MockRelayAdapter(20);const c=new AbortController();const pending=api.mutate('founder',{kind:'message',expected_revision:1,audience:{kind:'private_ai'},text:'cancel me',attachments:[],confirmed:false},{key:'cancel',signal:c.signal});c.abort();await expect(pending).rejects.toMatchObject({name:'AbortError'});expect((await api.snapshot('founder')).data.revision).toBe(1);});
+});
