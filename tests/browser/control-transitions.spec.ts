@@ -1,0 +1,489 @@
+import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+const sourceNames = ['Founder intake.pdf', 'Cap table summary.xlsx', 'Forecast assumptions.pdf'] as const;
+const packetName = 'Founder planning packet';
+const routes = [
+  ['/founder/home','Morning, Alex',false], ['/founder/sources','Sources',false],
+  ['/founder/documents','Documents',false], ['/founder/call','Founder call',true],
+  ['/advisor/clients','Clients',false], ['/advisor/reviews','Reviews',false],
+  ['/advisor/documents','Documents',false], ['/advisor/call','Advisor call',true],
+] as const;
+
+async function go(page:Page,path:string):Promise<void>{
+  await page.goto(path);
+  await expect(page.locator('main h1').first()).toBeVisible();
+}
+async function navigate(page:Page,label:string):Promise<void>{
+  await page.locator('.navigation').getByRole('link',{name:label,exact:true}).click();
+}
+async function scenario(page:Page,value:string):Promise<void>{
+  const menu=page.locator('.scenario-menu');
+  if(!(await menu.getByRole('combobox',{name:'Test scenario'}).isVisible()))await menu.locator('summary').click();
+  await page.getByRole('combobox',{name:'Test scenario'}).selectOption(value);
+}
+async function switchRole(page:Page,role:'founder'|'advisor'):Promise<void>{
+  await page.getByRole('combobox',{name:'Demo role'}).selectOption(role);
+  await expect(page.locator('main h1').first()).toBeVisible();
+}
+async function sendQuestion(page:Page,mode:'return'|'send'='return'):Promise<void>{
+  await go(page,'/advisor/reviews');
+  await page.getByRole('button',{name:'Preview questions',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Question preview'})).toBeVisible();
+  await page.getByRole('button',{name:mode==='return'?'Return review with these questions':'Confirm simulated send',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Question preview'})).toHaveCount(0);
+}
+async function createV2(page:Page):Promise<void>{
+  await sendQuestion(page);
+  await switchRole(page,'founder');
+  await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
+  await page.getByRole('textbox',{name:'Answer Maya Chen’s question'}).fill('Audit answer: revenue $240,000 and reserve target $60,000.');
+  await page.getByRole('button',{name:'Preview answer',exact:true}).click();
+  await page.getByRole('button',{name:'Create simulated draft v2',exact:true}).click();
+  await page.getByRole('link',{name:'Review packet v2',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Preview handoff of v2',exact:true})).toBeVisible();
+}
+async function handoffV2(page:Page):Promise<void>{
+  await page.getByRole('button',{name:'Preview handoff of v2',exact:true}).click();
+  await page.getByRole('checkbox',{name:'Founder intake.pdf',exact:true}).check();
+  await page.getByRole('button',{name:'Confirm simulated handoff',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Confirm simulated handoff',exact:true})).toHaveCount(0);
+}
+
+const pageErrors=new WeakMap<Page,string[]>();
+test.beforeEach(async({page})=>{const errors:string[]=[];pageErrors.set(page,errors);page.on('pageerror',error=>errors.push(error.message));});
+test.afterEach(async({page})=>{
+  expect(pageErrors.get(page)).toEqual([]);
+  await expect(page.getByText('Synthetic demo · All actions simulated',{exact:true})).toBeVisible();
+});
+
+for(const role of ['founder','advisor'] as const){
+ test(`${role}: every shell destination, brand, role switch and skip link`,async({page})=>{
+  await go(page,role==='founder'?'/founder/home':'/advisor/clients');
+  const labels=role==='founder'?['Home','Sources','Documents','Call','Settings']:['Clients','Reviews','Documents','Call','Settings'];
+  const headings=role==='founder'?['Morning, Alex','Sources','Documents','Founder call','Settings']:['Clients','Reviews','Documents','Advisor call','Settings'];
+  for(let i=0;i<labels.length;i++){
+   await navigate(page,labels[i]);
+   await expect(page.locator('main h1').first()).toHaveText(headings[i]);
+   await expect(page.locator('.navigation').getByRole('link',{name:labels[i],exact:true})).toHaveAttribute('aria-current','page');
+  }
+  await page.getByRole('link',{name:'Relay home'}).click();
+  await expect(page).toHaveURL(new RegExp(`/${role}/${role==='founder'?'home':'clients'}$`));
+  await page.getByRole('link',{name:'Skip to main content'}).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
+  await switchRole(page,role==='founder'?'advisor':'founder');
+  await expect(page).toHaveURL(new RegExp(role==='founder'?'/advisor/clients':'/founder/home'));
+ });
+ test(`${role}: global search finds drafts and originals with working filters`,async({page})=>{
+  await go(page,role==='founder'?'/founder/home':'/advisor/clients');
+  await page.getByRole('textbox',{name:'Search sources and drafts'}).fill('founder');
+  await page.getByRole('button',{name:'Search',exact:true}).click();
+  await expect(page).toHaveURL(new RegExp(`/${role}/search\\?q=founder`));
+  await expect(page.locator('main')).toContainText(packetName);
+  await page.getByRole('button',{name:/^Documents \(/}).click();
+  await expect(page.locator('main')).toContainText(packetName);
+  await expect(page.locator('main').getByRole('link',{name:/Founder intake.pdf/})).toHaveCount(0);
+  await page.getByRole('button',{name:/^Sources \(/}).click();
+  await expect(page.locator('main').getByRole('link',{name:/Founder intake.pdf/}).first()).toBeVisible();
+  await page.getByRole('button',{name:/^All \(/}).click();
+  await page.locator('main').getByRole('link',{name:new RegExp(packetName)}).first().click();
+  await expect(page).toHaveURL(new RegExp(`/${role}/documents\\?version=`));
+  await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ });
+ test(`${role}: Settings tabs expose distinct content and destinations`,async({page})=>{
+  await go(page,`/${role}/settings`);
+  const profile=page.getByRole('tab',{name:'Profile',exact:true});
+  await expect(profile).toHaveAttribute('aria-selected','true');
+  await expect(page.getByRole('tabpanel')).toContainText(role==='founder'?'Alex Morgan':'Maya Chen');
+  await page.getByRole('tab',{name:'Call privacy',exact:true}).click();
+  await expect(page.getByRole('tabpanel')).toContainText('consent');
+  await page.getByRole('link',{name:/Open Call/}).click();
+  await expect(page).toHaveURL(new RegExp(`/${role}/call$`));
+  await navigate(page,'Settings');
+  await page.getByRole('tab',{name:'About this demo',exact:true}).click();
+  await expect(page.getByRole('tabpanel')).toContainText(/simulat/i);
+  await page.getByRole('tab',{name:'Profile',exact:true}).click();
+  await page.getByRole('link',{name:/Return to workspace/}).click();
+  await expect(page).toHaveURL(new RegExp(`/${role}/${role==='founder'?'home':'clients'}$`));
+ });
+}
+
+for(const [path,title,humanOnly] of routes){
+ test(`${path}: audience, message preview/edit and confirmed send change thread`,async({page})=>{
+  await go(page,path);await expect(page.locator('main h1').first()).toHaveText(title);
+  const audience=page.getByRole('combobox',{name:'Message audience'});
+  if(!humanOnly){
+   await expect(page.getByRole('button',{name:'Send to simulated AI',exact:true})).toBeDisabled();
+   await page.getByRole('textbox',{name:'Message Relay',exact:true}).fill(`Private audit on ${path}`);
+   await page.getByRole('button',{name:'Send to simulated AI',exact:true}).click();
+   await expect(page.locator('.message-bubble').filter({hasText:`Private audit on ${path}`})).toHaveCount(1);
+   await expect(page.getByRole('textbox',{name:'Message Relay',exact:true})).toHaveValue('');
+   await audience.selectOption('human');
+  }else await expect(audience.locator('option')).toHaveCount(1);
+  const recipient=path.startsWith('/founder')?'Maya Chen':'Alex Morgan';
+  const text=`Human audit on ${path}`;
+  const input=page.getByRole('textbox',{name:`Message ${recipient}`,exact:true});
+  await expect(page.getByRole('button',{name:'Preview message',exact:true})).toBeDisabled();
+  await input.fill(text);await page.getByRole('button',{name:'Preview message',exact:true}).click();
+  await expect(page.getByRole('heading',{name:`Preview message to ${recipient}`})).toBeVisible();
+  await expect(page.locator('.message-bubble').filter({hasText:text})).toHaveCount(0);
+  await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+  await expect(input).toHaveValue(text);
+  await page.getByRole('button',{name:'Preview message',exact:true}).click();
+  await page.getByRole('button',{name:'Confirm simulated send',exact:true}).click();
+  await expect(page.locator('.message-bubble').filter({hasText:text})).toHaveCount(1);
+  await expect(input).toHaveValue('');
+  if(!humanOnly){await audience.selectOption('private_ai');await expect(page.locator('.message-bubble').filter({hasText:text})).toHaveCount(0);}
+ });
+}
+
+test('Home: chat entry, recent links and every source selection',async({page})=>{
+ await go(page,'/founder/home');
+ await page.getByRole('link',{name:'Answer in Home chat',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Message Relay',exact:true})).toBeFocused();
+ for(const name of sourceNames){
+  await go(page,'/founder/home');await page.getByRole('link',{name,exact:true}).click();
+  await expect(page.locator('.source-excerpt')).toBeVisible();
+  await expect(page.locator('.founder-sources-preview-title h2')).toHaveText(name);
+ }
+ await go(page,'/founder/home');await page.getByRole('link',{name:packetName,exact:true}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await go(page,'/founder/home');await page.getByRole('link',{name:'View sources',exact:true}).click();
+ await expect(page.locator('main h1')).toHaveText('Sources');
+});
+
+test('Sources: every file button, source citation, search clearing and Home links',async({page})=>{
+ await go(page,'/founder/sources');
+ for(const name of sourceNames){
+  await page.getByRole('button',{name:new RegExp(name.replace('.','\\.'))}).click();
+  await expect(page.locator('.founder-sources-preview-title h2')).toHaveText(name);
+  await expect(page.getByRole('button',{name:new RegExp(name.replace('.','\\.'))})).toHaveAttribute('aria-pressed','true');
+  await page.locator('.source-excerpt').locator('..').getByRole('link').first().click();
+  await expect(page.locator('.founder-sources-preview-title h2')).toHaveText(name);
+ }
+ await page.getByRole('searchbox',{name:'Search original sources'}).fill('nothing matches');
+ await expect(page.getByRole('heading',{name:'No sources match this search'})).toBeVisible();
+ await page.getByRole('button',{name:'Clear search',exact:true}).click();
+ await expect(page.getByRole('searchbox',{name:'Search original sources'})).toHaveValue('');
+ await page.getByRole('link',{name:/Return to Home conversation/}).click();
+ await expect(page.locator('main h1')).toHaveText('Morning, Alex');
+ await navigate(page,'Sources');await page.getByRole('link',{name:/Add sources in Home chat/}).click();
+ await expect(page.getByLabel('Attach a source')).toBeAttached();
+});
+
+test('Documents: real tabs, history selection, citations and ancillary destinations',async({page})=>{
+ await go(page,'/founder/documents');
+ await expect(page.getByRole('button',{name:'Compare versions',exact:true})).toBeDisabled();
+ await page.getByRole('tab',{name:'Version history',exact:true}).click();
+ await expect(page.getByRole('tab',{name:'Version history',exact:true})).toHaveAttribute('aria-selected','true');
+ await expect(page.getByRole('tabpanel')).toContainText('Initial synthetic draft');
+ await page.getByRole('button',{name:/View version 1/}).click();
+ await expect(page.getByRole('tab',{name:'Preview',exact:true})).toHaveAttribute('aria-selected','true');
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await page.getByRole('link',{name:'Discuss in Home chat',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Message Relay',exact:true})).toBeFocused();
+ await navigate(page,'Documents');await page.getByRole('link',{name:/Open Call/}).click();
+ await expect(page.locator('main h1')).toHaveText('Founder call');
+ await navigate(page,'Documents');await page.getByRole('link',{name:/View sources/}).click();
+ await expect(page.locator('main h1')).toHaveText('Sources');
+});
+
+test('Advisor Clients: card, every shared row, search clearing, citations and call',async({page})=>{
+ await go(page,'/advisor/clients');
+ for(const name of sourceNames){
+  await page.getByRole('button',{name:new RegExp(name.replace('.','\\.'))}).click();
+  await expect(page.locator('.source-excerpt').locator('..').getByRole('heading',{level:3})).toHaveText(name);
+ }
+ await page.getByRole('button',{name:/Northstar Labs Founder:/}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await page.getByRole('button',{name:new RegExp(packetName)}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await page.getByRole('textbox',{name:'Search assigned clients, sources, and drafts'}).fill('nothing matches');
+ await expect(page.getByRole('heading',{name:'No matching assigned client'})).toBeVisible();
+ await page.getByRole('button',{name:'Clear search',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Search assigned clients, sources, and drafts'})).toHaveValue('');
+ await page.locator('.advisor-client-flags').getByRole('link',{name:'Forecast assumptions · p. 1',exact:true}).click();
+ await expect(page.locator('.source-excerpt')).toContainText('$280,000');
+ await page.getByRole('link',{name:/Open Call/}).click();
+ await expect(page.locator('main h1')).toHaveText('Advisor call');
+});
+
+test('Advisor Reviews: selection, search clear, open specific document and call',async({page})=>{
+ await go(page,'/advisor/reviews');
+ await page.getByRole('button',{name:new RegExp('Northstar Labs '+packetName)}).click();
+ await expect(page.locator('.advisor-review-detail')).toContainText('v1');
+ await page.getByRole('textbox',{name:'Search assigned reviews'}).fill('nothing matches');
+ await expect(page.getByRole('heading',{name:'No matching assigned review'})).toBeVisible();
+ await page.getByRole('button',{name:'Clear search',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Search assigned reviews'})).toHaveValue('');
+ await page.getByRole('link',{name:'Open document review',exact:true}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await navigate(page,'Reviews');await page.getByRole('link',{name:/Open Call/}).click();
+ await expect(page.locator('main h1')).toHaveText('Advisor call');
+});
+
+test('Advisor Documents: each original, return to packet, version select and Back to clients',async({page})=>{
+ await go(page,'/advisor/documents');
+ for(const name of sourceNames){
+  await page.getByRole('button',{name:new RegExp(name.replace('.','\\.'))}).click();
+  await expect(page.locator('.source-excerpt')).toBeVisible();
+  await expect(page.getByRole('button',{name:'Review approval of v1',exact:true})).toHaveCount(0);
+  await page.getByRole('button',{name:'Return to packet v1',exact:true}).click();
+  await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ }
+ await page.getByRole('combobox',{name:'Packet version',exact:true}).selectOption({label:'v1 · Review required'});
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await page.getByRole('button',{name:new RegExp(packetName)}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await page.getByRole('link',{name:/Open Call/}).click();
+ await expect(page.locator('main h1')).toHaveText('Advisor call');
+ await navigate(page,'Documents');
+ await page.getByRole('link',{name:'← Back to clients',exact:true}).click();
+ await expect(page.locator('main h1')).toHaveText('Clients');
+});
+
+for(const path of ['/advisor/reviews','/advisor/documents','/advisor/call']){
+ test(`${path}: every question/approval control has correct confirmation transition`,async({page})=>{
+  await go(page,path);
+  const question=page.getByRole('textbox',{name:'Draft question to Alex Morgan'});
+  await question.fill('');await expect(page.getByRole('button',{name:'Preview questions',exact:true})).toBeDisabled();
+  await question.fill('Audit question about reserve target.');
+  await page.getByRole('button',{name:'Preview questions',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Question preview'})).toBeVisible();
+  await page.getByRole('button',{name:'Cancel preview',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Question preview'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Review approval of v1',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Approve packet v1?'})).toBeVisible();
+  await page.getByRole('button',{name:'Cancel approval',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Approve packet v1?'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Preview questions',exact:true}).click();
+  await page.getByRole('button',{name:'Confirm simulated send',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Question already sent to Alex Morgan'})).toBeVisible();
+  await page.getByRole('button',{name:'Return review with sent question',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Return review with sent question',exact:true})).toHaveCount(0);
+  await question.fill('Second audit question about source conflict.');
+  await page.getByRole('button',{name:'Preview questions',exact:true}).click();
+  await page.getByRole('button',{name:'Return review with these questions',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Question preview'})).toHaveCount(0);
+  await page.getByRole('button',{name:'Review approval of v1',exact:true}).click();
+  await page.getByRole('button',{name:'Confirm simulated approval of v1',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Review approval of v1',exact:true})).toBeDisabled();
+ });
+}
+
+test('V2: comparison toggle/selector, historical controls, handoff choices and approval',async({page})=>{
+ await createV2(page);
+ await page.getByRole('button',{name:'Compare versions',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Compare v1 with v2'})).toBeVisible();
+ await page.getByRole('combobox',{name:'Earlier version'}).selectOption({index:0});
+ await expect(page.locator('[aria-label="Version comparison"]')).toContainText('Audit answer');
+ await page.getByRole('button',{name:'Close comparison',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Compare v1 with v2'})).toHaveCount(0);
+ await page.locator('[aria-label="Version history"]').getByRole('button',{name:/v1/}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Preview handoff of v1',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:/Founder planning packet · v2/}).click();
+ await page.getByRole('button',{name:'Preview handoff of v2',exact:true}).click();
+ for(const name of sourceNames){
+  await page.getByRole('checkbox',{name,exact:true}).check();
+  await expect(page.getByRole('checkbox',{name,exact:true})).toBeChecked();
+  await page.getByRole('checkbox',{name,exact:true}).uncheck();
+  await expect(page.getByRole('checkbox',{name,exact:true})).not.toBeChecked();
+ }
+ await page.getByRole('button',{name:'Cancel handoff',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Confirm simulated handoff',exact:true})).toHaveCount(0);
+ await handoffV2(page);
+ await switchRole(page,'advisor');await navigate(page,'Documents');
+ await page.getByRole('combobox',{name:'Packet version',exact:true}).selectOption({label:'v1 · Questions returned'});
+ await expect(page.getByRole('button',{name:'Review approval of v1',exact:true})).toHaveCount(0);
+ await page.getByRole('combobox',{name:'Packet version',exact:true}).selectOption({label:'v2 · Review required'});
+ await expect(page.getByRole('button',{name:'Founder intake.pdf Original · shared by founder Source ready',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:/Forecast assumptions.pdf Original/})).toHaveCount(0);
+ await page.getByRole('button',{name:'Review approval of v2',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm simulated approval of v2',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
+});
+
+test('Clarification: preview/edit, answer, exact message citation and success destinations',async({page})=>{
+ await sendQuestion(page);await switchRole(page,'founder');
+ await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Preview answer',exact:true})).toBeDisabled();
+ await page.getByRole('textbox',{name:'Answer Maya Chen’s question'}).fill('Audit clarification with provenance.');
+ await page.getByRole('button',{name:'Preview answer',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Proposed packet change'})).toBeVisible();
+ await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Proposed packet change'})).toHaveCount(0);
+ await page.getByRole('textbox',{name:'Answer Maya Chen’s question'}).fill('Audit clarification final.');
+ await page.getByRole('button',{name:'Preview answer',exact:true}).click();
+ await page.getByRole('button',{name:'Create simulated draft v2',exact:true}).click();
+ await expect(page.getByRole('link',{name:'Review packet v2',exact:true})).toBeVisible();
+ await page.getByRole('link',{name:'Return to Home',exact:true}).click();
+ await expect(page.locator('main h1')).toHaveText('Morning, Alex');
+ await navigate(page,'Documents');
+ await page.locator('.founder-documents-citations').getByRole('link',{name:/Founder answer/}).click();
+ await expect(page.getByRole('combobox',{name:'Message audience'})).toHaveValue('human');
+ await expect(page.locator('.message-bubble').filter({hasText:'Audit clarification final.'})).toHaveCount(1);
+});
+
+for(const initiator of ['founder','advisor'] as const){
+ test(`${initiator}: invite, recipient decline/accept, mute, consent details and end`,async({page})=>{
+  await go(page,`/${initiator}/call`);
+  const other=initiator==='founder'?'Maya Chen':'Alex Morgan';
+  const consent=page.getByRole('checkbox',{name:'I consent to capture for after-call AI notes (simulated)'});
+  await expect(consent).toBeDisabled();
+  await page.getByText('Everyone must consent separately',{exact:true}).click();
+  await expect(page.getByText(/Joining and messaging never enable capture/)).toBeVisible();
+  await page.getByRole('button',{name:`Simulate invitation to ${other}`,exact:true}).click();
+  await expect(page.getByRole('button',{name:'End simulated call',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Unmute (simulated)',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Mute (simulated)',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Mute (simulated)',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Unmute (simulated)',exact:true})).toBeVisible();
+  await consent.click();await expect(consent).toBeChecked();await consent.click();await expect(consent).not.toBeChecked();
+  await switchRole(page,initiator==='founder'?'advisor':'founder');await navigate(page,'Call');
+  await page.getByRole('button',{name:'Decline simulated call',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Simulate invitation to/})).toBeVisible();
+  await page.getByRole('button',{name:/Simulate invitation to/}).click();
+  await expect(page.getByRole('button',{name:'End simulated call',exact:true})).toBeVisible();
+  await switchRole(page,initiator);await navigate(page,'Call');
+  await page.getByRole('button',{name:'Accept simulated invitation',exact:true}).click();
+  await expect(page.getByRole('button',{name:'End simulated call',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'End simulated call',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Simulate invitation to/})).toBeVisible();
+  await expect(consent).toBeDisabled();
+ });
+}
+
+test('Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation',async({page})=>{
+ await go(page,'/founder/home');
+ await page.getByLabel('Attach a source').setInputFiles({name:'control-audit.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic audit')});
+ await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Check upload availability',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('Upload not performed');
+ await page.getByRole('button',{name:'Cancel attachment',exact:true}).click();
+ await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toHaveCount(0);
+ await scenario(page,'slow');
+ await page.getByRole('textbox',{name:'Message Relay',exact:true}).fill('Audit cancelled slow message');
+ await page.getByRole('button',{name:'Send to simulated AI',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Cancel request',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Cancel request',exact:true}).click();
+ await expect(page.getByRole('alert')).toContainText('cancelled');
+ await expect(page.locator('.message-bubble').filter({hasText:'Audit cancelled slow message'})).toHaveCount(0);
+ await scenario(page,'error');
+ await expect(page.getByRole('heading',{name:'Workspace unavailable'})).toBeVisible();
+ await page.getByRole('button',{name:'Retry loading',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Workspace unavailable'})).toBeVisible();
+ await scenario(page,'normal');
+ await expect(page.locator('main h1')).toHaveText('Morning, Alex');
+ await scenario(page,'disconnected');
+ await expect(page.getByRole('heading',{name:'Workspace unavailable'})).toBeVisible();
+ await page.getByRole('button',{name:'Reconnect / refresh',exact:true}).click();
+ await expect(page.locator('main h1')).toHaveText('Morning, Alex');
+});
+
+for(const role of ['founder','advisor'] as const){
+ test(`${role}: mobile Search entry, empty search reset and every result link`,async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await go(page,role==='founder'?'/founder/home':'/advisor/clients');
+  await page.getByRole('link',{name:'Search sources and drafts',exact:true}).click();
+  await expect(page.locator('main h1')).toHaveText('Search');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  await page.getByRole('searchbox',{name:'Search sources and drafts',exact:true}).fill('no matches in workspace');
+  await expect(page.getByRole('heading',{name:'No matching results'})).toBeVisible();
+  await page.getByRole('button',{name:'Show all sources and documents',exact:true}).click();
+  await expect(page.getByRole('searchbox',{name:'Search sources and drafts',exact:true})).toHaveValue('');
+  await page.getByRole('searchbox',{name:'Search sources and drafts',exact:true}).fill('intake');
+  await page.getByRole('button',{name:'Clear search',exact:true}).click();
+  for(const name of sourceNames){
+   await page.getByRole('link',{name:`Open source ${name}`,exact:true}).click();
+   await expect(page.locator('.source-excerpt')).toBeVisible();
+   await page.getByRole('link',{name:'Search sources and drafts',exact:true}).click();
+  }
+  await page.getByRole('link',{name:`Open document ${packetName} v1`,exact:true}).click();
+  await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ });
+ test(`${role}: Settings keyboard arrows/Home/End select and focus correct panel`,async({page})=>{
+  await go(page,`/${role}/settings`);
+  await page.getByRole('tab',{name:'Profile',exact:true}).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab',{name:'Call privacy',exact:true})).toBeFocused();
+  await expect(page.getByRole('tab',{name:'Call privacy',exact:true})).toHaveAttribute('aria-selected','true');
+  await expect(page.getByRole('tabpanel')).toContainText('Separate consent');
+  await page.keyboard.press('End');
+  await expect(page.getByRole('tab',{name:'About this demo',exact:true})).toBeFocused();
+  await page.getByRole('link',{name:'Explore documents',exact:true}).click();
+  await expect(page.locator('main h1')).toHaveText('Documents');
+  await navigate(page,'Settings');await page.getByRole('tab',{name:'Profile',exact:true}).focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.getByRole('tab',{name:'About this demo',exact:true})).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(page.getByRole('tab',{name:'Profile',exact:true})).toBeFocused();
+  await expect(page.getByRole('tabpanel')).toContainText('Workspace profile');
+ });
+}
+
+test('Founder Documents tabs support keyboard selection with correct timeline/preview',async({page})=>{
+ await go(page,'/founder/documents');
+ await page.getByRole('tab',{name:'Preview',exact:true}).focus();
+ await page.keyboard.press('ArrowRight');
+ await expect(page.getByRole('tab',{name:'Version history',exact:true})).toBeFocused();
+ await expect(page.getByRole('tabpanel')).toContainText('Initial synthetic draft');
+ await page.keyboard.press('Home');
+ await expect(page.getByRole('tab',{name:'Preview',exact:true})).toBeFocused();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+ await page.keyboard.press('End');
+ await expect(page.getByRole('tab',{name:'Version history',exact:true})).toBeFocused();
+});
+
+const emptyLinks=[
+ ['/founder/sources','Go to Home chat','Morning, Alex'],
+ ['/founder/documents','Browse sources','Sources'],
+ ['/founder/call','View Documents','Documents'],
+ ['/advisor/call','View Reviews','Reviews'],
+ ['/founder/home/clarification','Return to Home','Morning, Alex'],
+] as const;
+for(const [path,link,heading] of emptyLinks){
+ test(`${path}: empty-state ${link} destination works`,async({page})=>{
+  await page.goto(path);
+  await expect(page.locator('main')).toBeVisible();
+  await scenario(page,'empty');
+  await page.getByRole('link',{name:link,exact:true}).click();
+  await expect(page.locator('main h1')).toHaveText(heading);
+ });
+}
+
+test('Clarification conversation: human-only audience, preview/edit/send and breadcrumb',async({page})=>{
+ await sendQuestion(page);await switchRole(page,'founder');
+ await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
+ await expect(page.getByRole('combobox',{name:'Message audience'}).locator('option')).toHaveCount(1);
+ const input=page.getByRole('textbox',{name:'Message Maya Chen',exact:true});
+ await input.fill('Clarification conversation audit message.');
+ await page.getByRole('button',{name:'Preview message',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Preview message to Maya Chen'})).toBeVisible();
+ await page.getByRole('button',{name:'Keep editing',exact:true}).click();
+ await expect(input).toHaveValue('Clarification conversation audit message.');
+ await page.getByRole('button',{name:'Preview message',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm simulated send',exact:true}).click();
+ await expect(page.locator('.message-bubble').filter({hasText:'Clarification conversation audit message.'})).toHaveCount(1);
+ await page.locator('.clarification-breadcrumb').getByRole('link',{name:'Home',exact:true}).click();
+ await expect(page.locator('main h1')).toHaveText('Morning, Alex');
+});
+
+test('Search preserves role isolation for an unshared new packet version',async({page})=>{
+ await createV2(page);await switchRole(page,'advisor');
+ await page.getByRole('textbox',{name:'Search sources and drafts'}).fill('Audit answer:');
+ await page.getByRole('textbox',{name:'Search sources and drafts'}).press('Enter');
+ await expect(page.getByRole('heading',{name:'No matching results'})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Open document.*v2/})).toHaveCount(0);
+ await page.getByRole('button',{name:'Show all sources and documents',exact:true}).click();
+ await expect(page.getByRole('link',{name:/Open document.*v1/})).toBeVisible();
+ await expect(page.getByRole('link',{name:/Open document.*v2/})).toHaveCount(0);
+});
+
+test('Founder Documents no-match Clear search returns selected current packet',async({page})=>{
+ await go(page,'/founder/documents?q=nothing-matches');
+ await expect(page.getByRole('heading',{name:'No documents match this search'})).toBeVisible();
+ await page.getByRole('link',{name:'Clear search',exact:true}).click();
+ await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
+});
