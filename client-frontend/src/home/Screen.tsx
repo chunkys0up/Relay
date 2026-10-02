@@ -85,7 +85,7 @@ export default function Screen() {
                         <p>{currentFlags.map((flag) => flag.text).join(' ') || 'Review the question in your conversation.'}</p>
                         {currentFlags.flatMap((flag) => flag.citations).filter((citation, index, all) => all.findIndex((item) => item.source_id === citation.source_id) === index).slice(0, 2).map((citation) => (
                           <Link className="founder-home-citation" key={`${citation.source_id}-${citation.label}`} to={`/founder/sources?source=${encodeURIComponent(citation.source_id)}`}>
-                            <Icon name="file" size={16} />{citation.label}
+                            <Icon name="file" size={18} />{citation.label}
                           </Link>
                         ))}
                         {sentClarification ? (
@@ -109,10 +109,10 @@ export default function Screen() {
                 ) : (
                   <ul>
                     {snapshot.packets.slice(-1).map((packet) => (
-                      <li key={packet.id}><Icon name="file" size={20} /><Link to={`/founder/documents?version=${packet.id}`}>{packet.title}</Link><small>Draft · {packet.status.replaceAll('_', ' ')}</small></li>
+                      <li key={packet.id}><Icon name="file" size={25} /><Link to={`/founder/documents?version=${packet.id}`}>{packet.title}</Link><small>Draft · {packet.status.replaceAll('_', ' ')}</small></li>
                     ))}
                     {snapshot.sources.slice(0, 3).map((source) => (
-                      <li key={source.id}><Icon name="file" size={20} /><Link to={`/founder/sources?source=${source.id}`}>{source.name}</Link><small>Original · {source.extraction}</small></li>
+                      <li key={source.id}><Icon name="file" size={25} /><Link to={`/founder/sources?source=${source.id}`}>{source.name}</Link><small>Original · {source.extraction}</small></li>
                     ))}
                   </ul>
                 )}

@@ -78,7 +78,7 @@ export default function Screen() {
                   {rows.map(row => {
                     const selected = row.kind === 'source' ? row.id === requestedSource || row.id === selectedSource?.id : row.id === requestedVersion || (!requestedSource && !requestedVersion && row.id === latest?.id);
                     return <button type="button" className={'advisor-file-row ' + (selected ? 'is-selected' : '')} key={row.id} aria-pressed={selected} onClick={() => updateParams(params, setParams, row.kind === 'source' ? { source: row.id, version: null } : { source: null, version: row.id })}>
-                      <span className="advisor-file-name"><Icon name="file" size={22}/><span>{row.name}</span></span><Badge tone={row.kind === 'packet' ? 'attention' : 'neutral'}>{row.kind === 'packet' ? 'Packet version' : 'Shared source'}</Badge><time dateTime={row.date}>{new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</time>
+                      <span className="advisor-file-name"><Icon name="file" size={25}/><span>{row.name}</span></span><Badge tone={row.kind === 'packet' ? 'attention' : 'neutral'}>{row.kind === 'packet' ? 'Packet version' : 'Shared source'}</Badge><time dateTime={row.date}>{new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</time>
                     </button>;
                   })}
                 </div>}

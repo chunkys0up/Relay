@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, Button, CitationLink, Conversation, EmptyState, Icon, PageTitle, Panel, useRelay } from '@relay/shared';
+import { Badge, Button, CitationLink, Conversation, EmptyState, Icon, PageTitle, Panel, useDraft, useRelay } from '@relay/shared';
 import './clarification.css';
 
 function ConversationPanel(): ReactNode {
@@ -15,7 +15,7 @@ function ConversationPanel(): ReactNode {
 
 export default function Screen(): ReactNode {
   const { snapshot, busy, run } = useRelay();
-  const [answer, setAnswer] = useState('');
+  const [answer, setAnswer] = useDraft('answer:' + (snapshot?.clarifications.filter(item => item.status === 'sent').at(-1)?.id ?? 'none'));
   const [previewing, setPreviewing] = useState(false);
 
   if (!snapshot) return null;
@@ -49,6 +49,8 @@ export default function Screen(): ReactNode {
                   <Link className="button button-outline" to="/founder/home">Return to Home</Link>
                 </div>
               </div>
+            ) : answered && busy ? (
+              <div role="status"><Badge>Thinking / Working</Badge><h2>Preparing your proposed revision</h2><p>Your answer is recorded in this simulated session. Relay is working on the next draft; it is not ready for review yet.</p></div>
             ) : (
               <EmptyState title="No clarification needs an answer">
                 <p>When Maya sends a question about a shared packet, it will appear here in your Home conversation.</p>

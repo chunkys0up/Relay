@@ -75,7 +75,7 @@ export default function Screen() {
                       <tbody>
                         {filteredSources.map((source) => (
                           <tr key={source.id} className={selectedSource?.id === source.id ? 'is-selected' : ''}>
-                            <td><button className="founder-sources-file-button" type="button" aria-pressed={selectedSource?.id === source.id} onClick={() => chooseSource(source.id)}><Icon name="file" size={21}/><span><strong>{source.name}</strong><small>{source.citations.map((citation) => citation.locator.sheet ? `Sheet ${citation.locator.sheet}` : citation.locator.page ? `p. ${citation.locator.page}` : '').filter(Boolean).join(' · ') || source.mime_type.split('/').at(-1)} · {formatBytes(source.bytes)}</small></span></button></td>
+                            <td><button className="founder-sources-file-button" type="button" aria-pressed={selectedSource?.id === source.id} onClick={() => chooseSource(source.id)}><Icon name="file" size={27}/><span><strong>{source.name}</strong><small>{source.citations.map((citation) => citation.locator.sheet ? `Sheet ${citation.locator.sheet}` : citation.locator.page ? `p. ${citation.locator.page}` : '').filter(Boolean).join(' · ') || source.mime_type.split('/').at(-1)} · {formatBytes(source.bytes)}</small></span></button></td>
                             <td><Badge tone={source.extraction === 'failed' ? 'attention' : source.extraction === 'ready' ? 'success' : 'neutral'}>{extractionLabel(source)}</Badge></td>
                             <td><span className="founder-sources-meta">Added {new Date(source.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></td>
                           </tr>

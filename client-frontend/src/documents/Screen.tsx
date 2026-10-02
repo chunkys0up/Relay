@@ -64,7 +64,7 @@ export default function Screen() {
                 <div className="founder-documents-version-rows">
                   {[...matches].reverse().map((packet) => (
                     <button key={packet.id} type="button" className={`founder-documents-version-row ${selectedPacket.id === packet.id ? 'is-selected' : ''}`} aria-pressed={selectedPacket.id === packet.id} onClick={() => selectVersion(packet)}>
-                      <Icon name="file" size={21}/>
+                      <Icon name="file" size={27}/>
                       <span className="founder-documents-row-copy"><strong>{packet.title} · v{packet.version}</strong><small>{snapshot.company} · {new Date(packet.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</small></span>
                       <Badge tone={packetTone(packet)}>{packetStatus(packet)}</Badge>
                     </button>
@@ -117,6 +117,7 @@ export default function Screen() {
                 </section>
 
                 <aside className="founder-documents-aside" aria-label="Version status and actions">
+                  <Conversation />
                   <Panel title="Review status">
                     <div className="founder-documents-status-row"><Badge tone={packetTone(selectedPacket)}>{packetStatus(selectedPacket)}</Badge><span>Case: {snapshot.status}</span></div>
                     {isCurrent ? <p>This is the current packet version. A previous approval never carries forward to a new version.</p> : <p>This is a historical version. Actions are disabled until you select the current packet.</p>}
@@ -138,7 +139,6 @@ export default function Screen() {
                   )}
 
                   {isCurrent && <HandoffControls packet={selectedPacket}/>}
-                  <Conversation />
                 </aside>
               </div>
             </>

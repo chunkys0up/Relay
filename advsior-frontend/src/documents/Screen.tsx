@@ -55,13 +55,13 @@ export default function Screen() {
             {visiblePackets.length ? visiblePackets.slice().reverse().map(item=>{
               const selected=packet?.id===item.id && !requestedSource;
               const status=statusLabel(item.status);
-              return <button type="button" className={'advisor-document-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{version:item.id,source:null})}><Icon name="file" size={19}/><span><strong>{item.title}</strong><small>Version {item.version}</small></span><Badge tone={status.tone}>{status.label}</Badge></button>;
+              return <button type="button" className={'advisor-document-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{version:item.id,source:null})}><Icon name="file" size={20}/><span><strong>{item.title}</strong><small>Version {item.version}</small></span><Badge tone={status.tone}>{status.label}</Badge></button>;
             }) : <p className="advisor-document-empty-note">No packet versions match this search.</p>}
           </div>
           <div className="advisor-documents-file-group"><h2>Shared originals</h2>
             {visibleSources.length ? visibleSources.map(item=>{
               const selected=source?.id===item.id;
-              return <button type="button" className={'advisor-document-file advisor-source-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{source:item.id,version:packet?.id??null})}><Icon name="file" size={19}/><span><strong>{item.name}</strong><small>Original · shared by founder</small></span><Badge>{item.extraction==='ready'?'Source ready':item.extraction}</Badge></button>;
+              return <button type="button" className={'advisor-document-file advisor-source-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{source:item.id,version:packet?.id??null})}><Icon name="file" size={20}/><span><strong>{item.name}</strong><small>Original · shared by founder</small></span><Badge>{item.extraction==='ready'?'Source ready':item.extraction}</Badge></button>;
             }) : <p className="advisor-document-empty-note">No shared originals match this search.</p>}
           </div>
           <Link className="advisor-documents-back" to="/advisor/clients">← Back to clients</Link>
