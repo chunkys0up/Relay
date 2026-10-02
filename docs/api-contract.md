@@ -36,7 +36,7 @@ type CaseStatus = 'Information needed' | 'Draft ready' | 'Advisor review'
 type Actor = { id: ID; name: string; role: 'founder' | 'advisor' };
 type Session = { actor: Actor; demo: boolean; capabilities: string[] };
 type Citation = {
-  source_id: ID; source_hash: Hash; label: string;
+  source_id: ID; source_hash: Hash; source_kind?: 'document' | 'message'; label: string;
   locator: { page?: number; sheet?: string; row?: number; field?: string };
 }; // At least one locator member required, page/row >= 1.
 type Source = {
@@ -277,3 +277,16 @@ consent, withdrawal, replay duplicates, expired cursors and error visibility.
 - Confirm after-call summary proposal DTO/confirmation and cleanup event ownership.
 
 Until confirmed, these are frontend assumptions, not statements of backend support.
+
+### Founder-answer provenance proposal
+
+A citation with `source_kind: 'message'` points to an exact attributed founder
+answer (`source_id` is its message ID, locator `field: 'message'`). The packet
+retains the original conflict and adds this answer citation. The browser opens
+the same human conversation at that exact message; message access remains
+independently authorized. Original file browsing never lists an answer as an
+uploaded file. The mock hashes JSON `{author, created_at, text}` with SHA-256;
+Fabricator must confirm canonical backend hash serialization and the message
+citation variant before live integration. Simulated draft work records an ordered
+task and Working state before producing the next version. Cancellation after
+that checkpoint cancels only the wait, not the recorded job.
