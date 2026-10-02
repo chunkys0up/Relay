@@ -16,7 +16,14 @@ describe('advisor clients', () => {
     expect(await screen.findByText(/2026 annual revenue: \$240,000/)).toBeTruthy();
   });
 
-  it('searches only the assigned client and offers a clear path for no results', async () => {
+  it('searches shared filenames and never lists unassigned workspaces', async () => {
+    mount('/advisor/clients?q=Founder%20intake');
+    expect((await screen.findAllByText('Founder intake.pdf')).length).toBeGreaterThan(1);
+    expect(await screen.findByText(/2026 annual revenue: \$240,000/)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText('Cedar Studio')).toBeNull());
+  });
+
+  it('offers a clear path when a query has no assigned match', async () => {
     mount('/advisor/clients?q=unassigned');
     expect(await screen.findByText('No matching assigned client')).toBeTruthy();
     await waitFor(() => expect(screen.queryByText('Cedar Studio')).toBeNull());
