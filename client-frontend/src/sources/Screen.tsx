@@ -47,7 +47,7 @@ export default function Screen() {
           <PageTitle title="Sources" subtitle="View the original files and extraction details behind your packet.">
             <Link className="button button-outline" to="/founder/home">Add sources in Home chat <span aria-hidden="true">↗</span></Link>
           </PageTitle>
-          <p className="founder-sources-guidance">Files selected in the Home conversation appear here. This view only browses existing originals.</p>
+          <p className="founder-sources-guidance">These synthetic fixture originals demonstrate how files selected from the Home conversation will appear here. This view only browses existing originals.</p>
 
           {snapshot.sources.length === 0 ? (
             <Panel><EmptyState title="No original sources yet"><p>Choose files from the attachment control in Home chat. The current local demo cannot upload or store them.</p><Link className="button button-primary" to="/founder/home">Go to Home chat</Link></EmptyState></Panel>
@@ -67,13 +67,13 @@ export default function Screen() {
                 {filteredSources.length === 0 ? (
                   <EmptyState title="No sources match this search"><p>Try another file name or phrase from an extracted excerpt.</p><Button variant="outline" onClick={() => updateQuery('')}>Clear search</Button></EmptyState>
                 ) : (
-                  <div className="founder-sources-table-wrap">
+                  <div className="founder-sources-table-wrap table-scroll">
                     <table className="founder-sources-table">
                       <thead><tr><th scope="col">Original file</th><th scope="col">Extraction</th><th scope="col">Source details</th></tr></thead>
                       <tbody>
                         {filteredSources.map((source) => (
                           <tr key={source.id} className={selectedSource?.id === source.id ? 'is-selected' : ''}>
-                            <td><button className="founder-sources-file-button" type="button" aria-pressed={selectedSource?.id === source.id} onClick={() => chooseSource(source.id)}><Icon name="file" size={21}/><span><strong>{source.name}</strong><small>{source.citations.map((citation) => citation.locator.sheet ? `Sheet ${citation.locator.sheet}` : citation.locator.page ? `${citation.locator.page} pages` : '').filter(Boolean).join(' · ') || source.mime_type.split('/').at(-1)} · {formatBytes(source.bytes)}</small></span></button></td>
+                            <td><button className="founder-sources-file-button" type="button" aria-pressed={selectedSource?.id === source.id} onClick={() => chooseSource(source.id)}><Icon name="file" size={21}/><span><strong>{source.name}</strong><small>{source.citations.map((citation) => citation.locator.sheet ? `Sheet ${citation.locator.sheet}` : citation.locator.page ? `p. ${citation.locator.page}` : '').filter(Boolean).join(' · ') || source.mime_type.split('/').at(-1)} · {formatBytes(source.bytes)}</small></span></button></td>
                             <td><Badge tone={source.extraction === 'failed' ? 'attention' : source.extraction === 'ready' ? 'success' : 'neutral'}>{extractionLabel(source)}</Badge></td>
                             <td><span className="founder-sources-meta">Added {new Date(source.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span></td>
                           </tr>

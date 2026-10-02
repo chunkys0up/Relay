@@ -30,6 +30,14 @@ describe('Founder Sources', () => {
     expect(screen.getByRole('link', { name: /Add sources in Home chat/ })).toHaveAttribute('href', '/founder/home');
   });
 
+  it('labels page locators accurately and identifies fixture originals', async () => {
+    renderSources('/founder/sources?source=00000000-0000-4000-8000-000000000011');
+    expect(await screen.findByRole('heading', { name: 'Founder intake.pdf', level: 2 })).toBeVisible();
+    expect(screen.getByText('p. 2 · 142 KB')).toBeVisible();
+    expect(screen.queryByText('2 pages · 142 KB')).not.toBeInTheDocument();
+    expect(screen.getByText(/synthetic fixture originals demonstrate/)).toBeVisible();
+  });
+
   it('updates the selected source and keeps the query parameter in the URL', async () => {
     const user = userEvent.setup();
     renderSources();

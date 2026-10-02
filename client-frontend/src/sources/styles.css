@@ -12,6 +12,7 @@
 .founder-sources-heading > div > span { color: var(--text-muted); font-size: 12px; }
 .founder-sources-search { min-width: min(280px, 100%); max-width: 340px; flex: 1; height: 42px; padding: 0 12px; display: flex; flex-direction: row; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--subtle); color: var(--lpl-navy); }
 .founder-sources-search input { border: 0 !important; background: transparent !important; outline: none; padding: 7px 0 !important; width: 100%; }
+.founder-sources-table-wrap { min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; }
 .founder-sources-table th { padding: 9px 10px; }
 .founder-sources-table td { padding: 7px 10px; }
 .founder-sources-table tr.is-selected { background: var(--selected); }
@@ -24,7 +25,7 @@
 .founder-sources-preview { display: grid; gap: 12px; min-width: 0; }
 .founder-sources-preview-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 15px 18px; background: white; border: 1px solid var(--border); border-radius: 7px; }
 .founder-sources-preview-title h2 { color: var(--lpl-navy); font-size: 19px; overflow-wrap: anywhere; }
-.founder-sources-preview-title p { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+.founder-sources-preview-title p { overflow-wrap: anywhere; color: var(--text-muted); font-size: 12px; margin-top: 4px; }
 .founder-sources-preview-title .eyebrow { color: var(--text-muted); font-size: 12px; }
 .founder-sources-preview > .panel { padding: 18px; }
 .founder-sources-preview > .panel > h2 { display: none; }
