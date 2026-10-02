@@ -38,6 +38,20 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     aws_profile: str | None = None
 
+    # RDS Postgres. Schema lives in db/schema.sql; no ORM/client is wired up
+    # yet — these are just typed config for whatever reads them next.
+    db_host: str | None = None
+    db_port: int = 5432
+    db_name: str = "relay"
+    db_user: str = "relay_admin"
+    db_password: str | None = None
+
+    @property
+    def database_url(self) -> str | None:
+        if not self.db_host or not self.db_password:
+            return None
+        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_cors_origins(cls, value: object) -> object:
