@@ -20,5 +20,5 @@ See the [backend README](backend/README.md) for architecture, endpoints, configu
 The intended flow is upload → extract facts and resolve missing/conflicting values → draft → advisor questions → revised version → exact-version approval. This end-to-end backend flow is not implemented yet.
 
 - [API contract](docs/api-contract.md) — proposed frontend/backend boundary, pending confirmation.
-- [Product specification](specs.md) and [implementation plan](implementation.md) — intended behavior. Their DynamoDB design predates the current RDS Postgres schema; see the backend README for current implementation status.
+- [Product specification](specs.md) and [implementation plan](implementation.md) — intended behavior. PostgreSQL on Amazon RDS is the selected record store; see the backend README for current implementation status.
 - Frontend checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:browser`.

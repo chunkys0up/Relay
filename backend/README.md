@@ -65,4 +65,4 @@ The frontend currently creates a [MockRelayAdapter](../frontend-shared/src/conte
 
 The intended backend flow is upload → extract/source-link facts → clarify missing/conflicting values → generate a versioned draft → advisor review → founder revision. Database persistence, extraction/retrieval tools, task orchestration, sharing/version-bound reviews and server-side role/case authorization remain unimplemented. Chime calls and consented after-call processing are also not connected.
 
-See [specs.md](../specs.md) and [implementation.md](../implementation.md) for the full intended workflow. Those documents still specify DynamoDB; the current repository adds an RDS Postgres schema instead. Neither database is used by the running application code yet.
+See [specs.md](../specs.md) and [implementation.md](../implementation.md) for the full intended workflow. PostgreSQL on Amazon RDS is the selected record store. The schema and settings are present, but application persistence remains unimplemented.

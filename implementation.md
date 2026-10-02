@@ -1,6 +1,6 @@
 # Relay implementation plan
 
-Version 0.3 · React/FastAPI local demo
+Version 0.4 · React/FastAPI local demo
 
 Read [specs.md](specs.md) and this file before changing the application. This plan is documentation only; it does not create AWS resources, enable permissions, record calls, delete data, deploy, or prove an integration.
 
@@ -10,12 +10,16 @@ Preserve the existing repository layout: `client-frontend/`, `advsior-frontend/`
 
 Create a Python virtual environment and pin compatible dependencies only once implementation is authorized. Expected categories: `fastapi`, an ASGI server, WebSocket support, AWS SDK for Python, Pydantic, Strands Agents SDK, and focused test tooling. Frontend dependencies remain React/TypeScript and the existing chosen styling/component approach. Use the repository’s existing package manager when it exists; otherwise document the selected frontend toolchain.
 
-Configuration names are placeholders, not values to invent:
+Current database settings are `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASSWORD`; `Settings.database_url` assembles them but is not yet consumed. See [backend/.env.example](backend/.env.example). The remaining integration settings below describe the target design; placeholders are not values to invent:
 
 ```dotenv
 AWS_REGION=us-east-1
 S3_BUCKET=<permitted-private-bucket>
-DYNAMODB_TABLE=<permitted-table>
+DB_HOST=<permitted-rds-host>
+DB_PORT=5432
+DB_NAME=relay
+DB_USER=<database-user>
+DB_PASSWORD=<database-password>
 BEDROCK_MODEL_OR_PROFILE_ID=<copy exact ID from successful request>
 DEMO_MODE=true
 DEMO_TENANT_ID=relay-demo
@@ -25,7 +29,7 @@ CHIME_REGION=<verified-region>
 
 The user reports a working Bedrock call called “Claude Sonnet 5”; its exact Bedrock model/inference-profile ID is **UNVERIFIED**. Copy it from the successful request or verified account configuration, then run a small permitted invocation. Never fabricate an ID.
 
-Preflight gates: AWS identity/region; S3 canonical write/read; DynamoDB conditional write/read; Textract extraction permission; Bedrock invoke permission and exact configured ID; Strands SDK compatibility; Chime SDK permissions; Chime media-capture and Transcribe prerequisites; and a two-person Chime audio test. New cloud resources, permission changes, credentials, or real data require team authorization.
+Preflight gates: AWS identity/region; S3 canonical write/read; PostgreSQL connectivity, schema migrations and transaction/revision-conflict checks; Textract extraction permission; Bedrock invoke permission and exact configured ID; Strands SDK compatibility; Chime SDK permissions; Chime media-capture and Transcribe prerequisites; and a two-person Chime audio test. New cloud resources, permission changes, credentials, or real data require team authorization.
 
 ## 2. Proposed structure
 
@@ -43,6 +47,7 @@ backend/
     services/{repository,storage,textract,retrieval,chime,transcribe}.py
     ai/{bedrock,strands_orchestrator,specialists,prompts}.py
     jobs/{dispatch,leases}.py
+  db/{schema.sql,seed.sql,migrations/}
   tests/{unit,integration,e2e}/
   scripts/{seed,aws_smoke}.py
 fixtures/{founder,advisor,sources,expected}/
@@ -74,7 +79,9 @@ Pydantic schemas cover:
 - `CallSession`: invited/accepted participants, Chime meeting/attendee references kept server-side, call state, mute events, consent and capture/process/delete state.
 - `PacketVersion`, `Review`, `ShareGrant`, `Consent`, and replayable `Event`.
 
-DynamoDB partitions all case records by tenant/case and uses typed sort keys. Keep originals, extracted text, and packet bodies in S3; keep catalog, status, pointers, facts, tasks, messages, reviews, and consent in DynamoDB. Use conditional writes for leases, handoffs, sends, and decisions.
+PostgreSQL on Amazon RDS is the record store. Extend the existing `backend/db/schema.sql` tables (`cases`, `documents`, `facts`, `drafts`, `messages`, `advisor_actions`) through versioned migrations; add the task/job, conflict, sharing, consent/call and replayable-event records required by the domain contracts. Scope records and queries by tenant/case, enforce foreign keys and unique case/version and actor/idempotency keys, and index case-scoped lookups. Keep originals, extracted text and packet bodies in S3; store their keys, hashes, metadata and lifecycle state in PostgreSQL.
+
+Apply revision-checked updates and row locks inside transactions for job leases, handoffs and exact-version decisions. Commit state changes and their events together before broadcasting; workers must not hold database transactions open across AWS or model calls. These persistence behaviors are planned: the current schema/config scaffold has no database client or application queries, and the initial SQL script is not a migration runner.
 
 ## 4. Backend APIs and WebSockets
 
@@ -129,7 +136,7 @@ Use light surfaces and centralized sampled reference-image colors: navy `#00205B
 ## 8. Phases and checks
 
 1. **Foundation:** React navigation shells, FastAPI/Pydantic contracts, server-controlled demo role switch, repository interface, task/event persistence. Gate: Home / Sources / Documents / Call routes work; cross-case access fails; three AI modes/four task states render.
-2. **Document flow:** chat attachment upload only, constrained S3 storage, Textract, S3 excerpt retrieval with citations, DynamoDB catalog/status. Gate: Sources reads originals; Documents separates packet versions; unsupported uploads fail safely.
+2. **Document flow:** chat attachment upload only, constrained S3 storage, Textract, S3 excerpt retrieval with citations, PostgreSQL catalog/status. Gate: Sources reads originals; Documents separates packet versions; unsupported uploads fail safely.
 3. **Orchestrator:** Strands tools, configured Bedrock invocation, task-first jobs, WebSocket replay, one cited contradiction plus one missing fact, clarification, and packet v1.
 4. **Advisor and call loop:** client folders, source-linked review, returned-question loop, dedicated Call destination with packet context/human-message history, Chime invitation/state, and separate consent/capture path after prerequisites.
 5. **Verification:** record pass/fail/not-run separately. Typical commands after scripts exist: frontend lint/type/test/build; `python -m pytest`; FastAPI integration tests; browser founder/advisor two-session navigation/message/call tests; `python backend/scripts/aws_smoke.py`.
@@ -144,7 +151,7 @@ client-frontend, advsior-frontend, and backend directories and repository
 instructions. Preserve working code and the existing directory names. Build only
 the fictional-data Relay demo when implementation is authorized: React clients,
 a local Python FastAPI backend, FastAPI WebSockets, Strands-based hidden
-specialists, S3/Textract/DynamoDB, and a configured Bedrock model/profile copied
+specialists, S3/Textract/PostgreSQL, and a configured Bedrock model/profile copied
 from a successful request. Do not invent a model ID, create AWS resources,
 expand permissions, deploy publicly, or use real customer data.
 
