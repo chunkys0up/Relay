@@ -46,7 +46,7 @@ export default function Screen() {
               </Panel>
 
               {snapshot.sources.length === 0 && snapshot.packets.length === 0 ? (
-                <Panel><EmptyState title="Your workspace is ready"><p>Start in this conversation. Source files are only selected here and are not uploaded in this simulation.</p></EmptyState><Conversation large allowUpload /></Panel>
+                <Panel><EmptyState title="Your workspace is ready"><p>Start in this conversation. Add source files locally in this browser. UTF-8 text and CSV previews are supported.</p></EmptyState><Conversation large allowUpload /></Panel>
               ) : (
                 <Conversation large allowUpload />
               )}
@@ -92,7 +92,7 @@ export default function Screen() {
                           <Link className="button button-primary" to="/founder/home/clarification">Answer clarification in chat</Link>
                         ) : (
                           <>
-                            <p className="founder-home-simulation-note">No advisor question has been sent yet. Add your answer in the existing Home conversation; simulated AI replies need the backend.</p>
+                            <p className="founder-home-simulation-note">No advisor question has been sent yet. Add numeric revenue and reserve details in the existing private Home conversation to prepare a local draft. General simulated AI replies need the backend.</p>
                             <Link className="button button-primary" to="/founder/home#message-main">Answer in Home chat</Link>
                           </>
                         )}
