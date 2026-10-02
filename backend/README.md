@@ -1,98 +1,68 @@
 # Relay Backend
 
-FastAPI service wrapping a [Strands](https://strandsagents.com) harness agent. No tools are enabled yet — this is a baseline to build features on top of.
+FastAPI provides Strands-backed chat and S3 document uploads. The repository also includes an RDS Postgres schema and connection settings; no database client or application queries are wired up yet.
 
-## Setup
+## Current architecture
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.10+.
+```text
+React founder/advisor UI → in-memory mock (not connected to FastAPI)
+
+FastAPI
+├── /api/chat          → cached Strands harness per session_id → configured model
+├── /api/chat/stream   → same agent, plain-text streaming response
+└── /api/documents/upload → boto3 → S3 object + upload metadata
+
+RDS Postgres: schema/config only; no connection from the routes above
+```
+
+- **Chat:** [agents/factory.py](app/agents/factory.py) creates one agent per session ID, with both tool lists empty. The harness receives `SESSION_DIR` for session storage; this is separate from case/message records in Postgres. Bedrock is the default provider; `STRANDS_MODEL` selects the model.
+- **Upload:** [documents.py](app/api/routes/documents.py) reads the file and [storage/s3.py](app/storage/s3.py) uploads it to `S3_BUCKET` under `documents/{uuid}/{original filename}`. It returns metadata without creating a case/document record or starting extraction.
+- **Records:** [db/schema.sql](db/schema.sql) defines cases, documents with S3 keys, source-linked facts, versioned drafts with S3 keys, messages and advisor decisions tied to a draft. [db/seed.sql](db/seed.sql) contains sample cases. The schema is intended for a fresh database and is not idempotent; the app does not apply it at startup.
+
+## Local setup
+
+Requires Python 3.10+ and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 cd backend
 uv sync
-cp .env.example .env   # fill in a model provider key (see below)
+cp .env.example .env  # first setup only; keep an existing .env
+# Fill in .env before starting the service.
+uv run uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-## Running
+Add `--reload` for local development. Uvicorn's host/port come from its CLI flags; the `HOST`/`PORT` application settings are not wired into this command. Open `http://127.0.0.1:8000/docs` for the API schema.
 
-```bash
-uv run uvicorn app.main:app
-```
+## Configuration
 
-Add `--reload` if you want the server to auto-restart on file changes:
+See [.env.example](.env.example) for all variables and [core/config.py](app/core/config.py) for typed settings.
 
-```bash
-uv run uvicorn app.main:app --reload
-```
+| Variables | Purpose |
+| --- | --- |
+| `AWS_PROFILE`, `AWS_REGION` | Existing AWS credentials/profile and S3 region. Keep the profile's region consistent for Bedrock. |
+| `STRANDS_MODEL`, `STRANDS_EFFORT` | Harness model and effort. Use a model/inference profile verified for your account; an example value does not prove access. |
+| `S3_BUCKET` | Upload destination; credentials need permission to write objects. |
+| `SESSION_DIR` | Harness session storage directory. |
+| `CORS_ORIGINS` | Allowed browser origins, comma-separated; use the local frontend origin when connecting it. |
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | Postgres connection settings. `Settings.database_url` is prepared but unused; database access requires separate network access and database credentials. |
 
-Server listens on `http://127.0.0.1:8000` by default. Set `HOST`/`PORT` in `.env` to change it.
-
-If you'd rather not type `uv run` every time, activate the venv once per terminal session and call `uvicorn` directly:
-
-```bash
-source .venv/bin/activate
-uvicorn app.main:app
-```
-
-## Configuring a model
-
-The harness defaults to Amazon Bedrock. To use a different provider, set `STRANDS_MODEL` in `.env` and export the matching API key:
-
-| Provider  | `STRANDS_MODEL` example        | Env var               |
-|-----------|---------------------------------|------------------------|
-| Anthropic | `anthropic/claude-opus-5`       | `ANTHROPIC_API_KEY`    |
-| OpenAI    | `openai/gpt-5`                  | `OPENAI_API_KEY`       |
-| Google    | `google/gemini-2.5-pro`         | `GEMINI_API_KEY`       |
-| Bedrock (default) | leave `STRANDS_MODEL` unset | `AWS_BEARER_TOKEN_BEDROCK` or AWS CLI config |
+`load_dotenv()` also exposes `.env` values to provider SDKs that read the process environment. Bedrock needs model invocation/streaming permissions. Credentials and service availability are not checked by `/health`.
 
 ## Endpoints
 
-| Method | Path               | Description                                   |
-|--------|--------------------|------------------------------------------------|
-| GET    | `/`                | Service info                                   |
-| GET    | `/health`          | Health check                                   |
-| POST   | `/api/chat`        | Send a message, get the full reply             |
-| POST   | `/api/chat/stream`  | Send a message, stream the reply as plain text |
-| DELETE | `/api/chat/{session_id}` | Drop a cached session's agent (fresh start) |
-| POST   | `/api/documents/upload` | Upload a document to S3 (multipart form, field name `file`) |
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/` | Service name/status |
+| GET | `/health` | Static process health response |
+| POST | `/api/chat` | `{ "message": "...", "session_id": "..." }` → session ID and reply; session ID defaults to `default` |
+| POST | `/api/chat/stream` | Same request, plain-text response stream |
+| DELETE | `/api/chat/{session_id}` | Evicts the cached agent; does not delete stored session files |
+| POST | `/api/documents/upload` | Multipart `file` → bucket, key, filename, content type and size |
 
-`POST /api/chat` body:
+## Frontend integration and remaining work
 
-```json
-{ "message": "hello", "session_id": "default" }
-```
+The frontend currently creates a [MockRelayAdapter](../frontend-shared/src/context.tsx), so uploads, messages, reviews and calls do not reach these endpoints. Replace it with a transport adapter once the [proposed API contract](../docs/api-contract.md) is agreed. Current chat/upload responses differ from that proposal; there are no case-scoped routes or WebSockets yet.
 
-`session_id` is optional (defaults to `"default"`) and scopes conversation memory — each session gets its own cached agent and on-disk transcript under `.agent/sessions/`.
+The intended backend flow is upload → extract/source-link facts → clarify missing/conflicting values → generate a versioned draft → advisor review → founder revision. Database persistence, extraction/retrieval tools, task orchestration, sharing/version-bound reviews and server-side role/case authorization remain unimplemented. Chime calls and consented after-call processing are also not connected.
 
-### Try it
-
-```bash
-curl localhost:8000/health
-
-curl -X POST localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "say hi in 3 words"}'
-
-curl -X POST localhost:8000/api/documents/upload \
-  -F "file=@/path/to/some-document.pdf"
-```
-
-## Document storage (S3)
-
-Uploaded files go to the bucket in `S3_BUCKET` (`.env`), private by default (all public access blocked). Set `AWS_PROFILE` in `.env` to the name of a profile in `~/.aws/credentials` if you're not using the default AWS credential chain (e.g. `AWS_PROFILE=participant` for the workshop account). Objects are stored under a random key: `documents/{uuid}/{original filename}`.
-
-## Project layout
-
-```
-app/
-  main.py              FastAPI app, CORS, router wiring
-  core/config.py        Settings loaded from .env
-  agents/factory.py     create_harness() wrapper, one cached agent per session_id
-  storage/s3.py          boto3 S3 client, upload helper
-  schemas/                Request/response models
-  api/routes/
-    health.py           GET /health
-    chat.py              Chat endpoints
-    documents.py          Document upload endpoint
-```
-
-Add real tools in `app/agents/factory.py` (`builtin_tools=[...]` for Strands' built-ins like `shell`/`read`/`write`/`web_fetch`, or `tools=[...]` for custom ones) once there's a feature that needs them.
+See [specs.md](../specs.md) and [implementation.md](../implementation.md) for the full intended workflow. Those documents still specify DynamoDB; the current repository adds an RDS Postgres schema instead. Neither database is used by the running application code yet.
