@@ -41,7 +41,8 @@
 .founder-documents-comparison ul { margin: 10px 0 0; padding-left: 20px; color: var(--lpl-orange); font-size: 12px; }
 .founder-documents-citations { margin-top: 18px; padding: 16px 0 0; border-top: 1px solid var(--border); }
 .founder-documents-citations h3 { color: var(--lpl-navy); font-size: 15px; margin-bottom: 8px; }
-.founder-documents-aside { display: grid; gap: 14px; }
+.founder-documents-aside { display: grid; gap: 14px; min-width: 0; }
+.founder-documents-aside .conversation { min-height: 620px; }
 .founder-documents-aside .panel { padding: 18px; }
 .founder-documents-status-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .founder-documents-status-row > span { color: var(--text-muted); font-size: 12px; }

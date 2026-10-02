@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Badge, CitationLink, EmptyState, HandoffControls, Icon, PageTitle, PacketPreview, Panel, ScreenState, useRelay } from '@relay/shared';
+import { Badge, CitationLink, Conversation, EmptyState, HandoffControls, Icon, PageTitle, PacketPreview, Panel, ScreenState, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
 import './styles.css';
 
@@ -27,7 +27,7 @@ export default function Screen() {
   const versions = useMemo(() => [...(snapshot?.packets ?? [])].sort((a, b) => a.version - b.version), [snapshot?.packets]);
   const matches = versions.filter((packet) => !query || `${packet.title} ${packet.content} ${packet.status}`.toLowerCase().includes(query));
   const currentPacket = versions.find((packet) => packet.id === snapshot?.current_packet_version_id) ?? versions.at(-1) ?? null;
-  const selectedPacket = matches.find((packet) => packet.id === requestedVersion) ?? (!query ? currentPacket : null);
+  const selectedPacket = matches.find((packet) => packet.id === requestedVersion) ?? (query ? matches.find((packet) => packet.id === currentPacket?.id) ?? matches.at(-1) ?? null : currentPacket);
   const currentFlags = snapshot?.flags.filter((flag) => flag.packet_version_id === selectedPacket?.id && !flag.resolved) ?? [];
   const sentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === selectedPacket?.id && question.status === 'sent');
   const selectedIndex = selectedPacket ? versions.findIndex((packet) => packet.id === selectedPacket.id) : -1;
@@ -138,6 +138,7 @@ export default function Screen() {
                   )}
 
                   {isCurrent && <HandoffControls packet={selectedPacket}/>}
+                  <Conversation />
                 </aside>
               </div>
             </>
