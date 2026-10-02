@@ -37,3 +37,5 @@ Final limitations: same browser/profile/origin only; binary/PDF extraction unsup
 Integration: copy verified changed files only to /home/tim/Relay after per-file base-content checks. Preserve concurrent root README.md and backend/README.md edits. Verify identical bytes after copying; no commit or merge.
 
 Shipping preparation: normalized CRLF/trailing blank lines in newly tracked tests and handoff notes. Only whitespace changed in locked tests; assertions and verified production code are unchanged.
+
+Post-integration verification (2 October 2026): the runnable frontend now lives in `frontend-shared/`. Lint, typecheck, build and 46 unit tests passed with the integrated workflow. Browser verification produced 58 passes initially; two durability tests used the old module URL, and both passed after correcting those URLs, giving passing evidence for all 60 checks. The isolated relocation snapshot also passed 29 unit and 54 browser tests. Main was reconciled to published commit `5d3c5e0` without changing working-file bytes; this final documentation cleanup normalizes the remaining line endings and preserves the corrected test examples.
