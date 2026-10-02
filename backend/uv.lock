@@ -1113,9 +1113,11 @@ name = "relay-backend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "boto3" },
     { name = "fastapi" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
+    { name = "python-multipart" },
     { name = "strands-agents" },
     { name = "strands-harness" },
     { name = "uvicorn", extra = ["standard"] },
@@ -1123,9 +1125,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "boto3", specifier = ">=1.43.108" },
     { name = "fastapi", specifier = "==0.142.2" },
     { name = "pydantic-settings", specifier = "==2.15.0" },
     { name = "python-dotenv", specifier = "==1.2.4" },
+    { name = "python-multipart", specifier = ">=0.0.32" },
     { name = "strands-agents", specifier = "==1.57.2" },
     { name = "strands-harness", specifier = "==0.1.2" },
     { name = "uvicorn", extras = ["standard"], specifier = "==0.54.0" },

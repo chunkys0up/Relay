@@ -9,6 +9,8 @@ dependencies = [
     "strands-agents==1.57.2",
     "pydantic-settings==2.15.0",
     "python-dotenv==1.2.4",
+    "boto3>=1.43.108",
+    "python-multipart>=0.0.32",
 ]
 
 [build-system]

@@ -53,6 +53,7 @@ The harness defaults to Amazon Bedrock. To use a different provider, set `STRAND
 | POST   | `/api/chat`        | Send a message, get the full reply             |
 | POST   | `/api/chat/stream`  | Send a message, stream the reply as plain text |
 | DELETE | `/api/chat/{session_id}` | Drop a cached session's agent (fresh start) |
+| POST   | `/api/documents/upload` | Upload a document to S3 (multipart form, field name `file`) |
 
 `POST /api/chat` body:
 
@@ -70,7 +71,14 @@ curl localhost:8000/health
 curl -X POST localhost:8000/api/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "say hi in 3 words"}'
+
+curl -X POST localhost:8000/api/documents/upload \
+  -F "file=@/path/to/some-document.pdf"
 ```
+
+## Document storage (S3)
+
+Uploaded files go to the bucket in `S3_BUCKET` (`.env`), private by default (all public access blocked). Set `AWS_PROFILE` in `.env` to the name of a profile in `~/.aws/credentials` if you're not using the default AWS credential chain (e.g. `AWS_PROFILE=participant` for the workshop account). Objects are stored under a random key: `documents/{uuid}/{original filename}`.
 
 ## Project layout
 
@@ -79,10 +87,12 @@ app/
   main.py              FastAPI app, CORS, router wiring
   core/config.py        Settings loaded from .env
   agents/factory.py     create_harness() wrapper, one cached agent per session_id
-  schemas/chat.py       Request/response models
+  storage/s3.py          boto3 S3 client, upload helper
+  schemas/                Request/response models
   api/routes/
     health.py           GET /health
     chat.py              Chat endpoints
+    documents.py          Document upload endpoint
 ```
 
 Add real tools in `app/agents/factory.py` (`builtin_tools=[...]` for Strands' built-ins like `shell`/`read`/`write`/`web_fetch`, or `tools=[...]` for custom ones) once there's a feature that needs them.
