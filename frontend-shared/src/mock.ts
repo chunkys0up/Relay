@@ -7,6 +7,7 @@ export class MockRelayAdapter implements RelayAdapter {
  readonly mode='simulated' as const;
  private state=createFixture(); private scenario:Scenario='normal';
  private listeners=new Set<()=>void>(); private receipts=new Map<string,{body:string;receipt:Receipt<CaseSnapshot>}>();
+ private inflight=new Map<string,{body:string;result:Promise<Receipt<CaseSnapshot>>}>();
  constructor(private readonly latency=180){}
  setScenario(scenario:Scenario):void{this.scenario=scenario;this.emit();}
  reset():void{this.state=createFixture();this.scenario='normal';this.receipts.clear();this.emit();}
@@ -22,6 +23,7 @@ export class MockRelayAdapter implements RelayAdapter {
   const view=structuredClone(this.state);const actor=role==='founder'?founder:advisor;
   const grants=view.grants.filter(g=>g.advisor_id===actor.id);
   view.messages=view.messages.filter(m=>m.audience.kind==='private_ai'?m.owner_id===actor.id:m.author.id===actor.id||m.audience.recipient_id===actor.id);
+  if(role==='founder')view.clarifications=view.clarifications.filter(q=>q.status!=='preview');
   if(role==='advisor'){
    const sources=new Set(grants.flatMap(g=>g.source_ids));const packets=new Set(grants.map(g=>g.packet_version_id));
    view.sources=view.sources.filter(s=>sources.has(s.id));view.packets=view.packets.filter(p=>packets.has(p.id));view.flags=view.flags.filter(f=>packets.has(f.packet_version_id));
@@ -35,10 +37,17 @@ export class MockRelayAdapter implements RelayAdapter {
  async snapshot(role:Role,signal?:AbortSignal):Promise<Receipt<CaseSnapshot>>{await this.wait(signal);return this.receipt(role);}
  private receipt(role:Role):Receipt<CaseSnapshot>{return {data:this.visible(role),meta:{mode:'simulated',request_id:crypto.randomUUID()}};}
  async mutate(role:Role,command:RelayCommand,options:MutationOptions):Promise<Receipt<CaseSnapshot>>{
+  const key=role+':'+options.key;const body=JSON.stringify(command);const existing=this.inflight.get(key);
+  if(existing){if(existing.body!==body)throw new RelayError('IDEMPOTENCY_CONFLICT','This operation key is already processing different content.');return existing.result;}
+  const result=this.execute(role,command,options);this.inflight.set(key,{body,result});
+  try{return await result;}finally{this.inflight.delete(key);}
+ }
+ private async execute(role:Role,command:RelayCommand,options:MutationOptions):Promise<Receipt<CaseSnapshot>>{
   await this.wait(options.signal);const actor=role==='founder'?founder:advisor;const body=JSON.stringify(command);const key=actor.id+':'+options.key;const prior=this.receipts.get(key);
   if(prior){if(prior.body!==body)throw new RelayError('IDEMPOTENCY_CONFLICT','This operation key was already used for different content.');return structuredClone(prior.receipt);}
   if(this.scenario==='empty')throw new RelayError('NOT_FOUND','No synthetic case data in the empty scenario.');
   const callCommand=command.kind==='call_action'||command.kind==='consent';
+  if(this.state.ui_state==='Thinking / Working'&&'packet_version_id' in command)throw new RelayError('INVALID_TRANSITION','A simulated draft is being prepared. Wait for its result before starting another version-bound action.');
   const revision=callCommand?this.state.call?.revision:this.state.revision;
   if(command.expected_revision!==revision)throw new RelayError('STALE_REVISION','The case or call changed. Refresh and review before trying again.');
   if('packet_version_id' in command){const packet=this.state.packets.find(p=>p.id===command.packet_version_id);if(!packet||packet.hash!==command.packet_hash||packet.id!==this.state.current_packet_version_id)throw new RelayError('STALE_PACKET','This packet version is no longer current. Review the latest version.');if(role==='advisor'&&!this.state.grants.some(g=>g.advisor_id===actor.id&&g.packet_version_id===packet.id&&g.packet_hash===packet.hash))throw new RelayError('NOT_FOUND','This version has not been shared with you.');}
@@ -65,9 +74,23 @@ export class MockRelayAdapter implements RelayAdapter {
    }
    case 'answer':{
     requireRole('founder');validText(command.text);const q=question(command.clarification_id,command.clarification_revision);if(q.status!=='sent')throw new RelayError('INVALID_TRANSITION','This question is not awaiting an answer.');
-    const m=message(command.text,{kind:'human',recipient_id:advisor.id});this.state.messages.push(m);q.status='answered';q.revision++;
+    const m=message(command.text,{kind:'human',recipient_id:advisor.id});
+    const answerBytes=new TextEncoder().encode(JSON.stringify({author:m.author,created_at:m.created_at,text:m.text}));
+    const digest=await crypto.subtle.digest('SHA-256',answerBytes);
+    if(command.expected_revision!==this.state.revision||q.status!=='sent')throw new RelayError('STALE_REVISION','The clarification changed while preparing the attributed answer. Review it again.');
+    const answerHash=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+    const answerCitation={source_id:m.id,source_hash:answerHash,source_kind:'message' as const,label:`${actor.name} · Founder answer · ${new Date(m.created_at).toLocaleDateString('en-US')}`,locator:{field:'message'}};
+    m.citations=[answerCitation];this.state.messages.push(m);q.status='answered';q.revision++;
     const old=this.state.packets.find(p=>p.id===command.packet_version_id)!;const id=crypto.randomUUID();const hash=id.replaceAll('-','').repeat(2);
-    this.state.packets.push({...structuredClone(old),id,version:old.version+1,hash,created_at:new Date().toISOString(),status:'draft',previous_version_id:old.id,changes:['Founder supplied an attributed clarification. Source conflict retained for review.'],content:old.content+'\n\nFounder clarification (synthetic, unverified):\n'+command.text});this.state.current_packet_version_id=id;this.state.status='Draft ready';this.state.ui_state='Idle';this.state.activity='Simulated new draft. Confirm sharing before advisor review.';
+    const taskId=crypto.randomUUID();
+    this.state.tasks=this.state.tasks.map(task=>task.state==='Blocked'?{...task,title:'Record founder clarification',state:'Done',detail:'Response attributed to the founder; source conflicts remain for human review.'}:task);
+    this.state.tasks.push({id:taskId,order:this.state.tasks.length+1,title:`Prepare packet v${old.version+1}`,state:'In progress',detail:'Simulated draft job; no backend or AI invocation.',citations:old.citations});
+    this.state.ui_state='Thinking / Working';this.state.activity='Simulated draft preparation. Ordered task recorded before work.';this.state.revision++;this.state.event_cursor='fixture:'+this.state.revision;this.emit();
+    // After this checkpoint, cancelling the caller cannot undo recorded work.
+    // The fixture job completes independently, just as a submitted backend job would.
+    await new Promise<void>(resolve=>setTimeout(resolve,Math.max(this.latency,450)));
+    this.state.packets.push({...structuredClone(old),id,version:old.version+1,hash,created_at:new Date().toISOString(),status:'draft',previous_version_id:old.id,changes:['Founder supplied an attributed clarification. Source conflict retained for review.'],citations:[...old.citations,answerCitation],content:old.content+'\n\nFounder clarification (synthetic, unverified):\n'+command.text});this.state.current_packet_version_id=id;this.state.status='Draft ready';this.state.ui_state='Idle';this.state.activity='Simulated new draft. Confirm sharing before advisor review.';
+    this.state.tasks=this.state.tasks.map(task=>task.id===taskId?{...task,state:'Done',detail:'Simulated draft prepared; human review and renewed sharing required.'}:task);
     this.state.flags.push(...this.state.flags.filter(f=>f.packet_version_id===old.id).map(f=>({...structuredClone(f),id:crypto.randomUUID(),packet_version_id:id})));break;
    }
    case 'review':{

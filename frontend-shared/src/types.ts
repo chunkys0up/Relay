@@ -3,7 +3,7 @@ export type UiState = 'Idle' | 'Thinking / Working' | 'Needs input';
 export type TaskState = 'Pending' | 'In progress' | 'Blocked' | 'Done';
 export type CallState = 'ringing' | 'connecting' | 'connected' | 'ended' | 'failed';
 export interface Actor { id: string; name: string; role: Role }
-export interface Citation { source_id: string; source_hash: string; label: string; locator: { page?: number; sheet?: string; row?: number; field?: string } }
+export interface Citation { source_id: string; source_hash: string; source_kind?:'document'|'message'; label: string; locator: { page?: number; sheet?: string; row?: number; field?: string } }
 export interface Source { id: string; revision: number; name: string; mime_type: string; bytes: number; hash: string; created_at: string; extraction: 'queued'|'processing'|'ready'|'failed'; citations: Citation[]; excerpt: string; error: string|null }
 export interface PacketVersion { id: string; document_id: string; version: number; hash: string; created_at: string; title: string; status: 'draft'|'in_review'|'questions_returned'|'approved'; previous_version_id: string|null; changes: string[]; citations: Citation[]; content: string }
 export interface Task { id: string; order: number; title: string; state: TaskState; detail: string|null; citations: Citation[] }

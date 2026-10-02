@@ -23,27 +23,37 @@ export class EventReplay {
  snapshot():CaseSnapshot{return structuredClone(this.current);}
  replace(snapshot:CaseSnapshot):void{this.current=structuredClone(snapshot);this.seen.clear();}
  applyBatch(events:CaseEvent[]):CaseSnapshot{
-  // Several entities may be emitted at the same case revision. Compare against
-  // the pre-batch floor so one event cannot incorrectly discard its siblings.
-  const floor=this.current.revision;
+  if(events.length>2000)throw new RelayError('RESYNC_REQUIRED','Replay batch exceeded the client limit.');
+  // Validate before changing any state. Failed batches are atomic.
   for(const event of events){
    if(event.case_id!==this.current.id)throw new RelayError('FORBIDDEN','Event belongs to another case.');
-   if(this.seen.has(event.event_id)||event.case_revision<floor)continue;
-   if(event.type==='sharing.updated')throw new RelayError('RESYNC_REQUIRED','Sharing scope changed. Clear cached data and fetch a new authorized snapshot.');
-   this.seen.add(event.event_id);
-   const upsert=<T extends {id:string}>(items:T[],item:T):T[]=>[...items.filter(i=>i.id!==item.id),item];
-   switch(event.type){
-    case 'case.updated':Object.assign(this.current,event.data);break;
-    case 'tasks.updated':this.current.tasks=event.data.tasks;break;
-    case 'source.updated':this.current.sources=upsert(this.current.sources,event.data.source);break;
-    case 'message.updated':this.current.messages=upsert(this.current.messages,event.data.message);break;
-    case 'packet.created':this.current.packets=upsert(this.current.packets,event.data.packet);this.current.flags=event.data.flags;break;
-    case 'clarification.updated':this.current.clarifications=upsert(this.current.clarifications,event.data.clarification);break;
-    case 'review.created':this.current.reviews=upsert(this.current.reviews,event.data.review);break;
-    case 'call.updated':this.current.call=event.data.call;break;
-   }
-   this.current.revision=Math.max(this.current.revision,event.case_revision);this.current.event_cursor=event.cursor;
+   if(event.type==='sharing.updated'&&!this.seen.has(event.event_id)&&event.case_revision>=this.current.revision)throw new RelayError('RESYNC_REQUIRED','Sharing scope changed. Clear cached data and fetch a new authorized snapshot.');
   }
+  const draft=structuredClone(this.current);
+  const seen=new Set(this.seen);
+  // Case revisions order transactions. Stable sort preserves server order for
+  // sibling events. Opaque cursors themselves are never compared/incremented.
+  for(const event of [...events].sort((a,b)=>a.case_revision-b.case_revision)){
+   if(seen.has(event.event_id)||event.case_revision<draft.revision)continue;
+   seen.add(event.event_id);
+   const upsert=<T extends {id:string;revision?:number}>(items:T[],item:T):T[]=>{
+    const old=items.find(i=>i.id===item.id);
+    if(old?.revision!==undefined&&item.revision!==undefined&&old.revision>item.revision)return items;
+    return [...items.filter(i=>i.id!==item.id),item];
+   };
+   switch(event.type){
+    case 'case.updated':Object.assign(draft,event.data);break;
+    case 'tasks.updated':draft.tasks=event.data.tasks;break;
+    case 'source.updated':draft.sources=upsert(draft.sources,event.data.source);break;
+    case 'message.updated':draft.messages=upsert(draft.messages,event.data.message);break;
+    case 'packet.created':draft.packets=upsert(draft.packets,event.data.packet);draft.flags=[...draft.flags.filter(f=>f.packet_version_id!==event.data.packet.id),...event.data.flags];break;
+    case 'clarification.updated':draft.clarifications=upsert(draft.clarifications,event.data.clarification);break;
+    case 'review.created':draft.reviews=upsert(draft.reviews,event.data.review);break;
+    case 'call.updated':if(!draft.call||draft.call.id!==event.data.call.id||draft.call.revision<=event.data.call.revision)draft.call=event.data.call;break;
+   }
+   draft.revision=Math.max(draft.revision,event.case_revision);draft.event_cursor=event.cursor;
+  }
+  this.current=draft;this.seen=seen;
   // Client memory is bounded. A server must also bound its replay window.
   if(this.seen.size>2000)this.seen=new Set([...this.seen].slice(-1000));
   return this.snapshot();

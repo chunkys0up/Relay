@@ -4,6 +4,7 @@ import { advisor, founder } from './fixtures';
 import type { CaseSnapshot, VersionInput } from './types';
 function version(s:CaseSnapshot):VersionInput{const p=s.packets.find(p=>p.id===s.current_packet_version_id)!;return {expected_revision:s.revision,packet_version_id:p.id,packet_hash:p.hash};}
 describe('synthetic workflow boundary',()=>{
+ it('does not disclose an advisor question preview to the founder',async()=>{const api=new MockRelayAdapter(0);const s=(await api.snapshot('advisor')).data;await api.mutate('advisor',{kind:'preview',...version(s),text:'Private question draft',recipient_id:founder.id,citations:[]},{key:'preview-only'});expect((await api.snapshot('founder')).data.clarifications).toEqual([]);expect((await api.snapshot('advisor')).data.clarifications).toHaveLength(1);});
  it('keeps founder private AI turns out of advisor snapshots',async()=>{const api=new MockRelayAdapter(0);const view=(await api.snapshot('advisor')).data;expect(view.messages.every(m=>m.owner_id!==founder.id||m.audience.kind==='human')).toBe(true);expect(view.tasks).toEqual([]);});
  it('refuses uploads instead of fabricating a successful result',async()=>{const api=new MockRelayAdapter(0);await expect(api.mutate('founder',{kind:'upload',expected_revision:1,name:'test.pdf',bytes:1,mime_type:'application/pdf'},{key:'u'})).rejects.toMatchObject({code:'SIMULATED_UNAVAILABLE'});});
  it('returns questions once, makes a new unapproved private version, rejects stale approval',async()=>{
