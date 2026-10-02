@@ -102,7 +102,7 @@ for(const role of ['founder','advisor'] as const){
   await expect(page).toHaveURL(new RegExp(`/${role}/call$`));
   await navigate(page,'Settings');
   await page.getByRole('tab',{name:'About this demo',exact:true}).click();
-  await expect(page.getByRole('tabpanel')).toContainText(/simulat/i);
+  await expect(page.getByRole('tabpanel')).toContainText('retained in this browser across reloads');
   await page.getByRole('tab',{name:'Profile',exact:true}).click();
   await page.getByRole('link',{name:/Return to workspace/}).click();
   await expect(page).toHaveURL(new RegExp(`/${role}/${role==='founder'?'home':'clients'}$`));
@@ -359,8 +359,9 @@ test('Test states: slow cancel, explicit retry, reconnect and truthful attachmen
  await go(page,'/founder/home');
  await page.getByLabel('Attach a source').setInputFiles({name:'control-audit.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic audit')});
  await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Check upload availability',exact:true}).click();
- await expect(page.getByRole('alert')).toContainText('Upload not performed');
+ await page.getByRole('button',{name:'Add source locally',exact:true}).click();
+ await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
+ await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
  await page.getByRole('button',{name:'Cancel attachment',exact:true}).click();
  await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toHaveCount(0);
  await scenario(page,'slow');
