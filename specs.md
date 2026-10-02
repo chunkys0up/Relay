@@ -10,7 +10,7 @@ Relay helps a founder turn a business idea and financial documents into a source
 
 The demo uses only fictional founders, advisors, companies, figures, and files. It must not provide financial advice, autonomously sign, submit, file, move money, connect live accounts, or claim regulatory compliance. “Advisor approved” means the named human reviewed one exact packet version; it is not institutional acceptance or completion.
 
-The first service is a synthetic financial-planning intake with a checklist and packet template. The real receiving service and official documents remain undecided. Do not represent the prototype as an official LPL form or supported LPL integration.
+The accepted demo is one synthetic business-owner financial-planning packet: a fictional founder uploads documents, one required fact is missing, and one financial value conflicts across sources. The orchestrator asks for clarification, drafts a packet, the advisor reviews it and returns questions, and the founder answer produces a new version. This is a fictional template, not an official LPL form, a proven service integration, or an institutional workflow.
 
 ## 2. Product workflow
 
@@ -25,7 +25,9 @@ The first service is a synthetic financial-planning intake with a checklist and 
 
 ### Founder Home
 
-The founder has one Home view with profile and to-do information—no separate Work or Chat navigation. A floating assistant button on the right opens the same shared AI/human-advisor conversation panel without losing case context.
+Founder navigation is **Home / Sources / Documents / Call**, plus Settings; there is no Work or separate Chat navigation. Home is the primary working surface: a central AI chat with its attachment control as the **only** upload entry point, a prominent right-side to-do list, and current activity. A floating assistant affordance may focus that central chat but does not create another conversation.
+
+Sources is a read/browse-only view of uploaded **originals** and extraction/source metadata; it is not a primary upload page. Documents holds generated drafts and advisor-reviewed versions. Call is a dedicated destination for the human advisor/founder call experience.
 
 The only orchestrator UI states are:
 
@@ -39,19 +41,15 @@ Task states are separate: **Pending, In progress, Blocked, Done**. Case status i
 
 ### Advisor workspace
 
-The advisor has a Drive-like view: one folder per founder, file list and preview, versions/review badges, and a compact right-side AI chat. Show only assigned cases and explicitly shared packet versions, sources, and messages. A packet-bound sharing manifest controls document access; new founder uploads and private AI turns stay private until renewed handoff confirmation.
-
-Advisor clarification can begin from a button or natural language, but always creates a preview/draft. Sending requires a separate confirmation with named recipient and unchanged content. Rejection returns questions to the founder and requires a new packet version and review.
+Advisor navigation is **Clients / Reviews / Documents / Call**, plus Settings. Clients retains the Drive-like one-folder-per-founder view with file list and preview; Reviews presents assigned version-bound decisions; Documents presents explicitly shared material. Keep the compact right-side AI chat, source-linked flags, and packet preview. Show only assigned cases and explicitly shared packet versions, sources, and messages. A packet-bound sharing manifest controls document access; new founder uploads and private AI turns stay private until renewed handoff confirmation.
 
 ### Shared chat and calls
 
-For both founder and advisor, human messages and calls are inside the existing AI chat panel, not a separate communications dashboard. Label every message with actual author (Relay AI, founder, or advisor), name, and timestamp. A visible audience control chooses private AI chat or a named human recipient; switching preserves unsent text but requires rechecking recipient before send.
+Home and advisor review retain AI/human message controls in their chat panels. Label every message with actual author, name, and timestamp. A visible audience control chooses private AI chat or a named human recipient; human messages share only selected text and explicit attachments. AI-proposed questions keep the draft → review → confirm-send flow.
 
-Human messages share only their selected text and explicit attachments. They do not share private AI history, documents, or general case access. AI-proposed questions keep the draft → review → confirm-send flow.
+**Call is a dedicated left-navigation destination, not merely an inline Home toggle.** It combines the document under review, authorized human founder/advisor video controls, human-message history, clearly labeled AI support, and separate per-participant capture consent. Both roles can invite, accept, decline, end, and mute/unmute. Call state remains independent of the three AI modes and backend task state. Joining, muting, or messaging never enables capture.
 
-A Call control in the chat header/composer starts an inline Amazon Chime SDK call card for the authorized other participant. Both roles may invite, accept, decline, end, mute/unmute, and collapse/expand it. Collapsing leaves an active-call indicator and End control; toggling off ends the call. Preserve composer text, scroll position, history, labels, and case context across call transitions.
-
-A real two-person Chime integration is selected, but is not assumed complete: workshop account permission, client setup, and a two-person audio test are explicit gates. Mocked or simulated states must be labeled and never presented as live audio.
+A real two-person Chime integration is selected, but workshop permissions, client setup, and a two-person audio test remain explicit gates. Mocked/simulated states must be labeled and never presented as live video/audio.
 
 ## 4. Visual direction
 
@@ -111,7 +109,7 @@ For this synthetic demo, delete captured audio and transcript after processing s
 
 Before implementation, verify AWS identity/region, private S3 write/read, DynamoDB conditional write/read, Textract access, the exact successful Bedrock model or inference-profile ID and invocation permissions, Strands SDK compatibility, Chime permissions, Chime capture/Transcribe prerequisites, and two-person call setup. Do not create resources, expand permissions, or use real data without authorization.
 
-A demo session must complete intake → cited conflict → founder answer → packet v1 → authorized advisor question/review → founder answer → packet v2 → exact-version approval. It must show task-first execution, the three AI states, source-linked unknowns, integrated human messaging, a honestly labeled real-or-mocked call state, and at least one real AWS operation. No mock may be claimed as live AI, Textract, storage, or audio.
+The accepted demo session is a fictional business-owner packet: attachment upload in founder Home chat → one cited contradiction and one missing fact → task-first clarification → packet v1 in Documents → advisor source-linked review → returned questions → founder answer → packet v2 → exact-version approval. It must show the three AI states, prominent to-do/current activity, integrated human messaging, the dedicated Call view with separate capture consent, and at least one real AWS operation. No mock may be claimed as live AI, Textract, storage, or audio.
 
 ## References
 

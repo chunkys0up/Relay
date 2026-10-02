@@ -31,9 +31,9 @@ Preflight gates: AWS identity/region; S3 canonical write/read; DynamoDB conditio
 
 ```text
 client-frontend/
-  src/{home,assistant,chat,tasks,files,review,call}/
+  src/{home,sources,documents,call,settings,assistant,chat,tasks}/
 advsior-frontend/
-  src/{folders,preview,assistant,chat,review,call}/
+  src/{clients,reviews,documents,call,settings,preview,assistant,chat}/
 backend/
   app/
     main.py
@@ -118,21 +118,23 @@ For fictional demo data, delete audio and transcript after transcription/summary
 
 ## 7. UI implementation rules
 
-Founder Home has profile/to-do only. The floating assistant opens shared chat with private-AI/named-human audience control and inline call card. Advisor retains the folder/file/preview layout and right-hand chat. Both UIs show author/name/time, source links, case context, preserved draft/scroll state, and call control.
+Founder navigation is Home / Sources / Documents / Call plus Settings. Home centers the main AI chat; its attachment control is the only upload path. Keep the to-do list and current activity prominent on the right. Sources reads/browses uploaded originals and extraction metadata only; Documents shows generated drafts and advisor-reviewed versions. Do not create Work or separate Chat navigation.
 
-Render exactly three AI modes and four task states. Call state is independently rendered. Persist task list before planning/execution and publish activity through drafting/routing. Natural-language or button clarifications remain previewable until confirmed. Approval is version-bound; returning questions and sending must be idempotent.
+Advisor navigation is Clients / Reviews / Documents / Call plus Settings. Retain client folders, source-linked document review, preview, and right AI chat. Call is a dedicated destination combining the document under review, authorized human video controls, human-message history, labeled AI support, and separate per-participant capture consent; it is not merely an inline Home toggle.
+
+Render exactly three AI modes and four task states; call state is separate. Persist task list before planning/execution and publish activity through drafting/routing. Clarifications remain previewable until confirmed. Approval is version-bound; returning questions and sending are idempotent.
 
 Use light surfaces and centralized sampled reference-image colors: navy `#00205B`, orange `#B35000`, muted `#99A5BD`. They are samples from the supplied LPL hackathon background, not verified universal brand standards. Use Midday file storage as visual inspiration only.
 
 ## 8. Phases and checks
 
-1. **Foundation:** React shells, FastAPI/Pydantic contracts, server-controlled demo role switch, repository interface, task/event persistence. Gate: refresh/reconnect works; cross-case access fails; three AI modes/four task states render.
-2. **Document flow:** constrained S3 storage, Textract, S3 excerpt retrieval with citations, DynamoDB catalog/status. Gate: real permitted S3/Textract/DynamoDB operations; unsupported uploads fail safely.
-3. **Orchestrator:** Strands tools, configured Bedrock invocation, task-first jobs, WebSocket replay, cited conflict/clarification/packet v1. Gate: actual verified model ID; failed provider produces resumable blocker.
-4. **Advisor and call loop:** handoff manifest, version review, messaging, Chime invitation/call state, consent/capture pipeline only after prerequisites. Gate: two-person real call test or prominently labeled mock; no unconsented capture; v2/stale-approval tests.
-5. **Verification:** record pass/fail/not-run separately. Typical commands after scripts exist: frontend lint/type/test/build; `python -m pytest`; FastAPI integration tests; browser two-session tests; `python backend/scripts/aws_smoke.py`.
+1. **Foundation:** React navigation shells, FastAPI/Pydantic contracts, server-controlled demo role switch, repository interface, task/event persistence. Gate: Home / Sources / Documents / Call routes work; cross-case access fails; three AI modes/four task states render.
+2. **Document flow:** chat attachment upload only, constrained S3 storage, Textract, S3 excerpt retrieval with citations, DynamoDB catalog/status. Gate: Sources reads originals; Documents separates packet versions; unsupported uploads fail safely.
+3. **Orchestrator:** Strands tools, configured Bedrock invocation, task-first jobs, WebSocket replay, one cited contradiction plus one missing fact, clarification, and packet v1.
+4. **Advisor and call loop:** client folders, source-linked review, returned-question loop, dedicated Call destination with packet context/human-message history, Chime invitation/state, and separate consent/capture path after prerequisites.
+5. **Verification:** record pass/fail/not-run separately. Typical commands after scripts exist: frontend lint/type/test/build; `python -m pytest`; FastAPI integration tests; browser founder/advisor two-session navigation/message/call tests; `python backend/scripts/aws_smoke.py`.
 
-Test unauthorized REST/WebSocket/source/event/call access, private-AI isolation, upload injection, fabricated citations, malformed model output, duplicate send/job/call action, reconnect, stale approval, consent withdrawal, capture/transcription/summary/cleanup failure, and that mocks never imply real integration.
+Test Home/Sources/Documents/Call route permissions, chat-attachment-only upload, original-versus-generated document separation, unauthorized REST/WebSocket/source/event/call access, private-AI isolation, upload injection, fabricated citations, malformed model output, duplicate send/job/call action, reconnect, stale approval, consent withdrawal, capture/transcription/summary/cleanup failure, the one-missing-fact/one-contradiction demo, rejection-to-questions/v2 flow, and that mocks never imply real integration.
 
 ## 9. Coding-agent kickoff
 
@@ -148,8 +150,7 @@ expand permissions, deploy publicly, or use real customer data.
 
 Implement task-first orchestration, exactly three AI UI modes, source-linked
 facts, versioned drafts, explicit handoffs/sends, and the advisor
-return/revise/approve loop. Keep founder Home simple and put integrated
-AI/human chat and inline call controls in the assistant panel. Use Chime only
+return/revise/approve loop. Founder Home centers AI chat with attachment-only uploads, visible to-do/current activity, and Home / Sources / Documents / Call navigation. Make Call a dedicated destination with the reviewed document, human video/message history, labeled AI support, and separate capture consent. Use Chime only
 after real permissions and a two-person test; capture requires every
 participant’s explicit consent, Transcribe and Bedrock run after the call, and
 humans confirm proposed changes. Label every mock/fallback honestly. Run
