@@ -1,0 +1,27 @@
+import { StrictMode, Suspense, lazy } from 'react';
+import type { ReactNode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { RelayProvider, useRelay } from './context';
+import { Button, Icon, ScreenState } from './ui';
+import type { Role, Scenario } from './types';
+import './styles.css';
+const Search=lazy(()=>import('./search'));
+const Settings=lazy(()=>import('./settings'));
+const Home=lazy(()=>import('../../client-frontend/src/home/Screen'));
+const Sources=lazy(()=>import('../../client-frontend/src/sources/Screen'));
+const FounderDocuments=lazy(()=>import('../../client-frontend/src/documents/Screen'));
+const FounderCall=lazy(()=>import('../../client-frontend/src/call/Screen'));
+const Clarification=lazy(()=>import('../../client-frontend/src/clarification/Screen'));
+const Clients=lazy(()=>import('../../advsior-frontend/src/clients/Screen'));
+const Reviews=lazy(()=>import('../../advsior-frontend/src/reviews/Screen'));
+const AdvisorDocuments=lazy(()=>import('../../advsior-frontend/src/documents/Screen'));
+const AdvisorCall=lazy(()=>import('../../advsior-frontend/src/call/Screen'));
+const founderNav=[['home','Home','home'],['sources','Sources','folder'],['documents','Documents','file'],['call','Call','call']] as const;
+const advisorNav=[['clients','Clients','clients'],['reviews','Reviews','review'],['documents','Documents','file'],['call','Call','call']] as const;
+function Shell():ReactNode{
+ const {role,snapshot,busy,error,notice,cancel,scenario,setScenario,refresh}=useRelay();const navigate=useNavigate();const nav=role==='founder'?founderNav:advisorNav;const actor=role==='founder'?'Alex Morgan':'Maya Chen';
+ return <><a className="skip-link" href="#main-content">Skip to main content</a><header className="topbar"><Link className="brand-mark" to={`/${role}/${nav[0][0]}`} aria-label="Relay home">R<span/></Link><strong className="brand-name">Relay</strong><form className="global-search" onSubmit={e=>{e.preventDefault();const data=new FormData(e.currentTarget);navigate(`/${role}/${'search'}?q=${encodeURIComponent(String(data.get('q')??''))}`);}}><Icon name="search" size={18}/><input name="q" aria-label="Search sources and drafts" placeholder="Search sources and drafts"/><button type="submit" className="search-submit">Search</button></form><Link className="mobile-search" to={`/${role}/search`} aria-label="Search sources and drafts"><Icon name="search" size={18}/></Link><span className="company-label">Northstar Labs</span><span className="avatar" aria-label={actor}>{role==='founder'?'AM':'MC'}</span></header><div className="simulation-bar"><strong>Synthetic demo · All actions simulated</strong><label>Demo role <select value={role} aria-label="Demo role" onChange={e=>navigate(e.target.value==='founder'?'/founder/home':'/advisor/clients')}><option value="founder">Founder · Alex</option><option value="advisor">Advisor · Maya</option></select></label><details className="scenario-menu"><summary>Test states</summary><div className="scenario-options"><label>Scenario<select aria-label="Test scenario" value={scenario} onChange={e=>setScenario(e.target.value as Scenario)}>{(['normal','empty','error','slow','disconnected'] as const).map(s=><option key={s} value={s}>{s}</option>)}</select></label><Button variant="outline" onClick={()=>{setScenario('normal');refresh();}}>Reconnect / refresh</Button></div></details></div><aside className="navigation" aria-label={`${role} navigation`}><nav>{nav.map(([path,label,icon])=><NavLink key={path} to={`/${role}/${path}`}><Icon name={icon}/><span>{label}</span></NavLink>)}</nav><NavLink className="settings-link" to={`/${role}/settings`}><Icon name="settings" size={23}/><span>Settings</span></NavLink><span className="avatar">{role==='founder'?'AM':'MC'}</span><small>Synthetic data</small></aside><main id="main-content" tabIndex={-1}>{(error||notice||busy)&&<div className={`feedback ${error?'feedback-error':''}`} role={error?'alert':'status'}>{busy?'Waiting for simulated result…':error??notice}{busy&&<Button variant="outline" onClick={cancel}>Cancel request</Button>}</div>}<ScreenState><Suspense fallback={<p role="status">Loading screen…</p>}><Routes>{role==='founder'?<><Route path="/founder/home" element={<Home/>}/><Route path="/founder/home/clarification" element={<Clarification/>}/><Route path="/founder/sources" element={<Sources/>}/><Route path="/founder/documents" element={<FounderDocuments/>}/><Route path="/founder/call" element={<FounderCall/>}/></>:<><Route path="/advisor/clients" element={<Clients/>}/><Route path="/advisor/reviews" element={<Reviews/>}/><Route path="/advisor/documents" element={<AdvisorDocuments/>}/><Route path="/advisor/call" element={<AdvisorCall/>}/></>}<Route path={`/${role}/settings`} element={<Settings/>}/><Route path={`/${role}/search`} element={<Search/>}/><Route path="*" element={<Navigate replace to={`/${role}/${nav[0][0]}`}/>}/></Routes></Suspense></ScreenState><footer className="app-footer">Fictional planning packet · No financial advice · {snapshot?`Case revision ${snapshot.revision}`:'Workspace unavailable'}</footer></main></>;
+}
+function App():ReactNode{const location=useLocation();const role:Role=location.pathname.startsWith('/advisor')?'advisor':'founder';return <RelayProvider role={role} key={role}><Shell/></RelayProvider>;}
+createRoot(document.getElementById('root')!).render(<StrictMode><BrowserRouter><App/></BrowserRouter></StrictMode>);

@@ -217,5 +217,11 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
+# Frontend outputs
+node_modules
+dist/
+test-results/
+playwright-report/
+
 # Strands agent session/memory state
 .agent/
