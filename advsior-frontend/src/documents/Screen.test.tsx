@@ -30,7 +30,7 @@ describe('advisor documents', () => {
   it('previews an original only when it is in the selected packet grant', async () => {
     mount('/advisor/documents?source=00000000-0000-4000-8000-000000000011');
     expect(await screen.findByText(/2026 annual revenue: \$240,000/)).toBeTruthy();
-    expect(await screen.findByText('Original · Synthetic')).toBeTruthy();
+    expect(await screen.findByText('Original · Synthetic fixture')).toBeTruthy();
   });
 
   it('keeps an older packet selected when opening its granted source and hides decisions on the source preview', async () => {

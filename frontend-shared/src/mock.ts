@@ -1,16 +1,49 @@
 import { createFixture, advisor, founder } from './fixtures';
+import { readSource } from './intake';
+import { initialFounderAnswer } from './founder-answer';
 import { RelayError } from './types';
-import type { CaseSnapshot, MutationOptions, Receipt, RelayAdapter, RelayCommand, Role, Scenario, Message, Clarification } from './types';
+import type { CaseSnapshot, MutationOptions, Receipt, RelayAdapter, RelayCommand, Role, Scenario, Message, Clarification, PacketVersion, Citation } from './types';
 
-/** In-memory synthetic demo only. No HTTP, AWS, media, disk persistence or AI. */
+interface PendingDraft { packet:PacketVersion; oldId:string; taskId:string; key:string; body:string; role:Role }
+export interface DemoState { state:CaseSnapshot; receipts:[string,{body:string;receipt:Receipt<CaseSnapshot>}][]; pending:PendingDraft|null }
+
+/** Isolated demo engine; browser persistence is supplied explicitly by its wrapper. */
 export class MockRelayAdapter implements RelayAdapter {
  readonly mode='simulated' as const;
  private state=createFixture(); private scenario:Scenario='normal';
  private listeners=new Set<()=>void>(); private receipts=new Map<string,{body:string;receipt:Receipt<CaseSnapshot>}>();
  private inflight=new Map<string,{body:string;result:Promise<Receipt<CaseSnapshot>>}>();
- constructor(private readonly latency=180){}
+ private pendingDraft:PendingDraft|null=null;
+ constructor(private readonly latency=180,private readonly checkpoint?:(data:DemoState)=>Promise<void>){}
+ exportState():DemoState{return structuredClone({state:this.state,receipts:[...this.receipts],pending:this.pendingDraft});}
+ importState(data:DemoState):void{this.state=structuredClone(data.state);this.receipts=new Map(structuredClone(data.receipts));this.pendingDraft=structuredClone(data.pending);}
+ private async save():Promise<void>{await this.checkpoint?.(this.exportState());}
+ async resumeDraft():Promise<void>{if(!this.pendingDraft)return;const job=this.pendingDraft;this.finishDraft();this.receipts.set(job.key,{body:job.body,receipt:this.receipt(job.role)});await this.save();this.emit();}
+ private finishDraft():void{
+  const job=this.pendingDraft;if(!job)return;
+  this.state.packets.push(job.packet);this.state.current_packet_version_id=job.packet.id;this.state.status='Draft ready';this.state.ui_state='Idle';this.state.activity='Local demo draft prepared. Confirm sharing this new version before advisor review.';
+  this.state.tasks=this.state.tasks.map(task=>task.id===job.taskId?{...task,state:'Done',detail:'Local demo draft prepared; human review and renewed sharing required.'}:task);
+  this.state.flags.push(...this.state.flags.filter(flag=>flag.packet_version_id===job.oldId).map(flag=>({...structuredClone(flag),id:crypto.randomUUID(),packet_version_id:job.packet.id})));
+  this.pendingDraft=null;this.state.revision++;this.state.event_cursor='fixture:'+this.state.revision;
+ }
+ private async prepareDraft(old:PacketVersion,text:string,citations:Citation[],key:string,body:string,role:Role,initial=false):Promise<void>{
+  const id=crypto.randomUUID();const taskId=crypto.randomUUID();
+  const packet:PacketVersion={...structuredClone(old),id,version:old.version+1,hash:id.replaceAll('-','').repeat(2),created_at:new Date().toISOString(),status:'draft',previous_version_id:old.id,changes:[initial?'Founder supplied private revenue and reserve details. Source conflict retained for review.':'Founder supplied an attributed clarification. Source conflict retained for review.'],citations:[...old.citations,...citations],content:old.content+'\n\nFounder clarification (reported, unverified):\n'+text};
+  this.pendingDraft={packet,oldId:old.id,taskId,key,body,role};
+  this.state.tasks=this.state.tasks.map(task=>task.state==='Blocked'?{...task,title:'Record founder clarification',state:'Done',detail:'Response attributed to the founder; source conflicts remain for human review.'}:task);
+  this.state.tasks.push({id:taskId,order:this.state.tasks.length+1,title:`Prepare packet v${packet.version}`,state:'In progress',detail:'Local demo draft job; no backend or AI invocation.',citations:packet.citations});
+  this.state.ui_state='Thinking / Working';this.state.activity='Local demo draft preparation. Ordered task recorded before work.';this.state.revision++;this.state.event_cursor='fixture:'+this.state.revision;
+  await this.save();this.emit();
+  // A recorded job survives cancellation and can be resumed from browser storage.
+  await new Promise<void>(resolve=>setTimeout(resolve,Math.max(this.latency,450)));
+  this.finishDraft();
+ }
+ private async messageCitation(message:Message):Promise<Citation>{
+  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify({author:message.author,created_at:message.created_at,text:message.text})));
+  return {source_id:message.id,source_hash:Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join(''),source_kind:'message',label:`${message.author.name} · Founder answer · ${new Date(message.created_at).toLocaleDateString('en-US')}`,locator:{field:'message'}};
+ }
  setScenario(scenario:Scenario):void{this.scenario=scenario;this.emit();}
- reset():void{this.state=createFixture();this.scenario='normal';this.receipts.clear();this.emit();}
+ reset():void{this.state=createFixture();this.pendingDraft=null;this.scenario='normal';this.receipts.clear();this.emit();}
  subscribe(listener:()=>void):()=>void{this.listeners.add(listener);return()=>{this.listeners.delete(listener);};}
  private emit():void{for(const listener of this.listeners)listener();}
  private async wait(signal?:AbortSignal):Promise<void>{
@@ -56,11 +89,24 @@ export class MockRelayAdapter implements RelayAdapter {
   const message=(text:string,audience:Message['audience'],attachments:string[]=[]):Message=>({id:crypto.randomUUID(),owner_id:actor.id,author:{kind:'human',id:actor.id,name:actor.name},created_at:new Date().toISOString(),audience,text,attachments,citations:[],status:'stored'});
   const question=(id:string,rev:number):Clarification=>{const q=this.state.clarifications.find(q=>q.id===id);if(!q||q.revision!==rev)throw new RelayError('PREVIEW_CHANGED','The question changed. Preview it again.');return q;};
   switch(command.kind){
-   case 'upload':requireRole('founder');throw new RelayError('SIMULATED_UNAVAILABLE','Upload not performed. This demo has no storage endpoint; your file stays on this device.');
+   case 'upload':{
+    requireRole('founder');const source=await readSource(command);
+    if(command.expected_revision!==this.state.revision)throw new RelayError('STALE_REVISION','The case changed while reading this file. Refresh and add it again.');
+    this.state.sources.push(source);this.state.tasks.push({id:crypto.randomUUID(),order:this.state.tasks.length+1,title:'Add local source: '+source.name,state:'Done',detail:source.error??'Original bytes retained and UTF-8 text extracted locally.',citations:source.citations});break;
+   }
    case 'message':{
     validText(command.text);if(command.audience.kind==='human'&&(!command.confirmed||command.audience.recipient_id!==(role==='founder'?advisor.id:founder.id)))throw new RelayError('FORBIDDEN','Confirm the named recipient before sending.');
     const allowed=new Set(this.visible(role).sources.map(s=>s.id));if(command.attachments.some(id=>!allowed.has(id)))throw new RelayError('NOT_FOUND','An attachment is unavailable.');
-    this.state.messages.push(message(command.text,command.audience,command.attachments));break;
+    const m=message(command.text,command.audience,command.attachments);
+    const initial=role==='founder'&&command.audience.kind==='private_ai'&&this.state.ui_state!=='Thinking / Working'&&this.state.tasks.some(task=>task.state==='Blocked'&&task.title==='Confirm reserve target and revenue')&&!this.state.clarifications.some(q=>q.status==='sent')?initialFounderAnswer([...this.state.messages,m],actor.id):null;
+    if(initial){
+     const evidence=await Promise.all(initial.messages.map(item=>this.messageCitation(item)));
+     if(command.expected_revision!==this.state.revision)throw new RelayError('STALE_REVISION','The case changed while attributing your answer. Refresh before trying again.');
+     this.state.messages.push(m);for(const item of initial.messages){const stored=this.state.messages.find(stored=>stored.id===item.id)!;stored.citations=[evidence[initial.messages.indexOf(item)]];}
+     const old=this.state.packets.find(packet=>packet.id===this.state.current_packet_version_id)!;
+     await this.prepareDraft(old,initial.text,evidence,key,body,role,true);
+    }else this.state.messages.push(m);
+    break;
    }
    case 'handoff':{
     requireRole('founder');if(command.advisor_id!==advisor.id)throw new RelayError('FORBIDDEN','Choose the assigned advisor.');
@@ -75,23 +121,11 @@ export class MockRelayAdapter implements RelayAdapter {
    case 'answer':{
     requireRole('founder');validText(command.text);const q=question(command.clarification_id,command.clarification_revision);if(q.status!=='sent')throw new RelayError('INVALID_TRANSITION','This question is not awaiting an answer.');
     const m=message(command.text,{kind:'human',recipient_id:advisor.id});
-    const answerBytes=new TextEncoder().encode(JSON.stringify({author:m.author,created_at:m.created_at,text:m.text}));
-    const digest=await crypto.subtle.digest('SHA-256',answerBytes);
+    const answerCitation=await this.messageCitation(m);
     if(command.expected_revision!==this.state.revision||q.status!=='sent')throw new RelayError('STALE_REVISION','The clarification changed while preparing the attributed answer. Review it again.');
-    const answerHash=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
-    const answerCitation={source_id:m.id,source_hash:answerHash,source_kind:'message' as const,label:`${actor.name} · Founder answer · ${new Date(m.created_at).toLocaleDateString('en-US')}`,locator:{field:'message'}};
     m.citations=[answerCitation];this.state.messages.push(m);q.status='answered';q.revision++;
-    const old=this.state.packets.find(p=>p.id===command.packet_version_id)!;const id=crypto.randomUUID();const hash=id.replaceAll('-','').repeat(2);
-    const taskId=crypto.randomUUID();
-    this.state.tasks=this.state.tasks.map(task=>task.state==='Blocked'?{...task,title:'Record founder clarification',state:'Done',detail:'Response attributed to the founder; source conflicts remain for human review.'}:task);
-    this.state.tasks.push({id:taskId,order:this.state.tasks.length+1,title:`Prepare packet v${old.version+1}`,state:'In progress',detail:'Simulated draft job; no backend or AI invocation.',citations:old.citations});
-    this.state.ui_state='Thinking / Working';this.state.activity='Simulated draft preparation. Ordered task recorded before work.';this.state.revision++;this.state.event_cursor='fixture:'+this.state.revision;this.emit();
-    // After this checkpoint, cancelling the caller cannot undo recorded work.
-    // The fixture job completes independently, just as a submitted backend job would.
-    await new Promise<void>(resolve=>setTimeout(resolve,Math.max(this.latency,450)));
-    this.state.packets.push({...structuredClone(old),id,version:old.version+1,hash,created_at:new Date().toISOString(),status:'draft',previous_version_id:old.id,changes:['Founder supplied an attributed clarification. Source conflict retained for review.'],citations:[...old.citations,answerCitation],content:old.content+'\n\nFounder clarification (synthetic, unverified):\n'+command.text});this.state.current_packet_version_id=id;this.state.status='Draft ready';this.state.ui_state='Idle';this.state.activity='Simulated new draft. Confirm sharing before advisor review.';
-    this.state.tasks=this.state.tasks.map(task=>task.id===taskId?{...task,state:'Done',detail:'Simulated draft prepared; human review and renewed sharing required.'}:task);
-    this.state.flags.push(...this.state.flags.filter(f=>f.packet_version_id===old.id).map(f=>({...structuredClone(f),id:crypto.randomUUID(),packet_version_id:id})));break;
+    const old=this.state.packets.find(p=>p.id===command.packet_version_id)!;
+    await this.prepareDraft(old,command.text,[answerCitation],key,body,role);break;
    }
    case 'review':{
     requireRole('advisor');let q:Clarification|undefined;
@@ -117,6 +151,6 @@ export class MockRelayAdapter implements RelayAdapter {
     const call=this.state.call;if(!call||['ended','failed'].includes(call.state))throw new RelayError('INVALID_TRANSITION','There is no active simulated call.');const me=call.participants.find(p=>p.actor.id===actor.id)!;me.capture_consent=command.consent;me.consent_revision++;call.capture=command.consent==='withdrawn'?'off':'awaiting_consent';call.revision++;break;
    }
   }
-  this.state.revision++;this.state.event_cursor='fixture:'+this.state.revision;const receipt=this.receipt(role);this.receipts.set(key,{body,receipt:structuredClone(receipt)});this.emit();return receipt;
+  this.state.revision++;this.state.event_cursor='fixture:'+this.state.revision;const receipt=this.receipt(role);this.receipts.set(key,{body,receipt:structuredClone(receipt)});await this.save();this.emit();return receipt;
  }
 }

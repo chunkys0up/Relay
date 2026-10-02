@@ -28,7 +28,7 @@ for(const [name,route] of routes){
   await expect(page.getByText('Screen implementation pending.')).toHaveCount(0);
   await page.evaluate(()=>document.fonts.ready);
   await expect(page.locator('vite-error-overlay')).toHaveCount(0);
-  await page.screenshot({path:`docs/screenshots/${name}-desktop.png`,fullPage:true});
+  await page.screenshot({path:test.info().outputPath(`${name}-desktop.png`),fullPage:true});
   const assets=await page.locator('img:visible').evaluateAll(images=>images.map(image=>({src:image.getAttribute('src'),ok:image instanceof HTMLImageElement&&image.complete&&image.naturalWidth>0,width:image.getBoundingClientRect().width,height:image.getBoundingClientRect().height})));
   expect(assets.every(asset=>asset.ok&&asset.width>0&&asset.height>0)).toBe(true);
   await page.keyboard.press('Tab');
@@ -37,7 +37,7 @@ for(const [name,route] of routes){
   await page.setViewportSize({width:390,height:844});
   await expect(page.locator('main h1').first()).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1)).toBe(true);
-  await page.screenshot({path:`docs/screenshots/${name}-mobile.png`,fullPage:true});
+  await page.screenshot({path:test.info().outputPath(`${name}-mobile.png`),fullPage:true});
   await page.getByText('Test states',{exact:true}).click();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('empty');
   await expect(page.getByRole('heading').filter({hasText:/No |Your workspace is ready|Home conversation|Call/}).first()).toBeVisible();
@@ -80,12 +80,13 @@ test('returned questions create an unapproved version and require renewed handof
  await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
 });
 
-test('attachment selection never claims upload and slow sends can be cancelled',async({page})=>{
+test('local attachment intake succeeds and slow sends can be cancelled',async({page})=>{
  await page.goto('/founder/home');
  await page.getByLabel('Attach a source').setInputFiles({name:'fictional.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic fixture')});
  await expect(page.getByText('Selected locally: fictional.pdf')).toBeVisible();
- await page.getByRole('button',{name:'Check upload availability'}).click();
- await expect(page.getByRole('alert')).toContainText('Upload not performed');
+ await page.getByRole('button',{name:'Add source locally'}).click();
+ await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
+ await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
  await page.getByRole('button',{name:'Cancel attachment'}).click();
  await page.getByText('Test states',{exact:true}).click();
  await page.getByRole('combobox',{name:'Test scenario'}).selectOption('slow');
