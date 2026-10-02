@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from 'react-router-dom';
-import { Badge, Button, EmptyState, Icon, PageTitle, Panel, ScreenState, SourcePreview, useRelay } from '@relay/shared';
+import { Badge, Button, Conversation, EmptyState, Icon, PageTitle, Panel, ScreenState, SourcePreview, useRelay } from '@relay/shared';
 import type { Source } from '@relay/shared';
 import './styles.css';
 
@@ -49,6 +49,8 @@ export default function Screen() {
           </PageTitle>
           <p className="founder-sources-guidance">These synthetic fixture originals demonstrate how files selected from the Home conversation will appear here. This view only browses existing originals.</p>
 
+          <div className="founder-sources-workspace">
+            <div className="founder-sources-primary">
           {snapshot.sources.length === 0 ? (
             <Panel><EmptyState title="No original sources yet"><p>Choose files from the attachment control in Home chat. The current local demo cannot upload or store them.</p><Link className="button button-primary" to="/founder/home">Go to Home chat</Link></EmptyState></Panel>
           ) : (
@@ -111,6 +113,11 @@ export default function Screen() {
               )}
             </>
           )}
+            </div>
+            <aside className="founder-sources-conversation" aria-label="Home conversation">
+              <Conversation />
+            </aside>
+          </div>
         </div>
       )}
     </ScreenState>

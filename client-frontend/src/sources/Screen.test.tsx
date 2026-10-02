@@ -27,6 +27,7 @@ describe('Founder Sources', () => {
     expect(screen.getByText(/2026 annual revenue forecast: \$280,000/)).toBeVisible();
     expect(screen.getByRole('searchbox', { name: 'Search original sources' })).toBeVisible();
     expect(screen.queryByLabelText('Attach a source')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Conversation' })).toBeVisible();
     expect(screen.getByRole('link', { name: /Add sources in Home chat/ })).toHaveAttribute('href', '/founder/home');
   });
 

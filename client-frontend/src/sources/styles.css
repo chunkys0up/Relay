@@ -1,6 +1,9 @@
 .founder-sources { max-width: 1480px; margin-inline: auto; }
 .founder-sources .page-title { margin-bottom: 6px; }
 .founder-sources-guidance { color: var(--text-muted); font-size: 13px; margin: 0 0 18px; }
+.founder-sources-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, 420px); gap: 22px; align-items: start; }
+.founder-sources-primary, .founder-sources-conversation { min-width: 0; }
+.founder-sources-conversation .conversation { min-height: 760px; }
 .founder-sources-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 24px; }
 .founder-sources-summary > div { min-height: 62px; padding: 10px 18px; border: 1px solid var(--border); border-radius: 6px; background: white; display: flex; gap: 10px; align-items: center; }
 .founder-sources-summary strong { color: var(--lpl-navy); font-size: 21px; }
@@ -43,6 +46,8 @@
 .founder-sources-flag { padding: 12px; background: var(--warm); border-left: 3px solid var(--lpl-orange); display: grid; gap: 8px; }
 .founder-sources-flag p { font-size: 13px; }
 .founder-sources-home-link { padding-top: 10px; border-top: 1px solid var(--border); font-size: 13px; font-weight: 500; }
+@media (max-width: 1100px) { .founder-sources-workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, 360px); gap: 14px; } }
+@media (max-width: 900px) { .founder-sources-workspace { grid-template-columns: 1fr; } .founder-sources-conversation .conversation { min-height: 560px; } }
 @media (max-width: 1000px) { .founder-sources-preview-grid { grid-template-columns: minmax(0, 1fr) 260px; gap: 12px; } }
 @media (max-width: 760px) { .founder-sources-preview-grid { grid-template-columns: 1fr; } .founder-sources-flags { order: 2; } .founder-sources-flags .panel { padding: 15px; } }
 @media (max-width: 560px) { .founder-sources .page-title { align-items: stretch; } .founder-sources-summary { gap: 7px; } .founder-sources-summary > div { padding: 9px; flex-direction: column; align-items: flex-start; gap: 0; } .founder-sources-summary strong { font-size: 18px; } .founder-sources-summary span { font-size: 11px; } .founder-sources-heading { align-items: stretch; flex-direction: column; } .founder-sources-search { max-width: none; } .founder-sources-table { min-width: 560px; } .founder-sources-preview-title { flex-direction: column; } .founder-sources-metadata dl > div { grid-template-columns: 105px minmax(0, 1fr); } }
