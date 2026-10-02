@@ -1,15 +1,17 @@
 # Relay Backend
 
-FastAPI service with three parts: a [Strands](https://strandsagents.com) harness agent (Bedrock-backed chat), S3 document upload, and an RDS Postgres database tracking advisory cases through intake → fact extraction → draft → review. No agent tools are wired up yet, and nothing in the app talks to Postgres yet — both are baseline/config-only, ready to build on.
+FastAPI service with three parts: a [Strands](https://strandsagents.com) harness agent (Bedrock-backed chat), S3 document upload, and an RDS Postgres database tracking advisory cases through intake → fact extraction → draft → review. No agent tools are wired up yet — that's baseline/config-only, ready to build on.
 
 ## Architecture
 
 ```
 FastAPI (app/main.py)
-├── /api/chat*        strands_harness agent, one cached instance per session_id, runs on Bedrock
-├── /api/documents/*   uploads files to S3 (private bucket)
-└── (not wired up yet) RDS Postgres — schema in db/schema.sql, settings.database_url ready, no client/ORM added
+├── /api/chat*             strands_harness agent, one cached instance per session_id, runs on Bedrock
+└── /api/documents/upload   uploads to S3, then inserts a documents row in Postgres (case_id FK, s3_key, filename)
+                             — if the DB insert fails (e.g. bad case_id), the S3 object is deleted to avoid orphans
 ```
+
+Postgres connection is a single `asyncpg` pool (`app/db/pool.py`), created on app startup and closed on shutdown (see `lifespan` in `app/main.py`). If `DB_HOST`/`DB_PASSWORD` aren't set, or RDS isn't reachable, startup logs a warning and continues — `/api/chat` and `/health` keep working, but any DB-backed route raises a clear `RuntimeError` at the point of use.
 
 All three (Bedrock, S3, RDS) live in **one AWS account** and read credentials through the same mechanism: an AWS profile named in `.env`.
 
@@ -90,13 +92,14 @@ Server listens on `http://127.0.0.1:8000` (`HOST`/`PORT` in `.env`). No `--reloa
 | POST   | `/api/chat`               | `{"message": str, "session_id": str}` → full reply              |
 | POST   | `/api/chat/stream`         | Same body, streams reply as plain text                          |
 | DELETE | `/api/chat/{session_id}`  | Drop a cached session's agent (fresh start, memory reset)        |
-| POST   | `/api/documents/upload`   | Multipart `file` field → uploads to S3, returns bucket/key/size  |
+| POST   | `/api/documents/upload`   | Multipart `case_id` (UUID) + `file` → uploads to S3, inserts a `documents` row, returns it. 404 if `case_id` doesn't exist. |
+| GET    | `/api/documents?case_id=` | List a case's documents (`id`, `filename`, `s3_key`, `uploaded_at`), oldest first |
 
 ## Data store
 
 **S3** — bucket `relay-documents-576248046713` (`us-east-1`), all public access blocked. `app/storage/s3.py` uploads under `documents/{uuid}/{original filename}`.
 
-**RDS Postgres** — instance `relay-db` (PostgreSQL 18.6, `db.t4g.micro`, `us-east-1`), publicly accessible but restricted by security group `sg-07024a822c3a9ffe6` to one IP at a time (the IP it was created from) — **add your IP to that security group's inbound rule on port 5432 if connecting from a new machine/network**, or connections will just time out. Schema is in `db/schema.sql` (apply with `psql ... -f db/schema.sql`); sample rows in `db/seed.sql`. No ORM or DB client is wired into the app yet — `Settings.database_url` (in `app/core/config.py`) builds the connection string from `.env`, ready for whatever reads from it next.
+**RDS Postgres** — instance `relay-db` (PostgreSQL 18.6, `db.t4g.micro`, `us-east-1`), publicly accessible but restricted by security group `sg-07024a822c3a9ffe6` to one IP at a time (the IP it was created from) — **add your IP to that security group's inbound rule on port 5432 if connecting from a new machine/network**, or connections will just time out. Schema is in `db/schema.sql` (apply with `psql ... -f db/schema.sql`); sample rows in `db/seed.sql`. `app/db/pool.py` holds the one `asyncpg` pool the app uses, built from `Settings.database_url` (`app/core/config.py`).
 
 Tables: `cases` (the core entity — a founder's engagement, has a `status`), `documents` (uploaded files, references `cases`, stores the S3 key), `facts` (extracted structured data per case, optionally sourced from a `document`, has a `confidence`/`status`), `drafts` (versioned generated output per case, stored in S3), `messages` (chat history per case), `advisor_actions` (human decisions on a `draft`). Full column definitions in `db/schema.sql`.
 
@@ -107,7 +110,8 @@ app/
   main.py                FastAPI app, CORS, router wiring
   core/config.py           Settings — reads .env, loads AWS/Bedrock/S3/DB config
   agents/factory.py        create_harness() wrapper, one cached agent per session_id
-  storage/s3.py            boto3 S3 client, upload helper
+  storage/s3.py            boto3 S3 client, upload + delete helpers
+  db/pool.py                asyncpg pool, created/closed via app lifespan
   schemas/                 Pydantic request/response models
   api/routes/
     health.py              GET /health
@@ -121,5 +125,4 @@ db/
 ## Known gaps (next steps)
 
 - Agent has no tools yet (`builtin_tools=[]`, `tools=[]` in `app/agents/factory.py`) — it can only chat, not read/write files, hit the web, or touch the DB/S3 itself.
-- No code reads from or writes to Postgres yet — `facts`/`drafts`/`messages`/etc. aren't connected to any endpoint.
-- `/api/documents/upload` doesn't create a `documents` row — it only puts the file in S3, nothing links it to a `case_id` yet.
+- Only `documents` is wired up (upload + list by case). `facts`/`drafts`/`messages`/`advisor_actions`/`cases` have no endpoints yet — nothing reads or writes them, and there's no case CRUD at all.

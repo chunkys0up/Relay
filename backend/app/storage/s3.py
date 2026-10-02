@@ -18,3 +18,7 @@ def build_key(filename: str) -> str:
 def upload_bytes(data: bytes, key: str, content_type: str | None = None) -> None:
     extra_args = {"ContentType": content_type} if content_type else {}
     _s3.upload_fileobj(io.BytesIO(data), settings.s3_bucket, key, ExtraArgs=extra_args)
+
+
+def delete_object(key: str) -> None:
+    _s3.delete_object(Bucket=settings.s3_bucket, Key=key)
