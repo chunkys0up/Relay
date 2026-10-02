@@ -4,6 +4,15 @@ import { Link } from 'react-router-dom';
 import { Badge, Button, CitationLink, Conversation, EmptyState, Icon, PageTitle, Panel, useRelay } from '@relay/shared';
 import './clarification.css';
 
+function ConversationPanel(): ReactNode {
+  return (
+    <aside className="clarification-thread">
+      <div className="clarification-thread-heading"><Icon name="agent" size={38}/><div><h2>Relay assistant</h2><small>Same Home conversation</small></div></div>
+      <Conversation humanOnly />
+    </aside>
+  );
+}
+
 export default function Screen(): ReactNode {
   const { snapshot, busy, run } = useRelay();
   const [answer, setAnswer] = useState('');
@@ -20,18 +29,50 @@ export default function Screen(): ReactNode {
     : undefined;
 
   if (!clarification || !packet) {
+    const answered = snapshot.clarifications.filter((item) => item.status === 'answered').at(-1);
+    const newPacket = answered
+      ? snapshot.packets.find((item) => item.previous_version_id === answered.packet_version_id)
+      : undefined;
+
     return (
       <section className="clarification-screen">
         <PageTitle title="Home conversation" subtitle="Packet questions and answers stay with your conversation." />
-        <Panel className="clarification-empty">
-          <EmptyState title="No clarification needs an answer">
-            <p>When Maya sends a question about a shared packet, it will appear here in your Home conversation.</p>
-            <Link className="button button-outline" to="/founder/home">Return to Home</Link>
-          </EmptyState>
-        </Panel>
+        <div className="workspace-grid clarification-layout">
+          <Panel className="clarification-empty">
+            {newPacket ? (
+              <div className="clarification-outcome">
+                <Badge tone="success">Draft v{newPacket.version} created · simulated</Badge>
+                <h2>Your answer is in a proposed packet revision.</h2>
+                <p>The advisor’s question and your answer remain in this Home conversation. Source conflicts stay visible for review.</p>
+                <div className="row wrap">
+                  <Link className="button button-primary" to={`/founder/documents?version=${encodeURIComponent(newPacket.id)}`}>Review packet v{newPacket.version}</Link>
+                  <Link className="button button-outline" to="/founder/home">Return to Home</Link>
+                </div>
+              </div>
+            ) : (
+              <EmptyState title="No clarification needs an answer">
+                <p>When Maya sends a question about a shared packet, it will appear here in your Home conversation.</p>
+                <Link className="button button-outline" to="/founder/home">Return to Home</Link>
+              </EmptyState>
+            )}
+          </Panel>
+          <ConversationPanel />
+        </div>
       </section>
     );
   }
+
+  const questionAuthor = questionMessage
+    ? [snapshot.founder, ...snapshot.advisors].find((actor) => actor.id === questionMessage.author.id)
+    : undefined;
+  const authorName = questionMessage?.author.name ?? 'Assigned advisor';
+  const authorLabel = questionMessage?.author.kind === 'ai'
+    ? 'Relay assistant · AI'
+    : questionAuthor?.role === 'advisor'
+      ? 'Human advisor'
+      : questionAuthor?.role === 'founder'
+        ? 'Human founder'
+        : 'Human participant';
 
   const previewAnswer = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
@@ -59,21 +100,21 @@ export default function Screen(): ReactNode {
         <div className="clarification-main">
           <Panel className="clarification-question">
             <div className="clarification-question-head">
-              <span className="clarification-person" aria-hidden="true">{questionMessage?.author.name.split(' ').map((part) => part[0]).join('') ?? 'MC'}</span>
-              <div><strong>{clarification.recipient.name}</strong><small>{clarification.recipient.role === 'advisor' ? 'Human advisor' : 'Human founder'}{questionMessage ? ' · ' + new Date(questionMessage.created_at).toLocaleString() : ''}</small></div>
+              <span className="clarification-person" aria-hidden="true">{authorName.split(' ').map((part) => part[0]).join('')}</span>
+              <div><strong>{authorName}</strong><small>{authorLabel}{questionMessage ? ' · ' + new Date(questionMessage.created_at).toLocaleString() : ''}</small></div>
               <Badge tone="attention">Needs your input</Badge>
             </div>
             <h2>{clarification.text}</h2>
             <p className="muted">This question is tied to packet v{packet.version}. Your answer is added as a founder-attributed clarification; source conflicts remain visible for review.</p>
             <div className="clarification-citations" aria-label="Question sources">
-              {clarification.citations.map((citation) => <CitationLink key={citation.source_id + citation.label} citation={citation} />)}
+              {clarification.citations.map((citation, index) => <CitationLink key={citation.source_id + citation.label + index} citation={citation} />)}
             </div>
           </Panel>
 
           <Panel className="clarification-answer" title="Your answer">
-            <div className="clarification-answer-author"><span className="clarification-person founder-person" aria-hidden="true">AM</span><div><strong>{snapshot.founder.name}</strong><small>Draft · not sent</small></div></div>
+            <div className="clarification-answer-author" data-testid="clarification-answer-author"><span className="clarification-person founder-person" aria-hidden="true">AM</span><div><strong>{snapshot.founder.name}</strong><small>Draft · not sent</small></div></div>
             <form onSubmit={previewAnswer}>
-              <label htmlFor="clarification-answer">Answer Maya’s question</label>
+              <label htmlFor="clarification-answer">Answer {authorName}’s question</label>
               <textarea id="clarification-answer" value={answer} maxLength={8000} placeholder="Type your answer…" onChange={(event) => { setAnswer(event.target.value); setPreviewing(false); }} disabled={busy} />
               <div className="clarification-form-footer"><p className="muted">Your response creates a proposed packet revision for review.</p><Button type="submit" disabled={busy || !answer.trim()}>Preview answer</Button></div>
             </form>
@@ -86,7 +127,7 @@ export default function Screen(): ReactNode {
             <div className="row wrap"><Button disabled={busy} onClick={confirmAnswer}>Create simulated draft v{packet.version + 1}</Button><Button variant="outline" disabled={busy} onClick={() => setPreviewing(false)}>Keep editing</Button></div>
           </Panel>}
         </div>
-        <aside className="clarification-thread"><div className="clarification-thread-heading"><Icon name="agent" size={38}/><div><h2>Relay assistant</h2><small>Same Home conversation</small></div></div><Conversation humanOnly /></aside>
+        <ConversationPanel />
       </div>
     </section>
   );
