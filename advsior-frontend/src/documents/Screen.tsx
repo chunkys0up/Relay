@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Badge, Conversation, EmptyState, Icon, PageTitle, PacketPreview,
+  Badge, Button, Conversation, EmptyState, Icon, PageTitle, PacketPreview,
   ReviewControls, ScreenState, SourcePreview, useRelay,
 } from '@relay/shared';
 import './Screen.css';
@@ -61,7 +61,7 @@ export default function Screen() {
           <div className="advisor-documents-file-group"><h2>Shared originals</h2>
             {visibleSources.length ? visibleSources.map(item=>{
               const selected=source?.id===item.id;
-              return <button type="button" className={'advisor-document-file advisor-source-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{source:item.id,version:null})}><Icon name="file" size={19}/><span><strong>{item.name}</strong><small>Original · shared by founder</small></span><Badge>{item.extraction==='ready'?'Source ready':item.extraction}</Badge></button>;
+              return <button type="button" className={'advisor-document-file advisor-source-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{source:item.id,version:packet?.id??null})}><Icon name="file" size={19}/><span><strong>{item.name}</strong><small>Original · shared by founder</small></span><Badge>{item.extraction==='ready'?'Source ready':item.extraction}</Badge></button>;
             }) : <p className="advisor-document-empty-note">No shared originals match this search.</p>}
           </div>
           <Link className="advisor-documents-back" to="/advisor/clients">← Back to clients</Link>
@@ -75,7 +75,7 @@ export default function Screen() {
           {source ? <SourcePreview source={source}/> : packet ? <PacketPreview packet={packet}/> : <EmptyState title="No shared document"><p>This advisor can see only material included in an explicit handoff.</p></EmptyState>}
           {packet && <div className="advisor-documents-review">
             <div className="advisor-documents-review-heading"><div><h2>Review this version</h2><p>Decisions apply to this exact packet and hash.</p></div><Badge tone={statusLabel(packet.status).tone}>{statusLabel(packet.status).label}</Badge></div>
-            {isCurrent ? <ReviewControls packet={packet}/> : <div className="advisor-documents-locked" role="status">This shared version is historical. It remains readable; review actions require the current shared version.</div>}
+            {source ? <div className="advisor-documents-locked"><p>Source preview only. Any decision remains bound to packet v{packet.version}.</p><Button variant="outline" onClick={()=>setParams(params,update,{source:null,version:packet.id})}>Return to packet v{packet.version}</Button></div> : isCurrent ? <ReviewControls packet={packet}/> : <div className="advisor-documents-locked" role="status">This shared version is historical. It remains readable; review actions require the current shared version.</div>}
           </div>}
         </section>
 
