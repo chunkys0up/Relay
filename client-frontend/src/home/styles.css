@@ -39,6 +39,7 @@
 .founder-home-question { display: grid; gap: 9px; padding: 15px; margin: 10px 0 0 26px; background: var(--subtle); border-radius: 5px; }
 .founder-home-question > strong { color: var(--lpl-navy); font-size: 13px; }
 .founder-home-question > p { font-size: 13px; }
+.founder-home-simulation-note { color: var(--text-muted); font-size: 12px !important; }
 .founder-home-question .button { justify-self: start; }
 .founder-home-citation { display: inline-flex; gap: 7px; align-items: center; background: white; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 11px; text-decoration: none; overflow-wrap: anywhere; }
 .founder-home-recent ul { list-style: none; padding: 0; margin: 0; }

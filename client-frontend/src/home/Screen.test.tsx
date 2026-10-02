@@ -21,7 +21,8 @@ describe('Founder Home', () => {
     expect(within(stateGroup).getByText('Thinking / Working')).toBeVisible();
     expect(within(stateGroup).getByText('Needs input')).toHaveAttribute('aria-current', 'step');
     expect(screen.getByText('Blocked')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Answer in chat' })).toHaveAttribute('href', '/founder/home/clarification');
+    expect(screen.getByRole('link', { name: 'Answer in Home chat' })).toHaveAttribute('href', '/founder/home#message-main');
+    expect(screen.getByText(/simulated AI replies need the backend/)).toBeVisible();
     expect(screen.getByText(/240,000/)).toBeVisible();
     expect(screen.getByText(/280,000/)).toBeVisible();
   });

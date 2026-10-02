@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { AgentStatus, Badge, Conversation, EmptyState, Icon, PageTitle, Panel, ScreenState, useRelay } from '@relay/shared';
+import { Badge, Conversation, EmptyState, Icon, PageTitle, Panel, ScreenState, useRelay } from '@relay/shared';
 import type { Task } from '@relay/shared';
 import './styles.css';
 
@@ -11,6 +11,8 @@ function taskLabel(task: Task): string {
 
 export default function Screen() {
   const { snapshot } = useRelay();
+  const currentFlags = snapshot?.flags.filter((flag) => flag.packet_version_id === snapshot.current_packet_version_id && !flag.resolved) ?? [];
+  const sentClarification = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
 
   return (
     <ScreenState>
@@ -28,7 +30,6 @@ export default function Screen() {
           <div className="founder-home-grid">
             <div className="founder-home-main">
               <Panel className="founder-home-assistant">
-                <AgentStatus />
                 <div className="founder-home-ai-states" aria-label="Relay status">
                   {aiStates.map((state) => (
                     <span key={state} className={snapshot.ui_state === state ? 'is-current' : ''} aria-current={snapshot.ui_state === state ? 'step' : undefined}>
@@ -81,13 +82,20 @@ export default function Screen() {
                     {snapshot.tasks.some((task) => task.state === 'Blocked') && (
                       <div className="founder-home-question">
                         <strong>Clarification needed</strong>
-                        <p>{snapshot.flags.filter((flag) => !flag.resolved).map((flag) => flag.text).join(' ') || 'Review the question in your conversation.'}</p>
-                        {snapshot.flags.filter((flag) => !flag.resolved).flatMap((flag) => flag.citations).filter((citation, index, all) => all.findIndex((item) => item.source_id === citation.source_id) === index).slice(0, 2).map((citation) => (
+                        <p>{currentFlags.map((flag) => flag.text).join(' ') || 'Review the question in your conversation.'}</p>
+                        {currentFlags.flatMap((flag) => flag.citations).filter((citation, index, all) => all.findIndex((item) => item.source_id === citation.source_id) === index).slice(0, 2).map((citation) => (
                           <Link className="founder-home-citation" key={`${citation.source_id}-${citation.label}`} to={`/founder/sources?source=${encodeURIComponent(citation.source_id)}`}>
                             <Icon name="file" size={16} />{citation.label}
                           </Link>
                         ))}
-                        <Link className="button button-primary" to="/founder/home/clarification">Answer in chat</Link>
+                        {sentClarification ? (
+                          <Link className="button button-primary" to="/founder/home/clarification">Answer clarification in chat</Link>
+                        ) : (
+                          <>
+                            <p className="founder-home-simulation-note">No advisor question has been sent yet. Add your answer in the existing Home conversation; simulated AI replies need the backend.</p>
+                            <Link className="button button-primary" to="/founder/home#message-main">Answer in Home chat</Link>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
