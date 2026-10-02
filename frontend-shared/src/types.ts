@@ -4,7 +4,7 @@ export type TaskState = 'Pending' | 'In progress' | 'Blocked' | 'Done';
 export type CallState = 'ringing' | 'connecting' | 'connected' | 'ended' | 'failed';
 export interface Actor { id: string; name: string; role: Role }
 export interface Citation { source_id: string; source_hash: string; source_kind?:'document'|'message'; label: string; locator: { page?: number; sheet?: string; row?: number; field?: string } }
-export interface Source { id: string; revision: number; name: string; mime_type: string; bytes: number; hash: string; created_at: string; extraction: 'queued'|'processing'|'ready'|'failed'; citations: Citation[]; excerpt: string; error: string|null }
+export interface Source { id: string; revision: number; name: string; mime_type: string; bytes: number; hash: string; created_at: string; extraction: 'queued'|'processing'|'ready'|'failed'|'unsupported'; citations: Citation[]; excerpt: string; error: string|null; content_base64?:string }
 export interface PacketVersion { id: string; document_id: string; version: number; hash: string; created_at: string; title: string; status: 'draft'|'in_review'|'questions_returned'|'approved'; previous_version_id: string|null; changes: string[]; citations: Citation[]; content: string }
 export interface Task { id: string; order: number; title: string; state: TaskState; detail: string|null; citations: Citation[] }
 export type Audience = {kind:'private_ai'} | {kind:'human';recipient_id:string};
@@ -21,7 +21,7 @@ export interface Receipt<T> { data:T; meta:{mode:'simulated';request_id:string} 
 export type Scenario = 'normal'|'empty'|'error'|'slow'|'disconnected';
 export type RelayCommand =
  | {kind:'message';expected_revision:number;audience:Audience;text:string;attachments:string[];confirmed:boolean}
- | {kind:'upload';expected_revision:number;name:string;mime_type:string;bytes:number}
+ | {kind:'upload';expected_revision:number;name:string;mime_type:string;bytes:number;content_base64?:string}
  | ({kind:'handoff';advisor_id:string;source_ids:string[];message_ids:string[]} & VersionInput)
  | ({kind:'preview';text:string;recipient_id:string;citations:Citation[]} & VersionInput)
  | ({kind:'send';clarification_id:string;clarification_revision:number;text:string;recipient_id:string} & VersionInput)
