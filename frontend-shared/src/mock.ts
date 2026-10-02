@@ -27,6 +27,7 @@ export class MockRelayAdapter implements RelayAdapter {
    view.sources=view.sources.filter(s=>sources.has(s.id));view.packets=view.packets.filter(p=>packets.has(p.id));view.flags=view.flags.filter(f=>packets.has(f.packet_version_id));
    view.clarifications=view.clarifications.filter(q=>packets.has(q.packet_version_id));view.reviews=view.reviews.filter(r=>packets.has(r.packet_version_id));
    view.tasks=[];view.activity=null;view.current_packet_version_id=view.packets.at(-1)?.id??null;
+   if(view.call&&!packets.has(view.call.packet_version_id))view.call=null;
   }
   if(this.scenario==='empty'){view.sources=[];view.packets=[];view.messages=[];view.tasks=[];view.flags=[];view.clarifications=[];view.reviews=[];view.current_packet_version_id=null;view.call=null;}
   return view;
@@ -79,6 +80,7 @@ export class MockRelayAdapter implements RelayAdapter {
    }
    case 'invite':{
     if(command.recipient_id!==(role==='founder'?advisor.id:founder.id))throw new RelayError('FORBIDDEN','Choose the assigned participant.');
+    if(!this.state.grants.some(g=>g.advisor_id===advisor.id&&g.packet_version_id===command.packet_version_id&&g.packet_hash===command.packet_hash))throw new RelayError('FORBIDDEN','Confirm sharing this exact packet with the advisor before inviting them to review it.');
     if(this.state.call&&!['ended','failed'].includes(this.state.call.state))throw new RelayError('INVALID_TRANSITION','A call invitation is already active.');
     this.state.call={id:crypto.randomUUID(),revision:1,state:'ringing',packet_version_id:command.packet_version_id,participants:[founder,advisor].map(a=>({actor:a,accepted:a.id===actor.id,muted:true,capture_consent:'not_given',consent_revision:0})),capture:'off',processing:'not_started',cleanup:'not_required'};break;
    }
