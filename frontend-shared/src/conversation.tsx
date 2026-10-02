@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import type { ReactNode, FormEvent } from 'react';
 import { useDraft, useRelay } from './context';
 import { AgentStatus, Badge, Button, CitationLink, Icon } from './ui';
 export function Conversation({large=false,allowUpload=false,humanOnly=false}:{large?:boolean;allowUpload?:boolean;humanOnly?:boolean}):ReactNode{
  const {snapshot,role,busy,run}=useRelay();const [params]=useSearchParams();const [audience,setAudience]=useState<'private_ai'|'human'>(humanOnly||params.get('audience')==='human'?'human':'private_ai');const [text,setText]=useDraft('message:'+snapshot?.id+':'+audience);const [preview,setPreview]=useState(false);const [file,setFile]=useState<File|null>(null);
+ const location=useLocation();
+ useEffect(()=>{if(location.hash===`#message-${large?'main':'side'}`){const composer=document.getElementById(`message-${large?'main':'side'}`);composer?.focus();composer?.scrollIntoView?.({block:'center'});}},[location,large]);
  useEffect(()=>{if(params.get('audience')==='human')setAudience('human');const id=params.get('message');if(id)document.getElementById('message-'+id)?.scrollIntoView?.({block:'center'});},[params,snapshot]);
  if(!snapshot)return null;const me=role==='founder'?snapshot.founder:snapshot.advisors[0];const other=role==='founder'?snapshot.advisors[0]:snapshot.founder;
  const messages=snapshot.messages.filter(m=>audience==='private_ai'?m.audience.kind==='private_ai':m.audience.kind==='human');

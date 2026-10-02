@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge, CitationLink, Conversation, EmptyState, HandoffControls, Icon, PageTitle, PacketPreview, Panel, ScreenState, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
+import { Tabs } from '../../../frontend-shared/src/tabs';
 import './styles.css';
 
 function packetStatus(packet: PacketVersion): string {
@@ -24,6 +25,7 @@ export default function Screen() {
   const [compareId, setCompareId] = useState('');
   const query = searchParams.get('q')?.trim().toLowerCase() ?? '';
   const requestedVersion = searchParams.get('version');
+  const view = searchParams.get('view') === 'history' ? 'history' : 'preview';
   const versions = useMemo(() => [...(snapshot?.packets ?? [])].sort((a, b) => a.version - b.version), [snapshot?.packets]);
   const matches = versions.filter((packet) => !query || `${packet.title} ${packet.content} ${packet.status}`.toLowerCase().includes(query));
   const currentPacket = versions.find((packet) => packet.id === snapshot?.current_packet_version_id) ?? versions.at(-1) ?? null;
@@ -37,6 +39,7 @@ export default function Screen() {
   const selectVersion = (packet: PacketVersion): void => {
     const next = new URLSearchParams(searchParams);
     next.set('version', packet.id);
+    next.delete('view');
     setSearchParams(next, { replace: true });
     setCompareMode(false);
   };
@@ -79,15 +82,13 @@ export default function Screen() {
                       <div><h2>{selectedPacket.title}</h2><Badge>{`v${selectedPacket.version}`}</Badge></div>
                       <div className="founder-documents-toolbar">
                         <Badge tone={packetTone(selectedPacket)}>{packetStatus(selectedPacket)}</Badge>
-                        <button type="button" className="button button-outline" disabled={selectedIndex <= 0} aria-pressed={compareMode} onClick={() => { setCompareMode((value) => !value); setCompareId(versions[selectedIndex - 1]?.id ?? ''); }}>{compareMode ? 'Close comparison' : 'Compare versions'}</button>
+                        <button type="button" className="button button-outline" disabled={selectedIndex <= 0} aria-pressed={compareMode} onClick={() => { const next=new URLSearchParams(searchParams); next.set("view","preview"); setSearchParams(next,{replace:true}); setCompareMode((value) => !value); setCompareId(versions[selectedIndex - 1]?.id ?? ''); }}>{compareMode ? 'Close comparison' : 'Compare versions'}</button>
                       </div>
                     </div>
 
-                    <div className="founder-documents-preview-tabs" aria-label="Packet view">
-                      <span aria-current="page">Preview</span><span>Version history</span>
-                    </div>
+                    <Tabs id="packet-view" label="Packet view" items={[{id:'preview',label:'Preview'},{id:'history',label:'Version history'}]} value={view} onChange={nextView=>{const next=new URLSearchParams(searchParams);next.set('view',nextView);setSearchParams(next,{replace:true});}}/>
 
-                    <div className="founder-documents-preview-layout">
+                    {view==='history'?<section className="version-timeline" id="packet-view-history-panel" role="tabpanel" aria-labelledby="packet-view-history-tab" tabIndex={0}><h3>Document version history</h3><p className="muted">Every approval belongs to one exact version. Opening an older version does not replace the current draft.</p>{[...versions].reverse().map(packet=><article key={packet.id}><div className="row wrap"><h3>Version {packet.version}</h3><Badge tone={packetTone(packet)}>{packetStatus(packet)}</Badge>{packet.id===currentPacket?.id&&<Badge>Current version</Badge>}</div><p className="muted">Created {new Date(packet.created_at).toLocaleString()}</p><p>{packet.changes.join(' ')||'Initial draft prepared from the original sources.'}</p>{snapshot.reviews.filter(review=>review.packet_version_id===packet.id).map(review=><p key={review.id}>{review.reviewer.name} · {review.decision==='approved'?'Approved this version':'Returned questions'}</p>)}<button className="button button-outline" type="button" onClick={()=>selectVersion(packet)}>View version {packet.version}</button></article>)}</section>:<div className="founder-documents-preview-layout" id="packet-view-preview-panel" role="tabpanel" aria-labelledby="packet-view-preview-tab" tabIndex={0}>
                       <nav className="founder-documents-history" aria-label="Version history">
                         <h3>Versions</h3>
                         {[...versions].reverse().map((packet) => (
@@ -107,7 +108,7 @@ export default function Screen() {
                         )}
                         <PacketPreview packet={selectedPacket}/>
                       </div>
-                    </div>
+                    </div>}
 
                     <section className="founder-documents-citations" aria-labelledby="founder-documents-citations-title">
                       <h3 id="founder-documents-citations-title">Sources cited in this version</h3>
