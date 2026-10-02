@@ -7,7 +7,8 @@ export default function Screen(): ReactNode {
   const { snapshot } = useRelay();
   if (!snapshot) return null;
 
-  const packetId = snapshot.call?.packet_version_id ?? snapshot.current_packet_version_id;
+  const activeCall = snapshot.call && (snapshot.call.state === 'ringing' || snapshot.call.state === 'connecting' || snapshot.call.state === 'connected');
+  const packetId = activeCall ? snapshot.call?.packet_version_id : snapshot.current_packet_version_id;
   const packet = snapshot.packets.find((item) => item.id === packetId);
 
   if (!packet) {
