@@ -49,12 +49,12 @@ Executed from integration using the repository commands:
 | `npm run typecheck` | Passed |
 | `npm test` | 29 tests across 9 files passed |
 | `npm run build` | Passed, 70 modules |
-| `npm run test:browser` | 12 passed; one workflow test initially switched roles before handoff acknowledgment |
+| `npm run test:browser` | All nine screen tests and three other flow tests passed; workflow test required acknowledgment and transient-state observation fixes |
 | Targeted workflow rerun after correcting that test | Passed; combined final coverage 13/13 |
 | `npm audit --omit=optional --json` | 0 reported vulnerabilities |
 | `git diff --check` | Passed |
 
-The browser suite uses Chromium at 1600×1000 and 390×844. All nine screens were checked for rendered content, loaded assets, keyboard focus, horizontal overflow, empty/error/disconnected states and reconnect. Additional tests cover truthful failed upload availability, cancellation, separate consent/withdrawal, role-scoped drafts after reconnect, and the complete clarification/new-version/handoff/approval flow. Tests ran against a frozen local production preview to avoid live reloads resetting the synthetic session.
+The browser suite uses Chromium at 1600×1000 and 390×844. All nine screens were checked for rendered content, loaded assets, keyboard focus, horizontal overflow, empty/error/disconnected states and reconnect. Additional tests cover truthful failed upload availability, cancellation, separate consent/withdrawal, role-scoped drafts after reconnect, and the complete clarification/new-version/handoff/approval flow. Tests ran against a frozen local production preview to avoid live reloads resetting the synthetic session. The workflow test now waits for the actual handoff acknowledgment before changing roles and observes the brief visible Working transition before clicking, avoiding polling races.
 
 Sol additionally exercised repeated clicks, preview/edit/send/return cancellation, send-then-return reuse without duplicate delivery, private AI isolation, hidden unshared v2, stale v1 approval rejection, exact-v2 approval, keyboard call invitations/decline/accept, mute/unmute, reconnect and ending a call. Review corrections included source context preserving the selected historical version, mobile overflow, hidden advisor drafts, event replay isolation/order, answer provenance, working-state visibility, and keyboard focus behind mobile navigation.
 

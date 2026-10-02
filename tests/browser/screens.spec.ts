@@ -56,8 +56,17 @@ test('returned questions create an unapproved version and require renewed handof
  await expect(page.getByText('Maya Chen',{exact:true}).first()).toBeVisible();
  await page.getByRole('textbox',{name:'Answer Maya Chen’s question'}).fill('2026 revenue is $240,000. My reserve target is $60,000.');
  await page.getByRole('button',{name:'Preview answer',exact:true}).click();
+ await page.evaluate(()=>{
+  const state=window as Window & { relayWorkingSeen?:boolean };
+  state.relayWorkingSeen=false;
+  const observer=new MutationObserver(()=>{
+   const visible=[...document.querySelectorAll('main .badge')].some(element=>element.textContent==='Thinking / Working'&&element.getClientRects().length>0);
+   if(visible){state.relayWorkingSeen=true;observer.disconnect();}
+  });
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+ });
  await page.getByRole('button',{name:'Create simulated draft v2',exact:true}).click();
- await expect(page.getByText('Thinking / Working',{exact:true}).first()).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>(window as Window & { relayWorkingSeen?:boolean }).relayWorkingSeen)).toBe(true);
  await expect(page.getByRole('link',{name:'Review packet v2',exact:true})).toBeVisible();
  await page.getByRole('navigation').filter({has:page.getByRole('link',{name:'Documents',exact:true})}).getByRole('link',{name:'Documents',exact:true}).click();
  await expect(page.getByRole('button',{name:'Preview handoff of v2',exact:true})).toBeVisible();
