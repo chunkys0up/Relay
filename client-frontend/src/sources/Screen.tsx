@@ -6,6 +6,7 @@ import './styles.css';
 function extractionLabel(source: Source): string {
   if (source.extraction === 'ready') return 'Ready';
   if (source.extraction === 'failed') return 'Needs attention';
+  if (source.extraction === 'unsupported') return 'Extraction unsupported';
   return source.extraction === 'queued' ? 'Queued' : 'Processing';
 }
 
@@ -47,12 +48,12 @@ export default function Screen() {
           <PageTitle title="Sources" subtitle="View the original files and extraction details behind your packet.">
             <Link className="button button-outline" to="/founder/home">Add sources in Home chat <span aria-hidden="true">↗</span></Link>
           </PageTitle>
-          <p className="founder-sources-guidance">These synthetic fixture originals demonstrate how files selected from the Home conversation will appear here. This view only browses existing originals.</p>
+          <p className="founder-sources-guidance">View fixture sources and files added locally from Home. Actual file bytes stay in this browser; only UTF-8 text and CSV have local extraction.</p>
 
           <div className="founder-sources-workspace">
             <div className="founder-sources-primary">
           {snapshot.sources.length === 0 ? (
-            <Panel><EmptyState title="No original sources yet"><p>Choose files from the attachment control in Home chat. The current local demo cannot upload or store them.</p><Link className="button button-primary" to="/founder/home">Go to Home chat</Link></EmptyState></Panel>
+            <Panel><EmptyState title="No original sources yet"><p>Choose files from the attachment control in Home chat. Add their actual bytes to this browser; no backend upload occurs.</p><Link className="button button-primary" to="/founder/home">Go to Home chat</Link></EmptyState></Panel>
           ) : (
             <>
               <div className="founder-sources-summary" aria-label="Source totals">
@@ -63,7 +64,7 @@ export default function Screen() {
 
               <Panel className="founder-sources-list-panel">
                 <div className="founder-sources-heading">
-                  <div><h2>Workspace sources</h2><span>{snapshot.sources.length} originals · synthetic fixtures</span></div>
+                  <div><h2>Workspace sources</h2><span>{snapshot.sources.length} originals · local demo</span></div>
                   <label className="founder-sources-search"><span className="sr-only">Search original sources</span><Icon name="search" size={18}/><input type="search" value={query} onChange={(event) => updateQuery(event.target.value)} placeholder="Search sources" /></label>
                 </div>
                 {filteredSources.length === 0 ? (
@@ -94,7 +95,7 @@ export default function Screen() {
                     <div className="founder-sources-metadata" aria-label="Source metadata">
                       <h3>Source metadata</h3>
                       <dl><div><dt>Added</dt><dd>{new Date(selectedSource.created_at).toLocaleString()}</dd></div><div><dt>Content type</dt><dd>{selectedSource.mime_type}</dd></div><div><dt>Content hash</dt><dd><code>{selectedSource.hash.slice(0, 12)}…</code></dd></div><div><dt>Extraction</dt><dd>{selectedSource.error ?? extractionLabel(selectedSource)}</dd></div></dl>
-                      <p>Original-file download and full document preview are unavailable in this local simulation.</p>
+                      <p>Files added locally retain their original bytes. PDF and binary extraction is unsupported; fixture sources have synthetic previews only.</p>
                     </div>
                   </div>
                   <aside className="founder-sources-flags" aria-label="Packet context for this source">

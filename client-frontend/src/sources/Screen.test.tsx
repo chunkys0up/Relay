@@ -36,7 +36,7 @@ describe('Founder Sources', () => {
     expect(await screen.findByRole('heading', { name: 'Founder intake.pdf', level: 2 })).toBeVisible();
     expect(screen.getByText('p. 2 · 142 KB')).toBeVisible();
     expect(screen.queryByText('2 pages · 142 KB')).not.toBeInTheDocument();
-    expect(screen.getByText(/synthetic fixture originals demonstrate/)).toBeVisible();
+    expect(screen.getByText(/Actual file bytes stay in this browser/)).toBeVisible();
   });
 
   it('updates the selected source and keeps the query parameter in the URL', async () => {
