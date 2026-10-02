@@ -31,9 +31,19 @@ The user reports a working Bedrock call called “Claude Sonnet 5”; its exact 
 
 Preflight gates: AWS identity/region; S3 canonical write/read; PostgreSQL connectivity, schema migrations and transaction/revision-conflict checks; Textract extraction permission; Bedrock invoke permission and exact configured ID; Strands SDK compatibility; Chime SDK permissions; Chime media-capture and Transcribe prerequisites; and a two-person Chime audio test. New cloud resources, permission changes, credentials, or real data require team authorization.
 
+The runnable React app lives in `frontend-shared/` (package, entrypoint, assets and build config), importing the two role-specific screen directories. Root npm scripts delegate to that workspace; install once at the repository root with `npm ci`.
+
 ## 2. Proposed structure
 
 ```text
+frontend-shared/
+  package.json
+  index.html
+  vite.config.ts
+  tsconfig.json
+  eslint.config.js
+  public/assets/
+  src/
 client-frontend/
   src/{home,sources,documents,call,settings,assistant,chat,tasks}/
 advsior-frontend/

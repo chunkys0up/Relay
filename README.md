@@ -6,12 +6,12 @@ Relay is a synthetic founder/advisor demo for turning source documents and found
 
 - `client-frontend/` — founder Home, Sources, Documents and Call.
 - `advsior-frontend/` — advisor Clients, Reviews, Documents and Call (existing folder spelling).
-- `frontend-shared/` — React routing, shared controls, types and in-memory demo adapter.
+- `frontend-shared/` — runnable Vite app: package, HTML entrypoint, build config, public assets, routing and shared UI/state.
 - `backend/` — FastAPI chat and S3 uploads, plus a Postgres schema awaiting application integration.
 
 ## Run locally
 
-For the frontend, run `npm ci` once, then `npm run dev` from this directory. Both roles share one Vite app. All frontend actions currently use synthetic in-memory state; starting the backend does not connect them automatically.
+For the frontend, run `npm ci` once, then `npm run dev` from this directory. Root scripts delegate to the `frontend-shared` npm workspace; `cd frontend-shared && npm run dev` also works. Both roles share this app. Frontend actions use a synthetic local adapter; starting the backend does not connect it automatically.
 
 See the [backend README](backend/README.md) for architecture, endpoints, configuration and backend startup.
 
