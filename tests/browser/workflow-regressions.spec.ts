@@ -68,4 +68,3 @@ test('an initial private draft appears to a second founder tab but not the advis
  await page.getByRole('button',{name:'Confirm simulated handoff',exact:true}).click();
  await expect(advisor.getByRole('region',{name:'Packet version 2 preview',exact:true})).toBeVisible();
 });
-

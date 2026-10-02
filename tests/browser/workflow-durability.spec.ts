@@ -36,4 +36,3 @@ test('reloading during draft preparation recovers exactly one completed draft',a
  });
  expect(versions).toEqual([1,2]);
 });
-
