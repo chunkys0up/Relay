@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { useRelay } from './context';
 import { useCaseReload } from './live';
 import { MarkdownText } from './markdown';
-import { announceCaseUpdate, documentUrl, LIVE_CASE_ID, listPackets, packetSummary, packetUrl, reviewPacket } from './relayApi';
-import type { LiveDocument, LivePacket, PacketStatus, ReviewDecision } from './relayApi';
+import { announceCaseUpdate, documentUrl, editPacketSummary, LIVE_CASE_ID, listPackets, packetSummary, packetUrl, reviewPacket, revertPacketSummary } from './relayApi';
+import type { LiveDocument, LivePacket, PacketStatus, PacketSummaryView, ReviewDecision } from './relayApi';
 import { Badge, Button, Icon } from './ui';
 import './packets.css';
 
@@ -40,29 +40,73 @@ export function useCasePackets(caseId: string = LIVE_CASE_ID): { packets: LivePa
   return { packets, error };
 }
 
-/** Relay's summary of the packet, written from the stored PDF's own text. */
+/**
+ * The packet's summary: Relay's, written from the stored PDF's own text, or the advisor's edited version.
+ * Advisors can edit it, and revert to Relay's version.
+ */
 export function PacketSummary({ packet }: { packet: LivePacket }): ReactNode {
-  const [summary, setSummary] = useState<{ id: string; text: string } | null>(null);
+  const { snapshot, role } = useRelay();
+  const [view, setView] = useState<{ id: string; data: PacketSummaryView } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const canEdit = role === 'advisor';
   useEffect(() => {
     const c = new AbortController();
     setError(null);
-    packetSummary(packet.case_id, packet.id, c.signal).then(text => setSummary({ id: packet.id, text }))
+    setDraft(null);
+    packetSummary(packet.case_id, packet.id, c.signal).then(data => setView({ id: packet.id, data }))
       .catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e, 'The summary could not be loaded.')); });
     return () => c.abort();
   }, [packet.case_id, packet.id]);
-  const shown = summary?.id === packet.id ? summary.text : null;
+  const shown = view?.id === packet.id ? view.data : null;
+
   async function openPdf(): Promise<void> {
     const tab = window.open('', '_blank');
     try { const url = await packetUrl(packet.case_id, packet.id); if (tab) tab.location.href = url; else window.open(url, '_blank'); }
     catch (e) { tab?.close(); setError(errorText(e, 'The PDF could not be opened.')); }
   }
+
+  async function save(change: () => Promise<PacketSummaryView>): Promise<void> {
+    setSaving(true); setError(null);
+    try {
+      setView({ id: packet.id, data: await change() });
+      setDraft(null);
+      announceCaseUpdate();
+    } catch (e) {
+      setError(errorText(e, 'The summary could not be saved.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const editor = snapshot?.advisors[0]?.name ?? 'Advisor';
   return <section className="packet-summary" aria-label={`Summary of packet v${packet.version}`}>
-    <div className="packet-summary-head"><Icon name="file"/><strong>Planning packet · v{packet.version}</strong><PacketStatusBadge packet={packet}/><Button variant="outline" onClick={() => { void openPdf(); }}>Open PDF</Button></div>
+    <div className="packet-summary-head">
+      <Icon name="file"/><strong>Planning packet · v{packet.version}</strong><PacketStatusBadge packet={packet}/>
+      {canEdit && shown && draft === null && <Button variant="outline" onClick={() => setDraft(shown.summary)}>Edit summary</Button>}
+      <Button variant="outline" onClick={() => { void openPdf(); }}>Open PDF</Button>
+    </div>
     <div className="packet-summary-body">
-      {error ? <p className="packet-summary-note" role="alert">{error}</p>
-        : !shown ? <p className="packet-summary-note" role="status">Relay is summarizing the packet…</p>
-        : <article className="packet-summary-page"><MarkdownText text={shown}/><small>Summarized by Relay from packet v{packet.version}. The PDF has the full document.</small></article>}
+      {error && <p className="packet-summary-note" role="alert">{error}</p>}
+      {!shown ? !error && <p className="packet-summary-note" role="status">Relay is summarizing the packet…</p>
+        : draft !== null ? <div className="packet-summary-page packet-summary-editor">
+            <label htmlFor={`summary-${packet.id}`}>Edit the summary <small>Markdown: **bold**, - bullet points</small></label>
+            <textarea id={`summary-${packet.id}`} value={draft} onChange={e => setDraft(e.target.value)} rows={16} disabled={saving}/>
+            <div className="packet-review-actions">
+              <Button disabled={saving || !draft.trim() || draft.trim() === shown.summary.trim()} onClick={() => { void save(() => editPacketSummary(packet.case_id, packet.id, draft, editor)); }}>{saving ? 'Saving…' : 'Save summary'}</Button>
+              <Button variant="outline" disabled={saving} onClick={() => setDraft(null)}>Cancel</Button>
+            </div>
+          </div>
+        : <article className="packet-summary-page">
+            <MarkdownText text={shown.summary}/>
+            <small>
+              {shown.edited_by
+                ? <>Edited by {shown.edited_by}{shown.edited_at && <> · {new Date(shown.edited_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</>}</>
+                : <>Summarized by Relay from packet v{packet.version}. The PDF has the full document.</>}
+              {canEdit && shown.edited_by && <button type="button" className="packet-summary-revert" disabled={saving} onClick={() => { void save(() => revertPacketSummary(packet.case_id, packet.id)); }}>Revert to Relay&apos;s version</button>}
+            </small>
+          </article>}
     </div>
   </section>;
 }

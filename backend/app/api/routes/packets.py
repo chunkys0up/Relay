@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+import json
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any
 from uuid import UUID
@@ -13,8 +14,9 @@ from starlette.concurrency import run_in_threadpool
 from app.core.aws_session import create_aws_session
 from app.core.config import settings
 from app.db import packets as store
+from app.db.case_records import log_activity
 from app.db.packets import Decision
-from app.storage.s3 import download_bytes, head_object, presigned_download_url, upload_bytes
+from app.storage.s3 import delete_object, download_bytes, head_object, presigned_download_url, upload_bytes
 
 router = APIRouter(prefix="/cases/{case_id}/packets", tags=["packets"])
 
@@ -78,8 +80,8 @@ _SUMMARY_PROMPT = (
 )
 
 
-def _summary(s3_key: str) -> str:
-    """An AI summary of the packet, generated once and stored next to the PDF in S3."""
+def _ai_summary(s3_key: str) -> str:
+    """Relay's summary of the packet, generated once and stored next to the PDF in S3."""
     summary_key = f"{s3_key}.summary.md"
     if head_object(summary_key):
         return download_bytes(summary_key).decode("utf-8")
@@ -95,11 +97,34 @@ def _summary(s3_key: str) -> str:
     return text
 
 
-@router.get("/{packet_id}/summary")
-async def packet_summary(case_id: UUID, packet_id: UUID) -> dict[str, str]:
+def _edit_key(s3_key: str) -> str:
+    return f"{s3_key}.summary.edited.json"
+
+
+def _summary(s3_key: str) -> dict[str, Any]:
+    """The advisor's edited summary if there is one, otherwise Relay's."""
+    if head_object(_edit_key(s3_key)):
+        edit = json.loads(download_bytes(_edit_key(s3_key)))
+        return {"summary": edit["text"], "edited_by": edit["edited_by"], "edited_at": edit["edited_at"]}
+    return {"summary": _ai_summary(s3_key), "edited_by": None, "edited_at": None}
+
+
+class SummaryEdit(BaseModel):
+    summary: str = Field(min_length=1, max_length=8000)
+    editor: str = Field(min_length=1, max_length=100)
+
+
+class SummaryView(BaseModel):
+    summary: str
+    edited_by: str | None = None
+    edited_at: datetime | None = None
+
+
+@router.get("/{packet_id}/summary", response_model=SummaryView)
+async def packet_summary(case_id: UUID, packet_id: UUID) -> dict[str, Any]:
     packet = await _packet(case_id, packet_id)
     try:
-        return {"summary": await run_in_threadpool(_summary, packet["s3_key"])}
+        return await run_in_threadpool(_summary, packet["s3_key"])
     except Exception as exc:
         expired = "ExpiredToken" in str(exc)
         raise HTTPException(
@@ -107,6 +132,25 @@ async def packet_summary(case_id: UUID, packet_id: UUID) -> dict[str, str]:
             detail="The AWS credentials have expired, so the summary can't be generated." if expired
             else "The packet summary could not be generated.",
         ) from exc
+
+
+@router.put("/{packet_id}/summary", response_model=SummaryView)
+async def edit_summary(case_id: UUID, packet_id: UUID, body: SummaryEdit) -> dict[str, Any]:
+    """Save the advisor's version of the summary. Relay's original is kept for reverting."""
+    packet = await _packet(case_id, packet_id)
+    edit = {"text": body.summary.strip(), "edited_by": body.editor, "edited_at": datetime.now(timezone.utc).isoformat()}
+    await run_in_threadpool(upload_bytes, json.dumps(edit).encode("utf-8"), _edit_key(packet["s3_key"]), "application/json")
+    await log_activity(case_id, "advisor", f"Edited the summary of packet v{packet['version']}")
+    return {"summary": edit["text"], "edited_by": edit["edited_by"], "edited_at": edit["edited_at"]}
+
+
+@router.delete("/{packet_id}/summary/edit", response_model=SummaryView)
+async def revert_summary(case_id: UUID, packet_id: UUID) -> dict[str, Any]:
+    """Drop the advisor's edit and go back to Relay's summary."""
+    packet = await _packet(case_id, packet_id)
+    await run_in_threadpool(delete_object, _edit_key(packet["s3_key"]))
+    await log_activity(case_id, "advisor", f"Restored Relay's summary of packet v{packet['version']}")
+    return await run_in_threadpool(_summary, packet["s3_key"])
 
 
 @router.post("/{packet_id}/review", response_model=Packet)

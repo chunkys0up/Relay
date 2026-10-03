@@ -104,9 +104,23 @@ export async function packetUrl(caseId: string, packetId: string, signal?: Abort
   return ((await (await request(`${packetPath(caseId, packetId)}/url`, { signal })).json()) as { url: string }).url;
 }
 
-/** Relay's Markdown summary of the packet, generated from the PDF's text on first request. */
-export async function packetSummary(caseId: string, packetId: string, signal?: AbortSignal): Promise<string> {
-  return ((await (await request(`${packetPath(caseId, packetId)}/summary`, { signal })).json()) as { summary: string }).summary;
+/** The packet's Markdown summary: Relay's, generated from the PDF on first request, or the advisor's edit. */
+export interface PacketSummaryView { summary: string; edited_by: string | null; edited_at: string | null }
+
+export async function packetSummary(caseId: string, packetId: string, signal?: AbortSignal): Promise<PacketSummaryView> {
+  return (await request(`${packetPath(caseId, packetId)}/summary`, { signal })).json() as Promise<PacketSummaryView>;
+}
+
+export async function editPacketSummary(caseId: string, packetId: string, summary: string, editor: string): Promise<PacketSummaryView> {
+  const response = await request(`${packetPath(caseId, packetId)}/summary`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary, editor }),
+  });
+  return response.json() as Promise<PacketSummaryView>;
+}
+
+/** Drop the advisor's edit and go back to Relay's summary. */
+export async function revertPacketSummary(caseId: string, packetId: string): Promise<PacketSummaryView> {
+  return (await request(`${packetPath(caseId, packetId)}/summary/edit`, { method: 'DELETE' })).json() as Promise<PacketSummaryView>;
 }
 
 export async function reviewPacket(caseId: string, packetId: string, decision: ReviewDecision, notes: string): Promise<LivePacket> {
