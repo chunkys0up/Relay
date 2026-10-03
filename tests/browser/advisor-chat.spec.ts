@@ -87,6 +87,6 @@ test('advisor Home and Documents never request the unscoped live document catalo
   await page.goto('/advisor/home');
   await expect(page.getByRole('heading', { name: 'Shared documents' })).toBeVisible();
   await page.goto('/advisor/documents');
-  await expect(page.getByRole('heading', { name: 'Shared originals' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Shared sources' })).toBeVisible();
   expect(observed.genericCalls).toEqual([]);
 });

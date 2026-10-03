@@ -115,11 +115,11 @@
   background: #fff;
   display: flex;
   flex-direction: column;
-  position: sticky;
-  top: 114px;
-  height: calc(100vh - 114px);
-  min-height: 600px;
+  min-height: 0;
 }
+.advisor-client-communication-tabs { display: flex; gap: 6px; padding: 30px 16px 8px; flex-shrink: 0; background: #fff; }
+.advisor-client-communication-tabs button { flex: 1; min-width: 0; padding: 10px 8px; border: 1px solid #c8d5e8; border-radius: 7px; background: #fff; color: var(--lpl-navy); font-weight: 600; }
+.advisor-client-communication-tabs button[aria-pressed="true"] { border-color: #176aff; background: #eaf2ff; color: #075eed; }
 .advisor-client-assistant-head {
   display: flex;
   gap: 12px;
@@ -133,6 +133,7 @@
 .advisor-client-conversation .conversation { height: 100%; min-height: 0; padding: 0; gap: 12px; border: 0; }
 .advisor-client-conversation.browser-chat-mode .advisor-chat { min-height: 0; margin-bottom: 16px; }
 .advisor-client-conversation.browser-chat-mode .conversation { height: auto; min-height: 520px; }
+.advisor-client-conversation.human-chat-mode .conversation { min-height: 360px; }
 .advisor-browser-chat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 10px; }
 .advisor-client-conversation .agent-status { display: none; }
 .advisor-client-conversation .message-list { max-height: none; min-height: 80px; }
@@ -140,6 +141,7 @@
 .advisor-client-conversation .composer textarea { min-height: 62px; }
 .advisor-client-conversation .conversation-footnote { font-size: 10px; }
 .advisor-client-chat-note { padding: 12px 18px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 11px; }
+.advisor-client-chat-note button { margin-top: 8px; border: 0; background: none; color: #075eed; font: inherit; font-weight: 700; padding: 4px 0; }
 .advisor-server-workspace { display: grid; gap: 14px; }
 .advisor-server-workspace .advisor-client-heading { padding-bottom: 0; }
 .advisor-server-workspace .advisor-client-heading .button { margin-top: 8px; }
@@ -174,4 +176,15 @@
   .advisor-client-document-toggle .badge { grid-column: 3; justify-self: start; }
   .advisor-client-document-content .paper { margin: 4px; padding: 16px; }
   .advisor-client-assistant { min-height: 500px; }
+  .advisor-client-communication-tabs { position: sticky; top: 0; z-index: 5; padding: 8px 12px; }
 }
+
+/* Size the three panes to the actual shell row, including wrapped demo controls. */
+@media(min-width:1101px){
+  .advisor-clients{height:100cqh;min-height:0}
+  .advisor-client-rail,.advisor-client-workspace{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .advisor-client-assistant{height:100%;overflow:hidden}
+}
+.advisor-client-assistant-head,.advisor-client-chat-note{flex-shrink:0}
+.advisor-client-assistant-head>div:last-child{min-width:0;overflow-wrap:anywhere}
+.advisor-client-conversation>.advisor-chat{min-width:0}

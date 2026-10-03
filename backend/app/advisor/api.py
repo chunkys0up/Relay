@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from .cloud_documents import attach_cloud_documents, original_document
 from .model import AdvisorProvider
 from .store import CASE, AdvisorError, AdvisorStore
 
@@ -165,6 +166,36 @@ def advisor_router(store: AdvisorStore, provider: AdvisorProvider | None,
         except AdvisorError as exc:
             store.fail_request(actor, conversation_id, key, exc.code)
             raise
+
+    @router.get("/cases/{case_id}/packets/{version_id}/documents")
+    def documents(case_id: str, version_id: str, packet_hash: str,
+                  response: Response,
+                  details: tuple[str, str, str] = Depends(session)) -> dict[str, Any]:
+        response.headers["Cache-Control"] = "no-store"
+        # Reuse the exact grant/hash gate used by model tools and previews.
+        return attach_cloud_documents(store, store.scope(details[1], case_id, [{"id": version_id, "hash": packet_hash}]))
+
+    @router.get("/cases/{case_id}/packets/{version_id}/original")
+    def packet_original(case_id: str, version_id: str, packet_hash: str,
+                        details: tuple[str, str, str] = Depends(session)) -> Response:
+        context = store.scope(details[1], case_id, [{"id": version_id, "hash": packet_hash}])
+        packet = context["versions"][0]
+        data = original_document(store, packet["id"], packet["hash"])
+        return Response(data, media_type="application/pdf", headers={
+            "Cache-Control": "no-store", "Content-Disposition": 'inline; filename="planning-packet.pdf"',
+            "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
+
+    @router.get("/cases/{case_id}/sources/{source_id}/original")
+    def source_original(case_id: str, source_id: str, version_id: str, packet_hash: str,
+                        source_hash: str, details: tuple[str, str, str] = Depends(session)) -> Response:
+        context = store.scope(details[1], case_id, [{"id": version_id, "hash": packet_hash}])
+        source = next((s for s in context["sources"] if s["id"] == source_id and s["hash"] == source_hash), None)
+        if source is None:
+            raise AdvisorError("NOT_FOUND", 404)
+        data = original_document(store, source["id"], source["hash"])
+        return Response(data, media_type="application/pdf", headers={
+            "Cache-Control": "no-store", "Content-Disposition": 'inline; filename="shared-source.pdf"',
+            "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
 
     @router.get("/cases/{case_id}/packets/{version_id}/preview")
     def packet_preview(case_id: str, version_id: str, packet_hash: str,

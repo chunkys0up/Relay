@@ -29,10 +29,6 @@ main{margin-left:166px;padding:24px;min-height:calc(100vh - 88px);background:whi
 @media(max-width:1100px){.navigation{width:142px}.navigation a{padding:10px;font-size:12px}main{margin-left:142px;padding:20px}.simulation-bar{padding-left:162px}.company-label{display:none}.paper{padding:24px}}
 @media(max-width:700px){.topbar{height:50px;padding:0 14px}.global-search{display:none}.mobile-search{display:flex;margin-left:auto;min-height:36px;align-items:center}.simulation-bar{padding:6px 14px;gap:10px;flex-wrap:wrap}.simulation-bar strong{font-size:10px}.navigation{top:auto;height:66px;width:100%;flex-direction:row;align-items:center;bottom:0;padding:3px 8px}.navigation nav{flex-direction:row;justify-content:space-around;gap:0}.navigation a{width:auto;min-width:58px;min-height:54px;font-size:10px;flex-direction:column;gap:3px;padding:5px 8px}.navigation a.active{box-shadow:inset 0 3px #0066ff}.navigation .settings-link{margin:0;border:0;padding:5px 8px;min-width:60px}.navigation>.avatar,.nav-identity{display:none}main{margin-left:0;padding:20px 14px 86px}.page-title{gap:12px}h1{font-size:27px}.scenario-menu{margin-left:auto}.scenario-options{right:0;left:auto;max-width:calc(100vw - 30px)}.paper{padding:20px}.topbar>.avatar{margin-left:0}.conversation{min-height:450px}.app-footer{font-size:10px}}
 .chat-attachments{display:grid;justify-items:start;gap:8px}.chat-attachments fieldset{border:1px solid var(--border);border-radius:5px;width:100%;padding:12px;display:grid;gap:8px}.chat-attachments small{font-size:11px}
-/* Screen edges follow shell padding at every breakpoint. */
-main .founder-home,main .founder-chat,main .founder-call-screen,main .advisor-clients{margin:-24px}
-@media(max-width:1100px){main .founder-home,main .founder-chat,main .founder-call-screen,main .advisor-clients{margin:-20px}}
-@media(max-width:700px){main .founder-home,main .founder-chat,main .founder-call-screen,main .advisor-clients{margin:-20px -14px}}
 /* Live backend panels (live.tsx): visually separate from local demo state. */
 .live-panel{display:grid;gap:14px;border-left:3px solid #117653}.live-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.live-heading small{display:block}.live-upload{position:relative;cursor:pointer}.live-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}.live-upload.is-busy{opacity:.6}
 .founder-home-content>.live-panel,.advisor-home>.live-panel{margin-top:24px}
@@ -73,6 +69,18 @@ main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavi
 .collapsible-heading button[aria-expanded=false] svg{transform:rotate(-90deg)}
 .collapsible-heading:has(button[aria-expanded=false]){margin-bottom:0!important}
 @media(prefers-reduced-motion:reduce){.collapsible-heading button svg{transition:none}}
+
+/* Edge-to-edge workspaces own their padding; negative margins clipped their headings
+   when lazy screen styles loaded before or after the shell stylesheet. */
+main{min-width:0;container-type:size}
+main:has(.founder-home,.founder-chat,.advisor-clients){padding:0}
+main .founder-home,main .founder-chat,main .advisor-clients{margin:0}
+main:has(.founder-home,.founder-chat,.advisor-clients)>.feedback{margin:12px}
+.navigation{flex-shrink:0}
+.navigation>nav,.navigation>a,.navigation>.avatar,.nav-identity{flex-shrink:0}
+@media(min-width:701px){.navigation{height:auto}}
+@media(min-width:601px) and (max-width:700px){.navigation nav{flex:1}}
+
 /* Demo role switch, in the top header. */
 .topbar-role{flex:none;padding:6px 28px 6px 10px;border:1px solid var(--border);border-radius:6px;background-color:#fff;font-size:13px;color:var(--lpl-navy)}
 /* Header search: a soft filled field like the chat composer. The field shows focus, not the bare input. */

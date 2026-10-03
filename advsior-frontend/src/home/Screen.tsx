@@ -87,7 +87,7 @@ export default function Screen() {
                 <td><div className="advisor-home-progress"><div className="advisor-home-progress-track" role="progressbar" aria-label={snapshot.company + ' progress'} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: progress + '%' }}/></div><strong>{progress}%</strong><small>{completed} of 4 steps</small></div></td>
                 <td><Badge tone={approved ? 'success' : questionsReturned ? 'attention' : 'neutral'}>{stage}</Badge></td>
                 <td>{sharedPackets.length + sharedSources.length} shared</td>
-                <td><Link className={'button ' + (needsReview ? 'button-primary' : 'button-outline')} to={clientLink}>{action}</Link></td>
+                <td><div className="advisor-home-client-actions"><Link className={'button ' + (needsReview ? 'button-primary' : 'button-outline')} to={clientLink}>{action}</Link><Link to="/advisor/clients?audience=human#message-side">Message client</Link></div></td>
               </tr></tbody>
             </table>
           </div>}

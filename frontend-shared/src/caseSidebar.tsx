@@ -89,15 +89,15 @@ export function SidebarSection({ id, title, as, children }: { id: string; title:
 
 /** The case checklist with a progress bar; each item can be ticked off. */
 export function ChecklistSection({ id, checklist }: { id: string; checklist: CaseChecklist }): ReactNode {
-  const { documents } = useCaseDocuments();
+  const { documents, error: documentsError } = useCaseDocuments();
   const items = checklist.items ?? [];
   const doneCount = items.filter((item) => item.state === 'done').length;
-  const fileCount = documents?.length ?? 0;
+  const fileCount = documents?.length;
   return <SidebarSection id={id} title="Checklist">
-    <p className="case-sidebar-summary">{doneCount} of {items.length} done · {fileCount} file{fileCount === 1 ? '' : 's'} received</p>
-    <div className="case-sidebar-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>
-    {checklist.error ? <p className="case-sidebar-empty" role="alert">{checklist.error}</p>
-      : checklist.items === null ? <p className="case-sidebar-empty" role="status">Loading checklist…</p>
+    <p className="case-sidebar-summary">{checklist.items === null ? (checklist.error ? 'Checklist unavailable' : 'Loading checklist…') : `${doneCount} of ${items.length} done`} · {fileCount === undefined ? (documentsError ? 'File count unavailable' : 'Loading files…') : `${fileCount} file${fileCount === 1 ? '' : 's'} received`}</p>
+    {checklist.items !== null && <div className="case-sidebar-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>}
+    {checklist.error && <p className="case-sidebar-empty" role="alert">{checklist.error}</p>}
+    {checklist.items === null ? (!checklist.error && <p className="case-sidebar-empty" role="status">Loading checklist…</p>)
       : items.length ? <ul className="case-sidebar-checklist">{items.map((item) => {
         const done = item.state === 'done';
         return <li key={item.id}>
@@ -117,7 +117,7 @@ export function NextStepsSection({ id, checklist }: { id: string; checklist: Cas
   const currentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
   return <SidebarSection id={id} title="Next steps">
     {nextItem ? <div className="case-sidebar-next-step"><span className="case-sidebar-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
-      : <p className="case-sidebar-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
+      : <p className="case-sidebar-empty">{checklist.items === null ? (checklist.error ? 'Next steps are unavailable until the checklist loads.' : 'Loading next steps…') : items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
     {currentQuestion && <Link className="case-sidebar-action" to="/founder/home/clarification">Answer {snapshot?.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
     <Link className="case-sidebar-link" to="/founder/documents">Review packet versions →</Link>
   </SidebarSection>;

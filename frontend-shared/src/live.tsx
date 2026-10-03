@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, EmptyState, Panel } from './ui';
 import { announceCaseUpdate, CASE_UPDATED_EVENT, documentUrl, LIVE_CASE_ID, listActivity, listChats, listChecklist, listDocuments, recentChatMessages, setChecklistState, uploadDocument } from './relayApi';
@@ -39,58 +39,118 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
 }
 
 /** Saved conversations of one kind visible to this role, most recently active first. */
-export function useChats(kind: ChatKind, role: ChatRole, caseId: string = LIVE_CASE_ID): { chats: ChatSummary[] | null; error: string | null } {
-  const [chats, setChats] = useState<ChatSummary[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export function useChats(kind: ChatKind, role: ChatRole, caseId: string = LIVE_CASE_ID, enabled = true): { chats: ChatSummary[] | null; error: string | null } {
+  const [snapshot, setSnapshot] = useState<{ key: string; chats: ChatSummary[]; error: string | null } | null>(null);
+  const key = `${caseId}:${kind}:${role}`;
   const reload = useCaseReload();
   useEffect(() => {
+    if (!enabled) return;
     const c = new AbortController();
-    listChats(caseId, kind, role, c.signal).then(next => { setChats(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    listChats(caseId, kind, role, c.signal).then(next => {
+      if (!c.signal.aborted) setSnapshot({ key, chats: next, error: null });
+    }).catch((e: unknown) => {
+      if (!c.signal.aborted) setSnapshot({ key, chats: [], error: errorText(e) });
+    });
     return () => c.abort();
-  }, [caseId, kind, role, reload]);
-  return { chats, error };
+  }, [caseId, kind, role, reload, enabled, key]);
+  if (!enabled) return { chats: [], error: null };
+  return snapshot?.key === key ? { chats: snapshot.chats, error: snapshot.error } : { chats: null, error: null };
 }
 
 /** The latest messages across this role's conversations, for previews. */
 export function useRecentMessages(role: ChatRole, limit = 3, caseId: string = LIVE_CASE_ID): ChatMessage[] | null {
-  const [messages, setMessages] = useState<ChatMessage[] | null>(null);
+  const [snapshot, setSnapshot] = useState<{ key: string; messages: ChatMessage[] } | null>(null);
+  const key = `${caseId}:${role}:${limit}`;
   const reload = useCaseReload();
   useEffect(() => {
     const c = new AbortController();
-    recentChatMessages(caseId, role, limit, c.signal).then(setMessages).catch(() => { if (!c.signal.aborted) setMessages([]); });
+    recentChatMessages(caseId, role, limit, c.signal).then(messages => {
+      if (!c.signal.aborted) setSnapshot({ key, messages });
+    }).catch(() => { if (!c.signal.aborted) setSnapshot({ key, messages: [] }); });
     return () => c.abort();
-  }, [caseId, role, limit, reload]);
-  return messages;
+  }, [caseId, role, limit, reload, key]);
+  return snapshot?.key === key ? snapshot.messages : null;
 }
 
 export interface CaseChecklist { items: ChecklistItem[] | null; error: string | null; setState: (itemId: string, state: ChecklistState) => Promise<void> }
 
 /** The case checklist the chat agent maintains; the founder can tick items off. */
 export function useCaseChecklist(caseId: string = LIVE_CASE_ID): CaseChecklist {
-  const [items, setItems] = useState<ChecklistItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [checklistState, setChecklistSnapshot] = useState<{ caseId: string; items: ChecklistItem[] } | null>(null);
+  const [loadError, setLoadError] = useState<{ caseId: string; message: string } | null>(null);
+  const [actionError, setActionError] = useState<{ caseId: string; message: string } | null>(null);
+  const activeCase = useRef<{ id: string; generation: number }>({ id: caseId, generation: 0 });
+  const loadGeneration = useRef(0);
+  const pendingItems = useRef(new Set<string>());
   const reload = useCaseReload();
+  const items = checklistState?.caseId === caseId ? checklistState.items : null;
+  const error = (actionError?.caseId === caseId ? actionError.message : null)
+    ?? (loadError?.caseId === caseId ? loadError.message : null);
+
+  useEffect(() => {
+    activeCase.current = { id: caseId, generation: activeCase.current.generation + 1 };
+    setActionError(null);
+    return () => { activeCase.current.generation += 1; };
+  }, [caseId]);
+
   useEffect(() => {
     const c = new AbortController();
-    listChecklist(caseId, c.signal).then(next => { setItems(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    const generation = ++loadGeneration.current;
+    setLoadError(null);
+    listChecklist(caseId, c.signal).then(next => {
+      if (!c.signal.aborted && generation === loadGeneration.current) {
+        setChecklistSnapshot({ caseId, items: next });
+      }
+    }).catch((e: unknown) => {
+      if (!c.signal.aborted && generation === loadGeneration.current) {
+        setLoadError({ caseId, message: errorText(e) });
+      }
+    });
     return () => c.abort();
   }, [caseId, reload]);
   const setState = useCallback(async (itemId: string, state: ChecklistState): Promise<void> => {
-    setItems(prev => prev?.map(item => item.id === itemId ? { ...item, state } : item) ?? prev);
-    try { await setChecklistState(caseId, itemId, state); } catch (e) { setError(errorText(e)); }
-    announceCaseUpdate();
+    const key = `${caseId}:${itemId}`;
+    if (pendingItems.current.has(key)) return;
+    pendingItems.current.add(key);
+    const generation = activeCase.current.generation;
+    setActionError(null);
+    try {
+      const updated = await setChecklistState(caseId, itemId, state);
+      if (activeCase.current.id !== caseId || activeCase.current.generation !== generation) return;
+      // A list request started before this mutation may still resolve after it.
+      loadGeneration.current += 1;
+      setChecklistSnapshot(prev => prev?.caseId === caseId
+        ? { caseId, items: prev.items.map(item => item.id === itemId ? updated : item) }
+        : prev);
+      announceCaseUpdate();
+    } catch (e) {
+      if (activeCase.current.id === caseId && activeCase.current.generation === generation) {
+        setActionError({ caseId, message: errorText(e) });
+        // The server may have saved the change before the response failed.
+        announceCaseUpdate();
+      }
+    } finally {
+      pendingItems.current.delete(key);
+    }
   }, [caseId]);
   return { items, error, setState };
 }
 
 /** Recent case activity: uploads, checklist changes and notes the agent logs. */
 export function useCaseActivity(caseId: string = LIVE_CASE_ID, limit = 8): { entries: ActivityEntry[] | null; error: string | null } {
-  const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [activityState, setActivityState] = useState<{ caseId: string; entries: ActivityEntry[] } | null>(null);
+  const [loadError, setLoadError] = useState<{ caseId: string; message: string } | null>(null);
   const reload = useCaseReload();
+  const entries = activityState?.caseId === caseId ? activityState.entries : null;
+  const error = loadError?.caseId === caseId ? loadError.message : null;
   useEffect(() => {
     const c = new AbortController();
-    listActivity(caseId, limit, c.signal).then(next => { setEntries(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    setLoadError(null);
+    listActivity(caseId, limit, c.signal).then(next => {
+      if (!c.signal.aborted) setActivityState({ caseId, entries: next });
+    }).catch((e: unknown) => {
+      if (!c.signal.aborted) setLoadError({ caseId, message: errorText(e) });
+    });
     return () => c.abort();
   }, [caseId, limit, reload]);
   return { entries, error };

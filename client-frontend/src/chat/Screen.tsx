@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { CaseSidebar, Conversation, ScreenState, plainText, timeAgo, useChats, useRelay } from '@relay/shared';
+import { Badge, CaseSidebar, Conversation, ScreenState, plainText, timeAgo, useChats, useRelay } from '@relay/shared';
+import type { AiRequestState } from '@relay/shared';
 import type { ChatThread } from '../../../frontend-shared/src/conversation';
 import './styles.css';
 
+const requestLabels: Record<AiRequestState, string> = { idle: 'Idle', responding: 'Thinking / Working', connected: 'Connected', error: 'AI unavailable', stopped: 'Stopped' };
+
 function DemoScreen() {
+  const [requestState, setRequestState] = useState<AiRequestState>('idle');
   const { snapshot, role } = useRelay();
   const [params] = useSearchParams();
   const [thread, setThread] = useState<ChatThread>({ kind: params.get('audience') === 'human' ? 'human' : 'ai', id: undefined });
@@ -31,10 +35,11 @@ function DemoScreen() {
     <div className="founder-chat-main">
       <header className="founder-chat-header">
         <div><h1>AI Chat</h1><p>Prepare your packet with Relay</p></div>
+        <div aria-label="AI request status"><small>AI request</small> <Badge tone={requestState === 'error' ? 'attention' : requestState === 'connected' ? 'success' : 'neutral'}>{requestLabels[requestState]}</Badge></div>
       </header>
       <div className="founder-chat-conversation">
         {chats && chats.length > 0 && <label className="founder-chat-history-select">Chat<select value={activeId ?? ''} onChange={e => setThread({ kind: thread.kind, id: e.target.value || null })}><option value="">New chat</option>{chats.map(chat => <option key={chat.id} value={chat.id}>{chat.title}</option>)}</select></label>}
-        <Conversation large thread={thread} onThreadChange={setThread}>
+        <Conversation large onRequestStateChange={setRequestState} thread={thread} onThreadChange={setThread}>
       {sentClarification && <section className="founder-chat-clarification" aria-label="Advisor question"><p>{snapshot.advisors[0]?.name ?? 'Your advisor'} sent you a question about your packet.</p><Link className="founder-chat-action" to="/founder/home/clarification">Answer the question</Link></section>}
 </Conversation>
       </div>

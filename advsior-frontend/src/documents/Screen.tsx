@@ -4,6 +4,7 @@ import {
   Badge, Button, Conversation, EmptyState, Icon, PageTitle, PacketPreview,
   ReviewControls, ScreenState, SourcePreview, useRelay,
 } from '@relay/shared';
+import ServerDocuments from './ServerDocuments';
 import './Screen.css';
 
 function setParams(search: URLSearchParams, update: (next: URLSearchParams) => void, changes: Record<string, string | null>): void {
@@ -16,6 +17,13 @@ function setParams(search: URLSearchParams, update: (next: URLSearchParams) => v
 }
 
 export default function Screen() {
+  const [params] = useSearchParams();
+  const browserMode = params.get('advisor_demo') === 'browser'
+    || (params.get('advisor_demo') !== 'server' && ['version', 'source', 'audience'].some(key => params.has(key)));
+  return browserMode ? <BrowserDocuments/> : <ServerDocuments/>;
+}
+
+function BrowserDocuments() {
   const { snapshot, role } = useRelay();
   const [params, update] = useSearchParams();
   const query = (params.get('q') ?? '').trim().toLowerCase();
@@ -46,7 +54,8 @@ export default function Screen() {
 
   return <ScreenState>
     {!snapshot || role !== 'advisor' ? null : <div className="advisor-documents">
-      <PageTitle title="Documents" subtitle="Shared packet versions and originals" />
+      <PageTitle title="Documents" subtitle="Browser demo · shared packet versions and originals" />
+      <Link className="button button-outline" to="/advisor/documents?advisor_demo=server">Open connected advisor documents</Link>
       <div className="advisor-documents-grid">
         <aside className="advisor-documents-files" aria-label="Shared client files">
           <header className="advisor-documents-client"><Icon name="folder" size={24}/><div><strong>{snapshot.company}</strong><small>{sources.length} shared original{sources.length===1?'':'s'}</small></div></header>

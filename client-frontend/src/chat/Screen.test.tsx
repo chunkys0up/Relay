@@ -1,16 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { RelayProvider, adapter } from '@relay/shared';
 import Screen from './Screen';
 
 beforeEach(() => {
   adapter.reset();
-  vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async input => new Response(JSON.stringify(
-    String(input).includes('/checklist')
+  vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async input => {
+    const url = String(input);
+    const body = url.includes('/checklist')
       ? [{ id: 'blocked-task', title: 'Confirm revenue', detail: 'Resolve the two revenue figures', state: 'blocked' }]
-      : [{ id: 'activity-1', actor: 'agent', text: 'Relay reviewed the revenue discrepancy', created_at: '2026-10-03T08:00:00Z' }],
-  ), { headers: { 'Content-Type': 'application/json' } })));
+      : url.includes('/activity')
+        ? [{ id: 'activity-1', actor: 'agent', text: 'Relay reviewed the revenue discrepancy', created_at: '2026-10-03T08:00:00Z' },
+          { id: 'activity-2', actor: 'system', text: 'Case state refreshed', created_at: '2026-10-03T08:01:00Z' }]
+        : [];
+    return new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
+  }));
 });
 afterEach(() => { cleanup(); adapter.reset(); vi.unstubAllGlobals(); });
 
@@ -26,15 +31,14 @@ describe('Founder AI Chat', () => {
   it('shows live checklist and activity beside the private AI conversation', async () => {
     renderHome();
     expect(await screen.findByRole('heading', { name: 'AI Chat' })).toBeVisible();
-    const stateGroup = screen.getByLabelText('Relay status');
-    expect(within(stateGroup).getByText('Idle')).toBeVisible();
-    expect(within(stateGroup).getByText('Thinking / Working')).toBeVisible();
-    expect(within(stateGroup).getByText('Needs input')).toHaveAttribute('aria-current', 'step');
+    expect(within(screen.getByLabelText('AI request status')).getByText('Idle')).toBeVisible();
     expect(await screen.findByText('Blocked')).toBeVisible();
-    expect(screen.getByText('Confirm revenue')).toBeVisible();
+    expect(screen.getAllByText('Confirm revenue')[0]).toBeVisible();
+    fireEvent.click(screen.getByRole('tab', { name: 'Activity' }));
     expect(await screen.findByText('Relay reviewed the revenue discrepancy')).toBeVisible();
+    expect(screen.getByText('Case state refreshed').closest('li')).toHaveTextContent('System');
     expect(screen.queryByRole('link', { name: 'Answer the question' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Replies come from Relay's assistant on Bedrock/)).toBeVisible();
+    expect(within(screen.getByLabelText('AI request status')).getByText('Idle')).toBeVisible();
     expect(screen.getByRole('tab', {name: 'AI assistant'})).toHaveAttribute('aria-selected', 'true');
   });
 

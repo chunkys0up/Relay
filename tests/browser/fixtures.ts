@@ -1,6 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 import type { BrowserContext } from '@playwright/test';
-import type { ActivityEntry, ChecklistItem } from '../../frontend-shared/src/relayApi';
+import type { ActivityEntry, ChatFile, ChatKind, ChatMessage, ChatRole, ChatSummary, ChecklistItem } from '../../frontend-shared/src/relayApi';
 
 export interface FixtureDocument {
   id: string;
@@ -13,14 +13,73 @@ export interface DocumentApiState {
   documents: FixtureDocument[];
   checklist: ChecklistItem[];
   activity: ActivityEntry[];
-  chatRequests: { message: string; session_id: string; case_id?: string; document_ids?: string[] }[];
+  chatRequests: { message: string; session_id: string; case_id?: string; document_ids?: string[]; conversation_id?: string }[];
+  conversations: ChatSummary[];
+  messages: ChatMessage[];
   uploads: { filename: string; body: Buffer; content: Buffer }[];
 }
 
 /** Intercept the legacy document service, including popup previews, without AWS or a running backend. */
 export async function installDocumentApi(context: BrowserContext): Promise<DocumentApiState> {
-  const state: DocumentApiState = { documents: [], uploads: [], checklist: [], activity: [], chatRequests: [] };
+  const state: DocumentApiState = { documents: [], uploads: [], checklist: [], activity: [], chatRequests: [], conversations: [], messages: [] };
   const previews = new Map<string, Buffer>();
+  let nextChatId = 1;
+  const chatId = (): string => `00000000-0000-4000-a000-${String(nextChatId++).padStart(12, '0')}`;
+  const addMessage = (chat: ChatSummary, sender: ChatMessage['sender_type'], content: string, files: ChatFile[] = []): ChatMessage => {
+    const created_at = new Date().toISOString();
+    const message: ChatMessage = { id: chatId(), conversation_id: chat.id, case_id: chat.case_id, sender_type: sender, content, files, created_at };
+    state.messages.push(message);
+    chat.last_sender = sender;
+    chat.last_content = content;
+    chat.last_at = created_at;
+    chat.updated_at = created_at;
+    return message;
+  };
+  const visible = (chat: ChatSummary, role: ChatRole): boolean => chat.kind === 'human' || chat.owner_role === role;
+  const chatHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': '*' };
+  await context.route('**/api/cases/*/conversations**', async route => {
+    const request = route.request();
+    const url = new URL(request.url());
+    const parts = url.pathname.split('/');
+    const caseId = parts[3];
+    const conversationId = parts[5];
+    const method = request.method();
+    const json = (body: unknown, status = 200) => route.fulfill({ status, headers: chatHeaders, json: body });
+    if (method === 'OPTIONS') { await route.fulfill({ status: 204, headers: chatHeaders }); return; }
+    if (!conversationId) {
+      if (method === 'GET') {
+        const kind = url.searchParams.get('kind');
+        const role = url.searchParams.get('role') as ChatRole;
+        await json(state.conversations.filter(chat => chat.case_id === caseId && chat.kind === kind && visible(chat, role)).reverse());
+      } else if (method === 'POST') {
+        const body = request.postDataJSON() as { kind: ChatKind; role: ChatRole; message?: { role: ChatRole; content: string; files: ChatFile[] } };
+        const now = new Date().toISOString();
+        const chat: ChatSummary = { id: chatId(), case_id: caseId, kind: body.kind, owner_role: body.kind === 'ai' ? body.role : null,
+          title: body.message?.content.slice(0, 60) ?? 'New chat', created_at: now, updated_at: now, last_sender: null, last_content: null, last_at: null };
+        state.conversations.push(chat);
+        if (body.message) addMessage(chat, body.message.role, body.message.content, body.message.files);
+        await json(chat, 201);
+      } else await json({ detail: 'Unsupported method' }, 405);
+      return;
+    }
+    const chat = state.conversations.find(item => item.id === conversationId && item.case_id === caseId);
+    const role = (url.searchParams.get('role') ?? (method === 'POST' ? (request.postDataJSON() as { role: ChatRole }).role : 'founder')) as ChatRole;
+    if (!chat || !visible(chat, role)) { await json({ detail: 'conversation not found' }, 404); return; }
+    if (parts[6] === 'messages') {
+      if (method === 'GET') await json(state.messages.filter(message => message.conversation_id === chat.id));
+      else if (method === 'POST' && chat.kind === 'human') {
+        const body = request.postDataJSON() as { role: ChatRole; content: string; files: ChatFile[] };
+        await json(addMessage(chat, body.role, body.content, body.files), 201);
+      } else await json({ detail: 'Unsupported message request' }, 400);
+    } else await json({ detail: 'Unknown conversation route' }, 404);
+  });
+  await context.route('**/api/cases/*/messages/recent**', async route => {
+    const url = new URL(route.request().url());
+    const role = url.searchParams.get('role') as ChatRole;
+    const limit = Number(url.searchParams.get('limit') ?? 3);
+    const allowed = new Set(state.conversations.filter(chat => chat.case_id === url.pathname.split('/')[3] && visible(chat, role)).map(chat => chat.id));
+    await route.fulfill({ headers: chatHeaders, json: state.messages.filter(message => allowed.has(message.conversation_id)).slice(-limit).reverse() });
+  });
   await context.route('**/api/documents**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -87,7 +146,13 @@ export async function installDocumentApi(context: BrowserContext): Promise<Docum
       return;
     }
     if (route.request().method() === 'POST' && new URL(route.request().url()).pathname === '/api/chat/stream') {
-      state.chatRequests.push(route.request().postDataJSON() as DocumentApiState['chatRequests'][number]);
+      const chatRequest = route.request().postDataJSON() as DocumentApiState['chatRequests'][number];
+      state.chatRequests.push(chatRequest);
+      const chat = state.conversations.find(item => item.id === chatRequest.conversation_id);
+      if (chat) {
+        addMessage(chat, chat.owner_role ?? 'founder', chatRequest.message);
+        addMessage(chat, 'ai', 'Offline model reply for this browser test.');
+      }
       await route.fulfill({ headers, contentType: 'text/plain', body: 'Offline model reply for this browser test.' });
       return;
     }

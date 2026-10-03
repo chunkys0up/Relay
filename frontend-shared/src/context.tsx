@@ -1,11 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createBrowserRelayAdapter } from './persistence';
+import { loadCloudFixture } from './cloudFixture';
 import { readDraft,writeDraft } from './drafts';
 import type { CaseSnapshot, RelayCommand, Role, Scenario } from './types';
 interface RelayContextValue { snapshot:CaseSnapshot|null;role:Role;loading:boolean;busy:boolean;error:string|null;notice:string|null;scenario:Scenario;run:(command:RelayCommand,options?:{silent?:boolean})=>Promise<boolean>;refresh:()=>void;cancel:()=>void;setScenario:(s:Scenario)=>void;clearNotice:()=>void }
 const Context=createContext<RelayContextValue|null>(null);
-export const adapter=createBrowserRelayAdapter();
+const fixtureMode=import.meta.env.VITE_PACKET_DATA_MODE==='fixture'||import.meta.env.MODE==='test';
+export const adapter=fixtureMode?createBrowserRelayAdapter():createBrowserRelayAdapter(180,{seedLoader:loadCloudFixture});
 export function RelayProvider({role,children}:{role:Role;children:ReactNode}):ReactNode{
  const [snapshot,setSnapshot]=useState<CaseSnapshot|null>(null);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [error,setError]=useState<string|null>(null);const [notice,setNotice]=useState<string|null>(null);const [scenario,setScenarioState]=useState<Scenario>('normal');
  const controller=useRef<AbortController|null>(null);const mutation=useRef<AbortController|null>(null);const pending=useRef(false);const mounted=useRef(true);

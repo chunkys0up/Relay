@@ -1,0 +1,19 @@
+.advisor-extraction-meta,.advisor-extraction-section{min-width:0;display:grid;gap:10px}
+.advisor-extraction-meta{padding:14px;border:1px solid var(--border);border-radius:5px;background:var(--subtle)}
+.advisor-extraction-meta>p,.advisor-extraction-seed{font-size:12px;color:var(--text-muted)}
+.advisor-extraction-meta dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:5px 14px;font-size:12px}
+.advisor-extraction-meta dt{font-weight:600}.advisor-extraction-meta dd{margin:0;overflow-wrap:anywhere}
+.advisor-extraction-meta>a{justify-self:start;font-size:12px}
+.advisor-extraction-section{border-top:1px solid var(--border);padding-top:14px}
+.advisor-extraction-section h3{font-size:14px}
+.advisor-extraction-section pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.7}
+.advisor-extraction-section ol{margin:0;padding-left:24px;display:grid;gap:6px;font-size:12px}
+.advisor-extraction-section ol span,.advisor-extraction-section small{color:var(--text-muted)}
+.advisor-extraction-lines summary{cursor:pointer;font-size:14px;font-weight:600}
+.advisor-extraction-lines ol{margin-top:10px}
+.advisor-extraction-section .advisor-extraction-low-confidence{color:#9a4b12;font-weight:600}
+.advisor-extraction-section dl{display:grid;gap:8px;margin:0}
+.advisor-extraction-section dl>div{display:grid;grid-template-columns:minmax(100px,1fr) minmax(0,2fr);gap:12px;font-size:12px}
+.advisor-extraction-section dd{margin:0;overflow-wrap:anywhere}
+.advisor-extraction-section table{border-collapse:collapse;width:100%;font-size:12px}
+.advisor-extraction-section td{border:1px solid var(--border);padding:7px;overflow-wrap:anywhere}

@@ -4,7 +4,7 @@ Relay is a fictional founder/advisor workspace for preparing source-backed plann
 
 ## Current interface
 
-- **Founder:** Home / AI Chat / Call. Home combines uploaded originals from the legacy backend with local synthetic packet versions; checklist and activity come from the legacy backend. AI Chat uses the legacy Strands chat service for private AI replies and keeps human messages in the browser demo. Call shows the shared PDF or packet summary and offers a simulated preview or an explicitly selected Amazon Chime connection.
+- **Founder:** Home / AI Chat / Documents. Home combines uploaded originals from the legacy backend with local synthetic packet versions; checklist and activity come from the legacy backend. AI Chat uses the legacy Strands chat service for private AI replies and persists conversations in PostgreSQL. Human messages require preview and confirmation. Documents shows the shared PDF or packet summary, and the shared sidebar provides Amazon Chime call controls.
 - **Advisor:** Home / Clients / Call. The ordinary screens show browser demo grants and exact-version review. Clients also offers an explicit server synthetic advisor workspace with its own session, granted versions, grounded private chat and citations.
 - Search and Settings are utilities. Sources, Documents, Reviews and clarification URLs remain contextual tools. Calls have pre-call and active review layouts; recording and transcription controls are absent.
 
@@ -14,7 +14,7 @@ The current repo UI is the design baseline. [specs.md](specs.md) records product
 
 With dependencies installed, run `npm run dev` at the root (or in `frontend-shared/`). For fresh setup, install the locked dependencies with `npm ci` after obtaining any required package-install approval.
 
-The default workspace uses a synthetic browser adapter for packet versions, grants, review state and human conversation. Founder AI turns stream from the separate legacy FastAPI/Strands service. Chat attachments upload to S3/Postgres and are read by its case-scoped tools; checklist and activity also use legacy case endpoints. The legacy service has no production actor authorization, so a caller-selected case ID is not an access-control boundary.
+The default workspace loads sample packet/source content from real synthetic PDFs stored in S3 and extracted by Amazon Textract. Start the advisor/workflow backend on port 8001 with the imported SQLite database before opening the frontend; see [synthetic packet setup](docs/synthetic-packets.md). Missing imported evidence produces a load error instead of a hardcoded packet fallback. A hash-specific browser adapter keeps a local copy for simulated grants, review state and clarification drafts. Use `VITE_PACKET_DATA_MODE=fixture npm run dev` only for an intentional offline fixture demo. Founder AI turns stream from the separate legacy FastAPI/Strands service. Chat attachments upload to S3/Postgres and are read by its case-scoped tools; checklist and activity also use legacy case endpoints. The legacy service has no production actor authorization, so a caller-selected case ID is not an access-control boundary.
 
 A separate packet-workflow service (no longer linked from Home or AI Chat) backs the call screen's PDF viewer and the advisor AI chat. It uses owner-scoped SQLite state, source extraction, bounded Strands agents, task updates and confirmed PDF generation/editing. See [workflow setup](docs/bedrock-workflow.md). Vite proxies `/api/workflow` to loopback port 8001 by default; `RELAY_WORKFLOW_PORT` overrides that port for isolated local testing.
 
@@ -53,3 +53,5 @@ Browser suites start isolated loopback services. Production identity, an integra
 - [Agent architecture and limits](docs/multiagent-workflow.md)
 - [Advisor chat boundaries](docs/advisor-bedrock.md)
 - [Bedrock role configuration](docs/bedrock-role-setup.md)
+
+Persisted legacy conversations require migration `backend/db/migrations/002_conversations.sql`. The migration is separate from the advisor SQLite import; neither system grants access in the other.

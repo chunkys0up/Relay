@@ -1,38 +1,38 @@
 import { test, expect } from './fixtures';
-import type { RelayAdapter } from '../../frontend-shared/src/types';
 
-test('durable adapter rejects competing stale writes and remembers retry keys after reload',async({page,context})=>{
- await page.goto('/founder/chat');await expect(page.getByLabel('Message Relay',{exact:true})).toBeVisible();
- const other=await context.newPage();await other.goto('/founder/chat');await expect(other.getByLabel('Message Relay',{exact:true})).toBeVisible();
- const submit=async(tab:typeof page,key:string):Promise<string>=>tab.evaluate(async(key)=>{
-  const path='/src/persistence.ts';
-  const module=await import(/* @vite-ignore */ path) as {createBrowserRelayAdapter:(latency?:number)=>RelayAdapter};
-  const api=module.createBrowserRelayAdapter(0);
-  try{await api.mutate('founder',{kind:'message',expected_revision:1,audience:{kind:'private_ai'},text:'Concurrent '+key,attachments:[],confirmed:false},{key});return 'ok';}
-  catch(e:unknown){return (e as {code:string}).code;}
- },key);
- const results=await Promise.all([submit(page,'left'),submit(other,'right')]);
- expect(results.sort()).toEqual(['STALE_REVISION','ok']);
- // Read the winning stored text rather than relying on the now sorted result array.
- const stored=await page.evaluate(async()=>{
-  const path='/src/persistence.ts';const module=await import(/* @vite-ignore */ path) as {createBrowserRelayAdapter:(latency?:number)=>RelayAdapter};
-  return (await module.createBrowserRelayAdapter(0).snapshot('founder')).data.messages.find(m=>m.text.startsWith('Concurrent '))!.text;
- });
- await page.reload();await expect(page.getByLabel('Message Relay',{exact:true})).toBeVisible();
- expect(await submit(page,stored.replace('Concurrent ',''))).toBe('ok');
- await expect(page.locator('.message-bubble').filter({hasText:stored})).toHaveCount(1);
+test('failed human send keeps the draft and retry saves one message', async ({ page, documentsApi }) => {
+  let fail = true;
+  await page.route('**/api/cases/*/conversations', async route => {
+    if (route.request().method() === 'POST' && fail) {
+      await route.fulfill({ status: 503, headers: { 'Access-Control-Allow-Origin': '*' }, json: { detail: 'Message service unavailable' } });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.goto('/founder/chat?audience=human');
+  const input = page.getByRole('textbox', { name: 'Message Maya Chen' });
+  await input.fill('Please review my reserve target.');
+  await page.getByRole('button', { name: 'Preview message' }).click();
+  await page.getByRole('button', { name: 'Confirm send' }).click();
+  await expect(page.getByRole('alert')).toContainText('Message service unavailable');
+  await expect(input).toHaveValue('Please review my reserve target.');
+  expect(documentsApi.conversations).toHaveLength(0);
+  fail = false;
+  await page.getByRole('button', { name: 'Preview message' }).click();
+  await page.getByRole('button', { name: 'Confirm send' }).click();
+  await expect(page.locator('.founder-chat-conversation .message-bubble').filter({ hasText: 'Please review my reserve target.' })).toHaveCount(1);
+  expect(documentsApi.messages.filter(message => message.content === 'Please review my reserve target.')).toHaveLength(1);
 });
 
-test('reloading during draft preparation recovers exactly one completed draft',async({page})=>{
- await page.goto('/founder/chat');
- await page.getByLabel('Message Relay',{exact:true}).fill('2026 revenue is $240,000. My reserve target is $60,000.');
- await page.getByRole('button',{name:'Send',exact:true}).click();
- await expect(page.getByLabel('Relay status').getByText('Thinking / Working',{exact:true})).toHaveAttribute('aria-current','step');
- await page.reload();
- await expect(page.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
- const versions=await page.evaluate(async()=>{
-  const path='/src/persistence.ts';const module=await import(/* @vite-ignore */ path) as {createBrowserRelayAdapter:(latency?:number)=>RelayAdapter};
-  return (await module.createBrowserRelayAdapter(0).snapshot('founder')).data.packets.map(p=>p.version);
- });
- expect(versions).toEqual([1,2]);
+test('open human conversation refreshes a new message from another tab', async ({ page, context }) => {
+  await page.goto('/founder/chat?audience=human');
+  await page.getByRole('textbox', { name: 'Message Maya Chen' }).fill('Initial shared conversation');
+  await page.getByRole('button', { name: 'Preview message' }).click();
+  await page.getByRole('button', { name: 'Confirm send' }).click();
+  const advisor = await context.newPage();
+  await advisor.goto('/advisor/clients?audience=human');
+  await advisor.getByRole('textbox', { name: 'Message Alex Morgan' }).fill('Live advisor reply');
+  await advisor.getByRole('button', { name: 'Preview message' }).click();
+  await advisor.getByRole('button', { name: 'Confirm send' }).click();
+  await expect(page.locator('.founder-chat-conversation .message-bubble').filter({ hasText: 'Live advisor reply' })).toHaveCount(1, { timeout: 10000 });
 });

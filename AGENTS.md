@@ -6,7 +6,7 @@ Relay is a fictional founder/advisor planning-packet demo with an optional local
 ## UI and documentation authority
 - The current routed UI in `frontend-shared/src/main.tsx` and its screens is the baseline. Preserve its layout and navigation during maintenance unless the user explicitly requests a product change.
 - `specs.md` describes current product behavior; `implementation.md` describes the current implementation and gaps. Update both when behavior changes. Do not create a competing `spec.md`.
-- Founder primary navigation is Home / AI Chat / Call. Advisor primary navigation is Home / Clients / Call. Search and Settings are utilities. Sources, Documents, Reviews and clarification routes are contextual tools, not additional primary destinations.
+- Founder primary navigation is Home / AI Chat / Documents (the document/call screen retains `/founder/call`). Advisor primary navigation is Home / Clients / Call. Search and Settings are utilities. Sources, Documents, Reviews and clarification routes are contextual tools, not additional primary destinations.
 - Do not restore recording/transcription controls, specialist-agent tiles, old navigation, or historical planned features from Git history, screenshots, old reports, or a backend schema. Existing contextual routes are not dead code simply because they are absent from primary navigation.
 - Keep durable setup and architecture in README/docs. Put one-off test logs and screenshots in ignored `test-results/` or outside the repo; Git history retains retired reports.
 
@@ -17,7 +17,7 @@ Run from the repository root using existing dependencies:
 - `npm test -- --maxWorkers=2`
 - `npm run build`
 - `npm run test:browser -- --workers=1`
-- `npm run test:workflow` (real local backend with simulated models; no AWS)
+- `node_modules/.bin/playwright test --config advisor.integration.playwright.config.ts` (real local advisor backend with simulated models; no AWS; the removed standalone founder-workspace UI has no browser suite)
 - `PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests -q`
 Package installation needs explicit authorization. Offline tests are not evidence of live AWS/media behavior. Do not read real `.env` files or credentials or run billable smoke checks without authorization.
 
