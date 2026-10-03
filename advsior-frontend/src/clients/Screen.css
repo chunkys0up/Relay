@@ -1,6 +1,6 @@
 .advisor-clients {
   display: grid;
-  grid-template-columns: minmax(205px, 250px) minmax(0, 1fr) minmax(300px, 350px);
+  grid-template-columns: minmax(205px, 250px) minmax(0, 1fr) auto;
   align-items: stretch;
   max-width: 1760px;
   min-height: calc(100vh - 180px);
@@ -109,37 +109,6 @@
 .advisor-client-document-content .source-excerpt { overflow-x: auto; }
 .advisor-document-history { padding: 16px; color: var(--text-muted); font-size: 12px; }
 .advisor-client-version-note { padding: 14px 4px; color: var(--text-muted); font-size: 11px; }
-.advisor-client-assistant {
-  min-width: 0;
-  border-left: 1px solid var(--border);
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 114px;
-  height: calc(100vh - 114px);
-  min-height: 600px;
-}
-.advisor-client-assistant-head {
-  display: flex;
-  gap: 12px;
-  padding: 26px 20px 18px;
-  border-bottom: 1px solid var(--border);
-}
-.advisor-ai-avatar { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--selected); }
-.advisor-client-assistant-head h2 { font-size: 23px; margin-bottom: 6px; }
-.advisor-client-assistant-head p { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
-.advisor-client-conversation { min-height: 0; flex: 1; overflow: auto; padding: 14px 16px; }
-.advisor-client-conversation .conversation { height: 100%; min-height: 0; padding: 0; gap: 12px; border: 0; }
-.advisor-client-conversation.browser-chat-mode .advisor-chat { min-height: 0; margin-bottom: 16px; }
-.advisor-client-conversation.browser-chat-mode .conversation { height: auto; min-height: 520px; }
-.advisor-browser-chat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 10px; }
-.advisor-client-conversation .agent-status { display: none; }
-.advisor-client-conversation .message-list { max-height: none; min-height: 80px; }
-.advisor-client-conversation .composer { margin-top: auto; padding: 9px; }
-.advisor-client-conversation .composer textarea { min-height: 62px; }
-.advisor-client-conversation .conversation-footnote { font-size: 10px; }
-.advisor-client-chat-note { padding: 12px 18px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 11px; }
 .advisor-server-workspace { display: grid; gap: 14px; }
 .advisor-server-workspace .advisor-client-heading { padding-bottom: 0; }
 .advisor-server-workspace .advisor-client-heading .button { margin-top: 8px; }
@@ -151,14 +120,14 @@
 .advisor-server-document pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.55; padding: 20px; margin: 14px 0; background: #fbfbfa; border: 1px solid var(--border); }
 .advisor-server-error { padding: 10px; border: 1px solid #e9b6bc; background: #fff0f0; color: #9b2432; }
 @media (max-width: 1250px) {
-  .advisor-clients { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr) minmax(275px, 305px); }
+  .advisor-clients { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr) auto; }
   .advisor-client-document-toggle { grid-template-columns: 15px 22px minmax(0, 1fr) auto; }
   .advisor-client-document-toggle time { display: none; }
 }
 @media (max-width: 1100px) {
   .advisor-clients { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr); }
-  .advisor-client-assistant { grid-column: 1 / -1; position: static; height: auto; min-height: 440px; border-left: 0; border-top: 1px solid var(--border); }
-  .advisor-client-conversation { max-height: 580px; }
+  .advisor-clients .case-sidebar { grid-column: 1 / -1; width: auto !important; max-width: none; height: 560px; border-left: 0; border-top: 1px solid var(--border); }
+  .advisor-clients .case-sidebar-resizer { display: none; }
 }
 @media (max-width: 650px) {
   .advisor-clients { display: block; margin: -20px -14px -90px; }
@@ -173,5 +142,14 @@
   .advisor-client-document-toggle { grid-template-columns: 14px 20px minmax(0, 1fr); gap: 8px; padding: 10px; }
   .advisor-client-document-toggle .badge { grid-column: 3; justify-self: start; }
   .advisor-client-document-content .paper { margin: 4px; padding: 16px; }
-  .advisor-client-assistant { min-height: 500px; }
+}
+/* Full-height page: the client list and documents scroll on their own and the AI sidebar stays in place. */
+main:has(.advisor-clients) { display: flex; flex-direction: column; overflow: hidden; }
+main:has(.advisor-clients) > :not(.advisor-clients) { flex: 0 0 auto; }
+main:has(.advisor-clients) .app-footer { display: none; }
+.advisor-clients { flex: 1 1 auto; min-height: 0; width: auto; }
+.advisor-client-rail, .advisor-client-workspace { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 1100px) {
+  main:has(.advisor-clients) { overflow-y: auto; }
+  .advisor-clients { flex: none; }
 }

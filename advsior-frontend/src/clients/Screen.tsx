@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  advisorApi, advisorPacketHref, AdvisorChat, Badge, Button, Conversation, EmptyState, Icon, PacketPreview,
+  advisorApi, advisorPacketHref, AssistantSidebar, Badge, Button, EmptyState, Icon, PacketPreview,
   ReviewControls, ScreenState, SourcePreview, useRelay,
 } from '@relay/shared';
 import type { AdvisorSession, PacketVersion, Source } from '@relay/shared';
@@ -184,17 +184,7 @@ export default function Screen() {
               <p className="advisor-client-version-note">Access to each packet is tied to its shared version. Questions and approval apply to the exact version under review.</p>
             </>}
       </section>
-      <aside className="advisor-client-assistant" aria-label="Private client AI chat">
-        <header className="advisor-client-assistant-head">
-          <div className="advisor-ai-avatar"><Icon name="agent" size={30}/></div>
-          <div><h2>Relay AI</h2><Badge>{serverMode ? 'Server synthetic context' : 'Select server context'}</Badge><p>Private to the server-assigned advisor</p></div>
-        </header>
-        <div className={`advisor-client-conversation ${serverMode ? 'server-chat-mode' : 'browser-chat-mode'}`}>
-          <AdvisorChat selectedPacketId={selected?.kind === 'packet' ? selected.id : latest?.id ?? null}/>
-          {!serverMode && <><p className="advisor-browser-chat-label">Browser demo conversation · simulated and saved only in this browser</p><Conversation privateOnly/></>}
-        </div>
-        <p className="advisor-client-chat-note">{serverMode ? 'Server advisor AI uses only its exact shared synthetic packet and sources.' : 'Open the server synthetic workspace above for grounded advisor AI.'}</p>
-      </aside>
+      <AssistantSidebar subtitle={`Private to you · ${snapshot.company}`}/>
     </div>}
   </ScreenState>;
 }

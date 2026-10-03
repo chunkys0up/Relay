@@ -65,3 +65,19 @@ body.is-resizing-sidebar{cursor:col-resize;user-select:none}
 .case-sidebar .case-sidebar-call .message-list>p.muted{margin:0}
 .case-sidebar .case-sidebar-call .composer textarea{min-height:44px}
 .case-sidebar .case-sidebar-call .conversation-footnote{font-size:11px;margin:0}
+/* AI chat sidebar: a header, then the conversation fills the rest; only the message list scrolls. */
+.assistant-sidebar .case-sidebar-body{padding:0;overflow:hidden}
+.assistant-sidebar-head{display:flex;align-items:center;gap:12px;padding:18px 20px 14px;border-bottom:1px solid #dfe7f1}
+.assistant-sidebar-avatar{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:50%;background:#eaf0f7}
+.assistant-sidebar-head h2{font-size:18px;color:#10182b}
+.assistant-sidebar-head p{font-size:12px;color:#65789d;margin-top:2px}
+.assistant-sidebar-new{margin-left:auto;flex:none;border:1px solid #d5dde8;background:#fff;border-radius:10px;padding:6px 10px;font:inherit;font-size:12px;font-weight:600;color:#0b1222;cursor:pointer}
+.assistant-sidebar-new:hover:not(:disabled){border-color:#0566e8;color:#0063e7}
+.assistant-sidebar-new:disabled{opacity:.5;cursor:default}
+.assistant-sidebar-chat{flex:1;min-height:0;padding:0 14px 10px}
+.assistant-sidebar-chat .conversation{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:0}
+.assistant-sidebar-chat .message-list{padding:16px 2px 20px;gap:20px}
+.assistant-sidebar-chat .own-message .message-bubble{max-width:85%;font-size:14px}
+.assistant-sidebar-chat .other-message .message-bubble{font-size:14px}
+.assistant-sidebar-chat .message-list>p.muted{font-size:14px}
+.assistant-sidebar-chat .composer{border-radius:18px;padding:10px 10px 8px 14px}

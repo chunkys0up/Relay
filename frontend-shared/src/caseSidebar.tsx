@@ -4,11 +4,14 @@ import { Link } from 'react-router-dom';
 import { CallControls } from './call';
 import { Collapsible } from './collapsible';
 import { Conversation } from './conversation';
+import type { ChatThread } from './conversation';
 import { useRelay } from './context';
 import { Tabs } from './tabs';
+import { Icon } from './ui';
 import { plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages } from './live';
 import type { CaseChecklist } from './live';
 import type { ActivityEntry, ChecklistState } from './relayApi';
+import './chatPage.css';
 import './caseSidebar.css';
 
 const checklistLabels: Record<ChecklistState, string> = { todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done' };
@@ -33,14 +36,11 @@ function store(key: string, value: string): void {
 }
 
 /**
- * The founder's case sidebar: Progress (checklist, next steps, case details), Call and Activity tabs.
- * Drag its left edge to resize; the width and tab are shared by every screen that shows it.
- * Every tab stays mounted while hidden, so switching tabs never drops a live call.
+ * A right-hand sidebar whose left edge drags to resize. The width is shared by every
+ * screen that shows one, so sidebars line up as you move between screens.
  */
-export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; onLiveCallChange?: (active: boolean) => void }): ReactNode {
-  const checklist = useCaseChecklist();
+export function ResizableSidebar({ label, className = '', children }: { label: string; className?: string; children: ReactNode }): ReactNode {
   const [width, setWidth] = useState(() => clampWidth(Number(readStored(WIDTH_KEY)) || DEFAULT_WIDTH));
-  const [tab, setTab] = useState(() => readStored(TAB_KEY) ?? 'progress');
   const resize = (next: number): void => { const clamped = clampWidth(next); setWidth(clamped); store(WIDTH_KEY, String(clamped)); };
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>): void {
@@ -64,20 +64,43 @@ export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; 
     event.preventDefault();
   }
 
+  return <div className={`case-sidebar ${className}`} style={{ width }}>
+    <div className="case-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-valuemin={MIN_WIDTH} aria-valuemax={MAX_WIDTH} aria-valuenow={width} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown} onDoubleClick={() => resize(DEFAULT_WIDTH)}/>
+    <aside className="case-sidebar-body" aria-label={label}>{children}</aside>
+  </div>;
+}
+
+/**
+ * The founder's case sidebar: Progress (checklist, next steps, case details), Call and Activity tabs.
+ * Every tab stays mounted while hidden, so switching tabs never drops a live call.
+ */
+export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; onLiveCallChange?: (active: boolean) => void }): ReactNode {
+  const checklist = useCaseChecklist();
+  const [tab, setTab] = useState(() => readStored(TAB_KEY) ?? 'progress');
   const tabs = [
     { id: 'progress', label: 'Progress', content: <><ChecklistSection id="sidebar-checklist" checklist={checklist}/><NextStepsSection id="sidebar-next" checklist={checklist}/><CaseDetailsSection id="sidebar-case"/></> },
     { id: 'call', label: 'Call', content: <CallPanel onLiveCallChange={onLiveCallChange}/> },
     { id: 'activity', label: 'Activity', content: <><ActivitySection id="sidebar-activity"/><RecentConversationSection id="sidebar-conversation"/></> },
   ];
   const current = tabs.find((item) => item.id === tab) ?? tabs[0];
-  return <div className="case-sidebar" style={{ width }}>
-    <div className="case-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-valuemin={MIN_WIDTH} aria-valuemax={MAX_WIDTH} aria-valuenow={width} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown} onDoubleClick={() => resize(DEFAULT_WIDTH)}/>
-    <aside className="case-sidebar-body" aria-label="Planning progress and activity">
-      <div className="case-sidebar-tabs"><Tabs id="case-sidebar" label="Workspace details" items={tabs} value={current.id} onChange={(next) => { setTab(next); store(TAB_KEY, next); }}/></div>
-      {tabs.map((item) => <div key={item.id} id={`case-sidebar-${item.id}-panel`} role="tabpanel" aria-labelledby={`case-sidebar-${item.id}-tab`} tabIndex={0} className="case-sidebar-panel" hidden={item.id !== current.id}>{item.content}</div>)}
-      {footer && <p className="case-sidebar-footer">{footer}</p>}
-    </aside>
-  </div>;
+  return <ResizableSidebar label="Planning progress and activity">
+    <div className="case-sidebar-tabs"><Tabs id="case-sidebar" label="Workspace details" items={tabs} value={current.id} onChange={(next) => { setTab(next); store(TAB_KEY, next); }}/></div>
+    {tabs.map((item) => <div key={item.id} id={`case-sidebar-${item.id}-panel`} role="tabpanel" aria-labelledby={`case-sidebar-${item.id}-tab`} tabIndex={0} className="case-sidebar-panel" hidden={item.id !== current.id}>{item.content}</div>)}
+    {footer && <p className="case-sidebar-footer">{footer}</p>}
+  </ResizableSidebar>;
+}
+
+/** A private AI chat with Relay in the resizable sidebar, styled like the full AI Chat page. */
+export function AssistantSidebar({ subtitle }: { subtitle: string }): ReactNode {
+  const [thread, setThread] = useState<ChatThread>({ kind: 'ai', id: undefined });
+  return <ResizableSidebar label="Relay AI chat" className="assistant-sidebar">
+    <header className="assistant-sidebar-head">
+      <span className="assistant-sidebar-avatar"><Icon name="agent" size={28}/></span>
+      <div><h2>Relay AI</h2><p>{subtitle}</p></div>
+      <button type="button" className="assistant-sidebar-new" onClick={() => setThread({ kind: 'ai', id: null })} disabled={thread.id === null}>+ New chat</button>
+    </header>
+    <div className="chat-page-conversation assistant-sidebar-chat"><Conversation large privateOnly thread={thread} onThreadChange={setThread}/></div>
+  </ResizableSidebar>;
 }
 
 /** A titled, collapsible block of a case sidebar; consecutive sections are divided by a rule. */
