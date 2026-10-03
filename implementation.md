@@ -1,3 +1,4 @@
+> **Approved V2 UI override (2 October 2026):** Client navigation is Home / AI Chat / Call; uploads and documents are on Home. Advisor navigation is Home / Clients / Call; Clients includes expandable documents, exact-version review, and private AI chat. Both roles have pre-call and active-call layouts with no capture/transcript controls. These approved mockups supersede conflicting historical navigation/capture-UI requirements below. Backend plans and access safeguards remain unchanged. See README and REDESIGN-RESULTS for implemented scope.
 # Relay implementation plan
 
 Version 0.4 · React/FastAPI local demo
