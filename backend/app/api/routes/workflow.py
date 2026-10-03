@@ -10,63 +10,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.workflow.actions import resolve_edit
-from app.workflow.answers import confirm_answer, discard_answer, preview_answer
-from app.workflow.packet_stages import import_packet, transition_packet
-from app.workflow.cloud_sync import CloudSync
-from app.workflow.example_packets import create_example_cases
-from app.core.config import settings
 
 from app.workflow.repository import Repository, WorkflowError
-from app.workflow.sharing import (accessible_case_ids, authorize_case, create_invite,
-                                  list_shares, redeem_invite, review_packet,
-                                  revoke_invite, session_role, shared_snapshot)
 from app.workflow.schemas import ConfirmInput, CreateCase, PacketInput, RelationshipInput, RunInput
 from app.workflow.service import WorkflowService
 
 
 class PdfActionInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    expected_revision: int = Field(ge=0)
-    preview_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-
-
-class PacketStageInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    expected_revision: int = Field(ge=0)
-    packet_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    target_stage: str
-
-
-class InviteInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    expected_revision: int = Field(ge=0)
-    packet_id: str = Field(max_length=128)
-    packet_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    source_ids: list[str] = Field(default_factory=list, max_length=100)
-
-
-class RedeemInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    invite_code: str = Field(min_length=1, max_length=256)
-
-
-class ReviewInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    expected_revision: int = Field(ge=0)
-    packet_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    decision: str = Field(pattern="^(approved|questions_returned)$")
-    note: str = Field(default="", max_length=4000)
-
-
-class AnswerPreviewInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    expected_revision: int = Field(ge=0)
-    packet_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
-    review_id: str = Field(min_length=1, max_length=128)
-    answer: str = Field(min_length=1, max_length=4000)
-
-
-class AnswerConfirmInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_revision: int = Field(ge=0)
     preview_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
@@ -80,15 +30,6 @@ def workflow_router(
     repository: Repository, service: WorkflowService, *, test_mode: bool = False,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/workflow")
-    cloud = CloudSync(repository, settings)
-
-    def schedule_sync(background: BackgroundTasks, owner: str, case_id: str) -> None:
-        if not test_mode and settings.database_url and settings.s3_bucket:
-            background.add_task(cloud.sync_case, owner, case_id)
-
-    def invalidate_calls(case_id: str) -> None:
-        from app.services.chime import invalidate_case
-        invalidate_case(case_id)
 
     def session_id(request: Request) -> str:
         sid = request.cookies.get("relay_workflow_session", "")
@@ -103,11 +44,6 @@ def workflow_router(
         origin = request.headers.get("origin")
         if origin and not _local_host(urlparse(origin).hostname or ""):
             raise HTTPException(status_code=403, detail="ORIGIN_FORBIDDEN")
-        return sid
-
-    def founder_session(sid: str = Depends(mutation_session)) -> str:
-        if session_role(repository, sid) != "founder":
-            raise WorkflowError("FOUNDER_REQUIRED", 403)
         return sid
 
     def idem(key: str | None = Header(default=None, alias="Idempotency-Key")) -> str:
@@ -130,82 +66,24 @@ def workflow_router(
             mode, label = "simulated", service.provider.label
         else:
             mode, label = "live", service.provider.label
-        actor_role = session_role(repository, sid)
         return {"demo": True, "mode": mode, "provider": label,
-                "csrf_token": csrf, "actor": {"role": actor_role, "name": "Local advisor" if actor_role == "advisor" else "Demo founder"},
+                "csrf_token": csrf, "actor": {"role": "founder", "name": "Demo founder"},
                 "upload_limits": {"max_bytes": 10 * 1024 * 1024,
                                   "mime_types": ["application/pdf", "text/plain", "text/csv"]}}
 
     @router.get("/cases")
     def list_cases(sid: str = Depends(session_id)) -> dict[str, Any]:
-        return {"items": [shared_snapshot(repository, service,
-                    authorize_case(repository, sid, case_id), case_id)
-                    for case_id in accessible_case_ids(repository, sid)]}
-
-    @router.post("/invites/redeem")
-    def redeem(body: RedeemInput, sid: str = Depends(mutation_session),
-               _key: str = Depends(idem)) -> dict[str, Any]:
-        return redeem_invite(repository, sid, body.invite_code)
-
-    @router.get("/cases/{case_id}/shares")
-    def shares(case_id: str, sid: str = Depends(session_id)) -> dict[str, Any]:
-        return {"items": list_shares(repository, sid, case_id)}
-
-    @router.post("/cases/{case_id}/shares", status_code=201)
-    def invite(case_id: str, body: InviteInput,
-               sid: str = Depends(founder_session), key: str = Depends(idem)) -> dict[str, Any]:
-        return create_invite(repository, sid, case_id, body.packet_id,
-                             body.packet_hash, body.source_ids, body.expected_revision, key)
-
-    @router.post("/cases/{case_id}/shares/{invite_id}/revoke")
-    def revoke(case_id: str, invite_id: str,
-               sid: str = Depends(founder_session), _key: str = Depends(idem)) -> dict[str, Any]:
-        result = revoke_invite(repository, sid, case_id, invite_id)
-        if result["evict_advisor"]:
-            from app.services.chime import revoke_actor
-            revoke_actor(case_id, result["advisor_id"])
-        return result
-
-    @router.post("/cases/{case_id}/packets/{packet_id}/review")
-    def review(case_id: str, packet_id: str, body: ReviewInput,
-               background: BackgroundTasks, sid: str = Depends(mutation_session),
-               key: str = Depends(idem)) -> dict[str, Any]:
-        access = authorize_case(repository, sid, case_id)
-        if access.role != "advisor":
-            raise WorkflowError("ADVISOR_GRANT_REQUIRED", 403)
-        result = review_packet(repository, sid, case_id, packet_id,
-                               body.packet_hash, body.expected_revision,
-                               body.decision, body.note, key)
-        schedule_sync(background, access.owner, case_id)
-        return result
+        return {"items": service.list_cases(sid)}
 
     @router.post("/cases", status_code=201)
     def create_case(
-        body: CreateCase, background: BackgroundTasks,
-        sid: str = Depends(founder_session), key: str = Depends(idem),
+        body: CreateCase, sid: str = Depends(mutation_session), key: str = Depends(idem),
     ) -> dict[str, Any]:
-        result = service.create_case(sid, key, body.company, body.goal)
-        schedule_sync(background, sid, result["id"])
-        return result
-
-    @router.post("/cases/examples", status_code=201)
-    def load_examples(background: BackgroundTasks, sid: str = Depends(founder_session),
-                      key: str = Depends(idem)) -> dict[str, Any]:
-        items = create_example_cases(service, sid)
-        for item in items:
-            schedule_sync(background, sid, item["id"])
-        return {"items": items}
-
-    @router.post("/cases/{case_id}/sync")
-    def retry_sync(case_id: str, sid: str = Depends(founder_session),
-                   _key: str = Depends(idem)) -> dict[str, Any]:
-        service.snapshot(sid, case_id)
-        return service._public(cloud.sync_case(sid, case_id))
+        return service.create_case(sid, key, body.company, body.goal)
 
     @router.get("/cases/{case_id}")
     def get_case(case_id: str, sid: str = Depends(session_id)) -> dict[str, Any]:
-        return shared_snapshot(repository, service,
-                               authorize_case(repository, sid, case_id), case_id)
+        return service.snapshot(sid, case_id)
 
     @router.websocket("/cases/{case_id}/events")
     async def events(websocket: WebSocket, case_id: str) -> None:
@@ -257,13 +135,12 @@ def workflow_router(
         case_id: str, background: BackgroundTasks,
         expected_revision: int = Form(...), file: UploadFile = File(...),
         analyze: bool = Form(False),
-        sid: str = Depends(founder_session), key: str = Depends(idem),
+        sid: str = Depends(mutation_session), key: str = Depends(idem),
     ) -> dict[str, Any]:
         data = await file.read(10 * 1024 * 1024 + 1)
         result = service.upload_source(sid, case_id, expected_revision, key,
                                        file.filename or "source", file.content_type or "", data,
                                        analyze=analyze)
-        schedule_sync(background, sid, case_id)
         if analyze and not result["duplicate"] and service.provider is not None and result["source"]["extraction_status"] == "ready":
             started = service.start_job(sid, case_id, result["case_revision"],
                                         key + ":analysis", "Interpret the uploaded source and identify missing or conflicting packet facts.",
@@ -276,7 +153,7 @@ def workflow_router(
     @router.post("/cases/{case_id}/sources/{source_id}/relationship")
     def source_relationship(
         case_id: str, source_id: str, body: RelationshipInput,
-        sid: str = Depends(founder_session), key: str = Depends(idem),
+        sid: str = Depends(mutation_session), key: str = Depends(idem),
     ) -> dict[str, Any]:
         return service.set_source_relationship(sid, case_id, source_id,
             body.related_source_id, body.decision, body.expected_revision, key)
@@ -284,7 +161,7 @@ def workflow_router(
     @router.post("/cases/{case_id}/templates", status_code=201)
     async def upload_template(
         case_id: str, expected_revision: int = Form(...), file: UploadFile = File(...),
-        sid: str = Depends(founder_session), key: str = Depends(idem),
+        sid: str = Depends(mutation_session), key: str = Depends(idem),
     ) -> dict[str, Any]:
         if file.content_type != "application/pdf":
             raise WorkflowError("UNSUPPORTED_FILE", 415)
@@ -296,17 +173,11 @@ def workflow_router(
     def preview_source(
         case_id: str, source_id: str, sid: str = Depends(session_id),
     ) -> StreamingResponse:
-        access = authorize_case(repository, sid, case_id)
-        if source_id not in access.source_ids:
-            raise WorkflowError("NOT_FOUND", 404)
-        state = shared_snapshot(repository, service, access, case_id)
+        state = service.snapshot(sid, case_id)
         source = next((s for s in state["sources"] if s["id"] == source_id), None)
         if source is None:
             raise WorkflowError("NOT_FOUND", 404)
-        body = repository.blob(access.owner, case_id, source_id, "source")
-        import hashlib
-        if hashlib.sha256(body).hexdigest() != source["hash"]:
-            raise WorkflowError("ORIGINAL_INTEGRITY_ERROR", 409)
+        body = repository.blob(sid, case_id, source_id, "source")
         media_type = source["mime_type"].split(";", 1)[0].strip().lower()
         if media_type not in ("application/pdf", "text/plain", "text/csv"):
             raise WorkflowError("UNSUPPORTED_FILE", 415)
@@ -318,7 +189,7 @@ def workflow_router(
     @router.post("/cases/{case_id}/run", status_code=202)
     def run(
         case_id: str, body: RunInput, background: BackgroundTasks,
-        sid: str = Depends(founder_session), key: str = Depends(idem),
+        sid: str = Depends(mutation_session), key: str = Depends(idem),
     ) -> dict[str, Any]:
         result = service.start_job(sid, case_id, body.expected_revision, key, body.goal)
         background.add_task(service.process_job, sid, case_id, result["job_id"])
@@ -334,129 +205,29 @@ def workflow_router(
 
     @router.post("/cases/{case_id}/facts/confirm")
     def confirm(
-        case_id: str, body: ConfirmInput, sid: str = Depends(founder_session),
+        case_id: str, body: ConfirmInput, sid: str = Depends(mutation_session),
         key: str = Depends(idem),
     ) -> dict[str, Any]:
         return service.confirm(sid, case_id, key, body)
 
     @router.post("/cases/{case_id}/packets", status_code=201)
     def create_packet(
-        case_id: str, body: PacketInput, background: BackgroundTasks,
-        sid: str = Depends(founder_session), key: str = Depends(idem),
+        case_id: str, body: PacketInput, sid: str = Depends(mutation_session),
+        key: str = Depends(idem),
     ) -> dict[str, Any]:
-        result = service.create_packet(sid, case_id, body.expected_revision, key, body.template_id)
-        invalidate_calls(case_id)
-        schedule_sync(background, sid, case_id)
-        return result
-
-    @router.post("/cases/{case_id}/packets/import", status_code=201)
-    async def import_existing_packet(
-        case_id: str, background: BackgroundTasks,
-        expected_revision: int = Form(...), file: UploadFile = File(...),
-        sid: str = Depends(founder_session), key: str = Depends(idem),
-    ) -> dict[str, Any]:
-        if file.content_type != "application/pdf":
-            raise WorkflowError("UNSUPPORTED_FILE", 415)
-        data = await file.read(10 * 1024 * 1024 + 1)
-        result = import_packet(repository, sid, case_id, expected_revision,
-                               key, file.filename or "Imported packet.pdf", data)
-        invalidate_calls(case_id)
-        schedule_sync(background, sid, case_id)
-        return result
-
-    @router.post("/cases/{case_id}/packets/{packet_id}/stage")
-    def set_packet_stage(
-        case_id: str, packet_id: str, body: PacketStageInput, background: BackgroundTasks,
-        sid: str = Depends(founder_session), key: str = Depends(idem),
-    ) -> dict[str, Any]:
-        result = transition_packet(repository, sid, case_id, packet_id,
-                                   body.expected_revision, body.packet_hash, body.target_stage, key)
-        schedule_sync(background, sid, case_id)
-        return result
-
-    @router.post("/cases/{case_id}/packets/{packet_id}/answer-preview", status_code=201)
-    def create_answer_preview(case_id: str, packet_id: str, body: AnswerPreviewInput,
-                              sid: str = Depends(founder_session),
-                              key: str = Depends(idem)) -> dict[str, Any]:
-        return preview_answer(repository, sid, case_id, packet_id, body.packet_hash,
-                              body.review_id, body.answer, body.expected_revision, key)
-
-    @router.get("/cases/{case_id}/answer-previews/{preview_id}/pdf")
-    def download_answer_preview(case_id: str, preview_id: str,
-                                sid: str = Depends(session_id)) -> StreamingResponse:
-        if session_role(repository, sid) != "founder":
-            raise WorkflowError("FOUNDER_REQUIRED", 403)
-        state = service.snapshot(sid, case_id)
-        preview = next((item for item in state.get("answer_previews", [])
-                        if item["id"] == preview_id), None)
-        if preview is None or preview["status"] != "pending":
-            raise WorkflowError("NOT_FOUND", 404)
-        body = repository.blob(sid, case_id, preview_id, "answer_preview")
-        import hashlib
-        if hashlib.sha256(body).hexdigest() != preview["hash"]:
-            raise WorkflowError("ANSWER_PREVIEW_INTEGRITY_ERROR")
-        return StreamingResponse(iter([body]), media_type="application/pdf",
-            headers={"Content-Disposition": "inline; filename=relay-answer-preview.pdf",
-                     "X-Content-SHA256": preview["hash"], "X-Content-Type-Options": "nosniff",
-                     "Content-Security-Policy": "sandbox"})
-
-    @router.post("/cases/{case_id}/answer-previews/{preview_id}/confirm")
-    def apply_answer_preview(case_id: str, preview_id: str, body: AnswerConfirmInput,
-                             background: BackgroundTasks,
-                             sid: str = Depends(founder_session),
-                             key: str = Depends(idem)) -> dict[str, Any]:
-        result = confirm_answer(repository, sid, case_id, preview_id,
-                                body.preview_hash, body.expected_revision, key)
-        invalidate_calls(case_id)
-        schedule_sync(background, sid, case_id)
-        return result
-
-    @router.post("/cases/{case_id}/answer-previews/{preview_id}/discard")
-    def dismiss_answer_preview(case_id: str, preview_id: str, body: AnswerConfirmInput,
-                               sid: str = Depends(founder_session),
-                               key: str = Depends(idem)) -> dict[str, Any]:
-        return discard_answer(repository, sid, case_id, preview_id,
-                              body.preview_hash, body.expected_revision, key)
-
-    @router.get("/cases/{case_id}/packets/{packet_id}/preview-text")
-    def packet_preview_text(case_id: str, packet_id: str,
-                            sid: str = Depends(session_id)) -> dict[str, str]:
-        from io import BytesIO
-        from pypdf import PdfReader
-        import hashlib
-        access = authorize_case(repository, sid, case_id)
-        if access.role == "advisor" and packet_id != access.packet_id:
-            raise WorkflowError("NOT_FOUND", 404)
-        state = shared_snapshot(repository, service, access, case_id)
-        packet = next((item for item in state["packets"] if item["id"] == packet_id), None)
-        if packet is None:
-            raise WorkflowError("NOT_FOUND", 404)
-        body = repository.blob(access.owner, case_id, packet_id, "packet")
-        if hashlib.sha256(body).hexdigest() != packet["hash"]:
-            raise WorkflowError("ORIGINAL_INTEGRITY_ERROR", 409)
-        try:
-            reader = PdfReader(BytesIO(body), strict=True)
-            text = "\n\n".join((page.extract_text() or "") for page in reader.pages)[:20000]
-        except Exception as exc:
-            raise WorkflowError("INVALID_PDF", 422) from exc
-        return {"status": "readable" if text.strip() else "no_native_text", "text": text}
+        return service.create_packet(sid, case_id, body.expected_revision, key,
+                                     body.template_id)
 
     @router.get("/cases/{case_id}/packets/{packet_id}/download")
     def download_packet(
         case_id: str, packet_id: str, inline: bool = False,
         sid: str = Depends(session_id),
     ) -> StreamingResponse:
-        access = authorize_case(repository, sid, case_id)
-        if access.role == "advisor" and packet_id != access.packet_id:
-            raise WorkflowError("NOT_FOUND", 404)
-        state = shared_snapshot(repository, service, access, case_id)
+        state = service.snapshot(sid, case_id)
         packet = next((packet for packet in state["packets"] if packet["id"] == packet_id), None)
         if packet is None:
             raise WorkflowError("NOT_FOUND", 404)
-        body = repository.blob(access.owner, case_id, packet_id, "packet")
-        import hashlib
-        if hashlib.sha256(body).hexdigest() != packet["hash"]:
-            raise WorkflowError("ORIGINAL_INTEGRITY_ERROR", 409)
+        body = repository.blob(sid, case_id, packet_id, "packet")
         return StreamingResponse(iter([body]), media_type="application/pdf",
                                  headers={"Content-Disposition":
                                           f'{"inline" if inline else "attachment"}; filename="relay-packet-v{packet["version"]}.pdf"',
@@ -473,17 +244,13 @@ def workflow_router(
 
     @router.post("/cases/{case_id}/pdf-actions/{action_id}/confirm")
     def confirm_edit(case_id: str, action_id: str, body: PdfActionInput,
-                     background: BackgroundTasks,
-                     sid: str = Depends(founder_session), key: str = Depends(idem)) -> dict[str, Any]:
-        result = resolve_edit(repository, sid, case_id, action_id, body.expected_revision,
-                              body.preview_hash, key)
-        invalidate_calls(case_id)
-        schedule_sync(background, sid, case_id)
-        return result
+                     sid: str = Depends(mutation_session), key: str = Depends(idem)) -> dict[str, Any]:
+        return resolve_edit(repository, sid, case_id, action_id, body.expected_revision,
+                            body.preview_hash, key)
 
     @router.post("/cases/{case_id}/pdf-actions/{action_id}/dismiss")
     def dismiss_edit(case_id: str, action_id: str, body: PdfActionInput,
-                     sid: str = Depends(founder_session), key: str = Depends(idem)) -> dict[str, Any]:
+                     sid: str = Depends(mutation_session), key: str = Depends(idem)) -> dict[str, Any]:
         return resolve_edit(repository, sid, case_id, action_id, body.expected_revision,
                             body.preview_hash, key, dismiss=True)
 

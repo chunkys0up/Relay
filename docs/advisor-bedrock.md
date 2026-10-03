@@ -1,10 +1,10 @@
 # Server synthetic advisor workspace
 
-The Advisor Clients screen offers a server synthetic workspace alongside the browser demo. It is served by `app.main` on loopback and uses its own SQLite-backed assignments, exact packet/source grants, conversations and idempotency records. It does not import browser grants, founder uploads, legacy Postgres/S3 documents or owner-scoped founder workflow cases.
+The Advisor Clients screen offers a server synthetic workspace alongside the browser demo. It is served by `app.workflow_app` on loopback and uses its own SQLite-backed assignments, exact packet/source grants, conversations and idempotency records. It does not import browser grants, founder uploads, legacy Postgres/S3 documents or owner-scoped founder workflow cases.
 
 ## Use
 
-Start the local workflow service and Vite app using the existing project setup; see [founder workflow setup](bedrock-workflow.md) for the loopback service command and dependency requirements. The advisor API is mounted on the same port, normally 8000. Open Advisor → Clients and choose **Open server synthetic advisor workspace**. Without `BEDROCK_ORCHESTRATOR_MODEL_ID`, session and packet previews remain available while chat reports that its model is not configured.
+Start the local workflow service and Vite app using the existing project setup; see [founder workflow setup](bedrock-workflow.md) for the loopback service command and dependency requirements. The advisor API is mounted on the same port, normally 8001. Open Advisor → Clients and choose **Open server synthetic advisor workspace**. Without `BEDROCK_ORCHESTRATOR_MODEL_ID`, session and packet previews remain available while chat reports that its model is not configured.
 
 The advisor mode comes from the server, not the browser role selector. The server issues an HttpOnly session cookie and CSRF token. Mutations require same-origin/loopback checks and idempotency keys. Each fresh synthetic session receives its own actor and private conversation history.
 

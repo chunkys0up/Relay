@@ -8,8 +8,8 @@ This documents implemented interfaces; it is not a proposal to add product featu
 | --- | --- | --- | --- |
 | Browser demo | `MockRelayAdapter` via `context.tsx` | Browser persistence | Synthetic packet, grant-filtered views, human messages, reviews and simulated calls |
 | Legacy integration | `relayApi.ts`, `callsApi.ts`, `conversation.tsx` | `app.main`, port 8000; S3/PostgreSQL and Chime | Live founder Strands chat and case tools, document upload/list/open, checklist/activity and calls. Caller-supplied case IDs; not production actor authorization. |
-| Owner-scoped founder workspace | `client-frontend/src/workflow/api.ts` | `app.main`, port 8000; SQLite | Loopback-only case sessions, tasks/facts and PDFs; session/CSRF/revision/idempotency checks |
-| Server synthetic advisor workspace | `advisorApi.ts`, `advisorChat.tsx` | `app.main`, port 8000; separate SQLite tables | Own HttpOnly session/CSRF, synthetic assignment, exact grants, private chat and citation previews; read-only, no client actions |
+| Owner-scoped founder workspace | `client-frontend/src/workflow/api.ts` | `app.workflow_app`, port 8001; SQLite | Loopback-only case sessions, tasks/facts and PDFs; session/CSRF/revision/idempotency checks |
+| Server synthetic advisor workspace | `advisorApi.ts`, `advisorChat.tsx` | `app.workflow_app`, port 8001; separate SQLite tables | Own HttpOnly session/CSRF, synthetic assignment, exact grants, private chat and citation previews; read-only, no client actions |
 
 These paths do not automatically share persistence or authorization. The local browser role selector is not authentication. The generic legacy chat is not the grant-scoped advisor assistant.
 

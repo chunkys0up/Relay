@@ -16,15 +16,10 @@ function reviewStatus(packet: PacketVersion): { label: string; tone: 'neutral' |
 }
 
 export default function Screen(): ReactNode {
-  const { snapshot,mode,serverActorRole } = useRelay();
+  const { snapshot } = useRelay();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [livePacketId, setLivePacketId] = useState<string | null>(null);
   const [documentView, setDocumentView] = useState<'pdf' | 'summary'>('pdf');
-  if(mode==='server'){
-    const packet=snapshot?.packets.find(item=>item.id===snapshot.current_packet_version_id);
-    const shared=packet&&snapshot?.grants.some(grant=>grant.packet_version_id===packet.id&&grant.packet_hash===packet.hash);
-    return <section className="relay-call-screen advisor-call-screen"><div className="relay-call-layout"><div className="relay-call-document-column"><header className="relay-call-header"><h1>Shared packet PDF review</h1><p>Active advisor grant · Amazon Chime</p></header>{snapshot&&packet?<PdfViewer caseId={snapshot.id} packetId={packet.id}/>:<p>No current packet PDF is available.</p>}</div>{serverActorRole==='advisor'&&shared?<CallControls/>:<Panel title="Call access"><p>Call and review actions require an active advisor grant for this packet.</p><Link className="button button-outline" to="/advisor/clients">View clients</Link></Panel>}</div></section>;
-  }
   if (!snapshot) return null;
 
   const available = snapshot.packets.filter(packet => snapshot.grants.some(grant =>

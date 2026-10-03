@@ -171,8 +171,7 @@ class MultiAgentProvider(BedrockProvider):
             raise ValueError("unknown team role")
         return Agent(model=self._bedrock_model(role), tools=tools, load_tools_from_directory=False,
                      callback_handler=None, retry_strategy=None,
-                     system_prompt=prompts[role],
-                     structured_output_model=ModelResult if role == "reader" else None)
+                     system_prompt=prompts[role])
 
     def plan(
         self, goal: str, excerpts: list[dict[str, Any]], context: dict[str, Any],
@@ -248,14 +247,7 @@ class MultiAgentProvider(BedrockProvider):
                     "source_ids": list(scope.excerpts_by_source),
                     "current_packet_id": fixed_context.get("current_packet_id"),
                 })
-                structured = getattr(raw, "structured_output", None)
-                if isinstance(structured, ModelResult):
-                    if raw.stop_reason not in {"end_turn", "stop_sequence", "tool_use"}:
-                        raise ModelFailure("MODEL_BUDGET_EXHAUSTED")
-                    analysis = structured
-                else:
-                    # Compatibility for providers without SDK structured output.
-                    analysis = ModelResult.model_validate(parse_model_json(_text_result(raw)))
+                analysis = ModelResult.model_validate(parse_model_json(_text_result(raw)))
                 if analysis.pdf_edit is not None or (not analysis.proposals and not analysis.reply):
                     raise ValueError("reader output is not analysis or clarification")
                 validated_proposals(analysis, fixed_excerpts)

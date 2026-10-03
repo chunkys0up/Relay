@@ -1,4 +1,3 @@
-import { ServerAdvisorClients } from '../../../frontend-shared/src/ServerAdvisorViews';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -78,7 +77,7 @@ function ServerWorkspace({ params, update }: { params: URLSearchParams; update: 
   </section>;
 }
 
-function FixtureScreen() {
+export default function Screen() {
   const { snapshot, role } = useRelay();
   const [params, setParams] = useSearchParams();
   const location = useLocation();
@@ -226,5 +225,3 @@ function FixtureScreen() {
     </div>}
   </ScreenState>;
 }
-
-export default function Screen() { const {mode}=useRelay(); return mode==='server'?<ServerAdvisorClients/>:<FixtureScreen/>; }

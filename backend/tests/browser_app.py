@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.workflow.schemas import ModelResult
-from app.workflow_application import create_workflow_app
+from app.workflow_app import create_workflow_app
 
 
 class FixtureProvider:
