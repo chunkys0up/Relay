@@ -1,21 +1,29 @@
 from __future__ import annotations
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
 import logging
 import time
+from contextlib import asynccontextmanager
 
-from fastapi import Request
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import calls, chat, client_log, documents, health
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.db.pool import close_pool, init_pool
 
 setup_logging(settings.log_level)
 log = logging.getLogger("relay.http")
 
-app = FastAPI(title=settings.app_name)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_pool()
+    yield
+    await close_pool()
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 
 @app.middleware("http")
@@ -32,6 +40,7 @@ async def log_requests(request: Request, call_next):
             response.status_code, (time.perf_counter() - start) * 1000,
         )
     return response
+
 
 app.add_middleware(
     CORSMiddleware,
