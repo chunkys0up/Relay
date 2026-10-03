@@ -19,13 +19,13 @@ The demo must not provide financial advice, sign or submit forms, file documents
 | Role | Primary destinations | Behavior |
 | --- | --- | --- |
 | Founder | Home / AI Chat / Call | Home displays originals uploaded through the legacy backend, local synthetic packet versions, and the live case checklist/activity. AI Chat combines browser-stored demo messages with live FastAPI/Strands replies; attachments upload to the case and are passed to the agent’s read tools. Human delivery remains simulated. Call shows the selected shared PDF or packet summary and offers a simulated preview or an explicit Amazon Chime live-media connection. |
-| Advisor | Home / Clients / Call | Home, Clients and ordinary review screens use browser-backed synthetic grants and exact-version state. Clients has the private browser conversation and an explicit server synthetic advisor mode with its own granted packet/source context, saved history, citations and editable private follow-up drafts. Call offers the same two connection modes and shared packet summary. |
+| Advisor | Home / Clients / Call | Home, Clients and ordinary review screens use browser-backed synthetic grants and exact-version state. Home offers a direct Message client shortcut. Clients has Messages and Private AI views alongside the selected document, and an explicit server synthetic advisor mode with its own granted packet/source context, saved history, citations and editable private follow-up drafts. Call offers the same two connection modes and shared packet summary. |
 
 Search and Settings are utilities. Search reads the role-visible synthetic sources and packets. Settings contains a synthetic profile, call privacy information and demo details.
 
-The following are routed contextual tools, not primary destinations: Founder Sources and Documents; the Founder clarification route; Advisor Reviews and Documents. Founder Sources/packet previews and ordinary advisor reviews use local synthetic records and grants. Advisor Documents contains only grant-visible packet versions and sources in the browser workspace. Keep these routes and their links where current screens use them, without promoting them to primary navigation by default.
+The following are routed contextual tools, not primary destinations: Founder Sources and Documents; the Founder clarification route; Advisor Reviews and Documents. Founder Sources/packet previews and ordinary advisor reviews use local synthetic records and grants. Advisor Documents opens the connected advisor workspace by default, with exact-grant packet/source text, search, version selection and private grounded AI review. Explicit browser demo mode and legacy version/source/audience links preserve browser reviews. Backend errors never fall back to browser evidence. Keep these routes and their links where current screens use them, without promoting them to primary navigation by default.
 
-The **server synthetic advisor workspace** appears within Advisor Clients when selected. Its assigned versions and sources, session, chat history and citation previews are owned by the separate advisor API. They are not imported from browser grants, founder uploads or the owner-scoped founder workflow. Its chat is read-only: it cannot approve, save packets, change grants, share documents or deliver questions to a person.
+The **server synthetic advisor workspace** appears within Advisor Clients when selected and is the default Advisor Documents view. Its assigned versions and sources, session, chat history and citation previews are owned by the separate advisor API. They are not imported from browser grants, founder uploads or the owner-scoped founder workflow. Its chat is read-only: it cannot approve, save packets, change grants, share documents or deliver questions to a person.
 
 ## Calls and privacy
 
@@ -45,9 +45,11 @@ The UI has no recording, capture-consent, transcript or live call-AI controls. C
 
 ## Product behavior to preserve
 
-Within the browser demo, only the selected packet version and selected original sources are included in a handoff. Private AI and newly added browser sources remain private until shared. Human messages identify the recipient and require confirmation; local delivery is always labeled simulated. Review decisions bind to the exact version and hash; a later version needs a new decision. Founder clarifications remain attributed, and source conflicts stay visible.
+Within the browser demo, only the selected packet version and selected original sources are included in a handoff. Private AI and newly added browser sources remain private until shared. Human messages identify the recipient and require confirmation; local delivery is always labeled simulated. Advisor Home opens the named client composer in one click. Switching between Messages and Private AI in Clients preserves the selected document and audience-scoped drafts without moving private content into a client message. Review decisions bind to the exact version and hash; a later version needs a new decision. Founder clarifications remain attributed, and source conflicts stay visible.
 
 The founder case checklist uses To do, In progress, Blocked and Done. Founder Chat also shows the AI’s Idle, Thinking / Working and Needs input states; these are separate from checklist, case and call status. Keep server checklist state and browser packet task state distinct.
+
+Service-derived values must reflect completed requests. Founder checklist changes use the returned server item; a failed update leaves the last confirmed value visible and can be retried. Unavailable checklist or document counts are not displayed as zero. Founder AI request status is separate from browser packet draft status: idle does not assert a connection, and failed, empty or stopped replies are not saved as completed answers. Advisor browser private notes never call the legacy founder chat or upload endpoints; grounded advisor questions use the separate server advisor workspace. Workspace names and packet preview identity come from the current browser snapshot, not duplicated display constants.
 
 ## Target architecture and security constraints
 
@@ -70,3 +72,11 @@ These remain constraints for future integration, not claims about the current co
 - [Founder packet workflow](docs/bedrock-workflow.md)
 - [Advisor workspace](docs/advisor-bedrock.md)
 - [Agent architecture and limits](docs/multiagent-workflow.md)
+
+Sidebar layout keeps headings and controls inside the shell at desktop and mobile sizes. Desktop Clients uses independently scrollable client, document and AI panes; smaller windows stack the panels.
+
+## S3-backed synthetic advisor packet details
+
+The server advisor Documents view supports real synthetic PDFs in S3 and Amazon Textract text, fields, tables, page/confidence data and scoped original-PDF links. The explicit importer atomically updates the separate advisor SQLite workspace after verifying every S3 original and extracting the full batch. Private packet/source grants stay private; offline seed text is labeled separately. Original routes serve hash-checked copies downloaded from S3 at import time. See [import, refresh and access boundaries](docs/synthetic-packets.md).
+
+Normal app startup now seeds packet/source content from imported advisor API extraction, using a hash-specific browser namespace. Missing imported evidence shows an error rather than static packet fallback. The explicit `VITE_PACKET_DATA_MODE=fixture` mode retains offline fixtures for tests. Browser interactions remain local simulations and do not change server authorization.

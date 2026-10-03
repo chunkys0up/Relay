@@ -14,12 +14,12 @@ The Vite/React app is in `frontend-shared/`. Routes are registered in `frontend-
 | Founder AI Chat | `/founder/chat` | Browser adapter saves demo messages and simulated human delivery. Private AI replies stream from legacy `/api/chat/stream`; optional file attachments upload to the case and the live agent can read them. Agent checklist/activity changes persist through case tools. The separate owner-scoped packet workspace is linked here too. |
 | Founder Call | `/founder/call` | Pre-call/active layouts show a selected shared version with PDF and Packet summary tabs, plus human-message controls. Choose simulated Demo or live Amazon Chime; ordinary packet state and human conversation stay separate. |
 | Advisor Home | `/advisor/home` | Browser snapshot only: summary and counts for its grant-visible synthetic sources and packet versions. It has no raw backend-uploaded-file list. |
-| Advisor Clients | `/advisor/clients` | Browser mode shows grant-visible synthetic sources/packets, inline exact-version reviews and demo conversation. The explicit server synthetic mode uses the separate advisor API for granted packet context, private persisted chat and citations. |
+| Advisor Clients | `/advisor/clients` | Browser mode shows grant-visible synthetic sources/packets and inline exact-version reviews. Messages and Private AI switch the communication pane while preserving document selection and audience-scoped drafts; Home links directly to the named client composer using `?audience=human#message-side`. Client delivery stays browser-simulated with preview and confirmation. The explicit server synthetic mode uses the separate advisor API for granted packet context, private persisted chat and citations. |
 | Advisor Call | `/advisor/call` | Shared browser-demo packet, review actions and human-message controls with simulated Demo or explicit live Chime. |
 | Settings, Search | `/{role}/settings`, `/{role}/search` | Utilities. Search uses the role-visible browser snapshot. Settings shows synthetic identity and call privacy; it does not expose capture/transcription controls. |
-| Contextual tools | Founder `/founder/sources`, `/founder/documents`, `/founder/home/clarification`; advisor `/advisor/reviews`, `/advisor/documents` | Direct routes linked from relevant screens; not primary navigation. Advisor Documents previews only grant-visible browser packet versions and sources. |
+| Contextual tools | Founder `/founder/sources`, `/founder/documents`, `/founder/home/clarification`; advisor `/advisor/reviews`, `/advisor/documents` | Direct routes linked from relevant screens; not primary navigation. Advisor Documents defaults to `/api/advisor` data and `AdvisorChat`; its documents endpoint reuses `AdvisorStore.scope` for exact packet/source grant and hash checks. Explicit browser mode and legacy browser deep links retain local reviews. |
 | Owner-scoped packet workspace | Founder Home/AI Chat link with `?workspace=backend` | Separate session-owned case flow for source/template upload, extraction, confirmed facts, bounded agent analysis and verified PDF proposals. SQLite development state; requires its own configured service. |
-| Server advisor workspace | Advisor Clients link/selector | Separate `/api/advisor` session and SQLite seed/grants. Read-only chat can cite authorized, actually read packet/source evidence and compare selected versions. No client send, approval or share action. |
+| Server advisor workspace | Advisor Clients link/selector and Documents | Separate `/api/advisor` session and SQLite seed/grants. Read-only chat can cite authorized, actually read packet/source evidence and compare selected versions. No client send, approval or share action. |
 
 Primary navigation is Founder Home / AI Chat / Call and Advisor Home / Clients / Call. Settings and Search remain utilities. Sources, Documents, Reviews and clarification remain routed contextual tools. There is no call recording, capture-consent, transcript or call-AI-support interface.
 
@@ -45,9 +45,26 @@ Within browser state, exact-version/hash grants control ordinary advisor visibil
 
 Do not add Chime capture or Transcribe. Preserve server-side file validation, source hash checks, idempotency and bounded work in the flows that already implement them; do not imply the separate services share these protections or data.
 
+## Service-derived display state
+
+- `live.tsx` applies canonical checklist PATCH responses, keeps action errors separate from load errors, and suppresses stale checklist/activity results when case context changes. Home preserves the last confirmed checklist on mutation failure and distinguishes unavailable totals from zero.
+- `Conversation` calls the legacy chat/upload API only for founders. Advisor browser notes stay in the browser adapter and link to the server advisor workspace for evidence questions. Founder request lifecycle drives the connection label; only a complete, nonempty reply is saved. Stream errors and cancellation do not become completed messages.
+- Founder Chat displays AI request state separately from the browser packet draft state. Activity actor labels include server-originated system entries.
+- `identity.ts` derives shell identity and packet preview branding from the current browser snapshot. Settings distinguishes browser data, legacy backend storage, separate server workspaces and optional Chime media.
+
 ## References
 
 - [App routes](frontend-shared/src/main.tsx)
 - [Conversation and live adapter](frontend-shared/src/conversation.tsx), [API transport](frontend-shared/src/relayApi.ts)
 - [Advisor Clients](advsior-frontend/src/clients/Screen.tsx), [advisor API](frontend-shared/src/advisorApi.ts)
 - [Backend endpoint status](backend/README.md), [workflow transport](docs/api-contract.md)
+
+Workspace screens own their edge padding without negative margins. The shell main row is a size container; desktop Clients panes use its actual available height. The default Vite server proxies both `/api/workflow` and `/api/advisor` to `RELAY_WORKFLOW_PORT` (8001 by default); advisor integration tests exercise that default configuration with a local simulated backend.
+
+The standard Vite development server proxies `/api/advisor` and `/api/workflow` to `RELAY_WORKFLOW_PORT` (default 8001). Documents loads authorized packet/source text without model calls; AI review runs only on a user prompt. Server reviews remain read-only and do not expose browser approval/send controls.
+
+## S3-backed synthetic advisor packet details
+
+The server advisor Documents view supports real synthetic PDFs in S3 and Amazon Textract text, fields, tables, page/confidence data and scoped original-PDF links. The explicit importer atomically updates the separate advisor SQLite workspace after verifying every S3 original and extracting the full batch. Private packet/source grants stay private; offline seed text is labeled separately. Original routes serve hash-checked copies downloaded from S3 at import time. See [import, refresh and access boundaries](docs/synthetic-packets.md).
+
+Normal app startup now seeds packet/source content from imported advisor API extraction, using a hash-specific browser namespace. Missing imported evidence shows an error rather than static packet fallback. The explicit `VITE_PACKET_DATA_MODE=fixture` mode retains offline fixtures for tests. Browser interactions remain local simulations and do not change server authorization.
