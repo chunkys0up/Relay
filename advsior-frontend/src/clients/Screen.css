@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: minmax(205px, 250px) minmax(0, 1fr) auto;
   align-items: stretch;
-  max-width: 1760px;
+  max-width: none;
   min-height: calc(100vh - 180px);
   margin: -28px -30px -26px;
   background: #fff;

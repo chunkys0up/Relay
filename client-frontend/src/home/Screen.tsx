@@ -85,7 +85,7 @@ function DemoScreen() {
       </section>
     </div>
 
-    <CaseSidebar footer="Packet versions require a separate handoff to your advisor."/>
+    <CaseSidebar/>
   </div>}</ScreenState>;
 }
 
