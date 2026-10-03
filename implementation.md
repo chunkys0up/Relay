@@ -16,6 +16,7 @@ Configured cloud synchronization downloads and hashes S3 bytes before registerin
 Founder Home and Documents also expose manual Retry storage sync for pending, failed and applicable unconfigured states; a pending export can be restarted after interruption. Advisor Home marks its redacted checklist private rather than presenting zero progress.
 
 The separate advisor API retains its synthetic assignments, exact grants, private history and read-only model tools. Workflow advisor views use persistent exact-packet capability grants redeemed in a separate session. `sharing.py` enforces owner/advisor separation, source selection, current hash/version, review idempotency and revocation. Session capabilities do not verify a person or organization.
+`ServerInvitationAcceptance.tsx` appears in the empty advisor workspace and on advisor Home after a grant exists. It submits a code through the same session-backed redemption endpoint and keeps failed codes editable. Successful redemption selects the newly granted case while the previously granted cases remain available in the case switcher. Browser role selection still does not create a grant.
 
 Primary navigation remains Founder Home / AI Chat / Documents and Advisor Home / Clients / Call. Recording, transcription and call AI controls remain absent.
 

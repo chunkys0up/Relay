@@ -63,3 +63,37 @@ it('labels advisor task progress as private when the shared snapshot redacts tas
   expect(screen.getByRole('cell', { name: 'Checklist private' })).toBeInTheDocument();
   expect(screen.queryByText('0 of 0 done')).not.toBeInTheDocument();
 });
+
+it('accepts another invitation from advisor Home without hiding an existing case', async () => {
+  const redeemShare=vi.fn().mockResolvedValue(true);
+  vi.mocked(useRelay).mockReturnValue({
+    cases:[{...caseState,id:'harbor-case',company:'Harbor Analytics',
+      current_packet_id:'harbor-packet',packets:[{id:'harbor-packet',stage:'in_review'}]}],
+    selectCase:vi.fn(),redeemShare,busy:false,
+  } as never);
+  render(<MemoryRouter><ServerAdvisorHome/></MemoryRouter>);
+  expect(screen.getByText('Harbor Analytics')).toBeInTheDocument();
+  const code=screen.getByRole('textbox',{name:'Invitation code'});
+  await userEvent.setup().type(code,'second-case-code');
+  await userEvent.setup().click(screen.getByRole('button',{name:'Accept invitation'}));
+  expect(redeemShare).toHaveBeenCalledWith('second-case-code');
+  expect(code).toHaveValue('');
+  expect(screen.getByText('Harbor Analytics')).toBeInTheDocument();
+});
+
+it('keeps the code and existing case visible when another invitation fails',async()=>{
+  const redeemShare=vi.fn().mockResolvedValue(false);
+  vi.mocked(useRelay).mockReturnValue({
+    cases:[{...caseState,id:'harbor-case',company:'Harbor Analytics',
+      current_packet_id:'harbor-packet',packets:[{id:'harbor-packet',stage:'in_review'}]}],
+    selectCase:vi.fn(),redeemShare,busy:false,error:'Request stopped: invite used.',
+  } as never);
+  render(<MemoryRouter><ServerAdvisorHome/></MemoryRouter>);
+  const code=screen.getByRole('textbox',{name:'Invitation code'});
+  await userEvent.setup().type(code,'used-code');
+  await userEvent.setup().click(screen.getByRole('button',{name:'Accept invitation'}));
+  expect(redeemShare).toHaveBeenCalledWith('used-code');
+  expect(code).toHaveValue('used-code');
+  expect(screen.getByRole('alert')).toHaveTextContent('invite used');
+  expect(screen.getByText('Harbor Analytics')).toBeInTheDocument();
+});

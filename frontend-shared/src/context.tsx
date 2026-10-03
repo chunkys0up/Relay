@@ -127,8 +127,12 @@ export function ServerRelayProvider({role,children}:{role:Role;children:ReactNod
  const redeemShare=async(code:string):Promise<boolean>=>{
   setBusy(true);setError(null);
   try{const result=await redeemServerShare(code);
+   controller.current?.abort();
+   setLoading(true);setSnapshot(null);
    try{localStorage.setItem(selectedCaseStorageKey,result.case_id);}catch{/* The next refresh still selects the granted case. */}
-   setSelectedId(result.case_id);refresh();setNotice('Invitation accepted. This advisor session can review the shared packet.');return true;
+   setSelectedId(result.case_id);
+   if(result.case_id===selectedId)refresh();
+   setNotice('Invitation accepted. This advisor session can review the shared packet.');return true;
   }catch(reason){setError(reason instanceof Error?reason.message:'Unable to accept invitation.');return false;}finally{setBusy(false);}
  };
  const reviewPacket=async(packet:PacketVersion,decision:'approved'|'questions_returned',note:string):Promise<boolean>=>{
