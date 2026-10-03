@@ -225,3 +225,6 @@ playwright-report/
 
 # Strands agent session/memory state
 .agent/
+
+# Local backend workflow data (never commit user inputs or session cookies)
+.relay/
