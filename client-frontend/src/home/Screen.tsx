@@ -58,7 +58,7 @@ function DemoScreen() {
   const items = checklist.items ?? [];
   const doneCount = items.filter((item) => item.state === 'done').length;
   const nextItem = items.find((item) => item.state !== 'done');
-  const fileCount = caseDocuments.documents?.length ?? 0;
+  const fileCount = caseDocuments.documents?.length;
   const currentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
   const lastMessages = snapshot?.messages.filter((message) => message.owner_id === snapshot.founder.id).slice(-3).reverse() ?? [];
 
@@ -111,17 +111,17 @@ function DemoScreen() {
       {asideTab === 'progress' ? <div id="founder-home-aside-progress-panel" role="tabpanel" aria-labelledby="founder-home-aside-progress-tab" tabIndex={0} className="founder-home-aside-panel">
         <section aria-labelledby="founder-home-checklist-title">
           <Collapsible id="home-checklist" headingId="founder-home-checklist-title" title="Checklist">
-          <p>{doneCount} of {items.length} done · {fileCount} file{fileCount === 1 ? '' : 's'} received</p>
-          <div className="founder-home-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>
-          {checklist.error ? <p className="founder-home-empty" role="alert">{checklist.error}</p>
-            : checklist.items === null ? <p className="founder-home-empty" role="status">Loading checklist…</p>
+          <p>{checklist.items === null ? (checklist.error ? 'Checklist unavailable' : 'Loading checklist…') : `${doneCount} of ${items.length} done`} · {fileCount === undefined ? (caseDocuments.error ? 'File count unavailable' : 'Loading files…') : `${fileCount} file${fileCount === 1 ? '' : 's'} received`}</p>
+          {checklist.items !== null && <div className="founder-home-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>}
+          {checklist.error && <p className="founder-home-empty" role="alert">{checklist.error}</p>}
+          {checklist.items === null ? null
             : items.length ? <ul className="founder-home-checklist">{items.map((item) => <li key={item.id}><button type="button" role="checkbox" aria-checked={item.state === 'done'} aria-label={`${item.title}: mark ${item.state === 'done' ? 'not done' : 'done'}`} className={`founder-home-check ${item.state === 'done' ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, item.state === 'done' ? 'todo' : 'done'); }}>{item.state === 'done' ? '✓' : ''}</button><span>{item.title}</span><small>{checklistLabels[item.state]}</small></li>)}</ul>
             : <p className="founder-home-empty">Relay adds items here as you chat about your packet. <Link to="/founder/chat#message-main">Start in AI Chat</Link></p>}
           </Collapsible>
         </section>
         <section className="founder-home-next" aria-labelledby="founder-home-next-title"><Collapsible id="home-next" headingId="founder-home-next-title" title="Next steps">
           {nextItem ? <div className="founder-home-next-step"><span className="founder-home-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
-            : <p className="founder-home-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
+            : <p className="founder-home-empty">{checklist.items === null ? (checklist.error ? 'Next steps are unavailable until the checklist loads.' : 'Loading next steps…') : items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
           {currentQuestion && <Link className="founder-home-chat-link" to="/founder/home/clarification">Answer {snapshot.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
           <Link className="founder-home-packet-link" to="/founder/documents">Review packet versions →</Link>
         </Collapsible></section>

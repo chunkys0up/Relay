@@ -89,7 +89,7 @@ describe('advisor documents', () => {
   });
 
   it('does not invent documents when the search has no shared result', async () => {
-    mount('/advisor/documents?q=unshared');
+    mount('/advisor/documents?advisor_demo=browser&q=unshared');
     expect(await screen.findByText('No packet versions match this search.')).toBeTruthy();
     expect(await screen.findByText('No shared originals match this search.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Founder intake.pdf/ })).not.toBeInTheDocument();

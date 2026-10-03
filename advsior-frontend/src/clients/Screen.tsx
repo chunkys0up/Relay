@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   advisorApi, advisorPacketHref, AdvisorChat, Badge, Button, Conversation, EmptyState, Icon, PacketPreview,
   ReviewControls, ScreenState, SourcePreview, useRelay,
@@ -56,6 +56,7 @@ function ServerWorkspace({ params, update }: { params: URLSearchParams; update: 
     <header className="advisor-client-heading">
       <h2>{session?.workspace.company ?? 'Server shared packet'}</h2>
       <p>Server synthetic advisor workspace · Read-only evidence</p>
+      <Link className="button button-outline" to={`/advisor/documents?advisor_demo=server${version ? `&server_version=${encodeURIComponent(version.id)}` : ''}`}>Open connected documents</Link>
       <Button variant="outline" onClick={() => updateParams(params, update, { advisor_demo: null, server_version: null, compare_version: null })}>Return to browser demo documents</Button>
     </header>
     {error && <p role="alert" className="advisor-server-error">{error}</p>}
@@ -79,6 +80,17 @@ function ServerWorkspace({ params, update }: { params: URLSearchParams; update: 
 export default function Screen() {
   const { snapshot, role } = useRelay();
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const communication = params.get('audience') === 'human' ? 'human' : 'private_ai';
+  useEffect(() => {
+    if (communication !== 'human' || location.hash !== '#message-side' || !snapshot?.id) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById('message-side')?.focus({ preventScroll: true });
+      if (window.matchMedia?.('(max-width: 650px)').matches) document.querySelector('.advisor-client-assistant')?.scrollIntoView({ block: 'start' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [communication, location.hash, snapshot?.id]);
   const query = (params.get('q') ?? '').trim().toLowerCase();
   const packets = useMemo(() => {
     if (!snapshot || role !== 'advisor') return [];
@@ -99,11 +111,11 @@ export default function Screen() {
     ...sources.map(source => ({ kind: 'source' as const, id: source.id, date: source.created_at, source })),
   ];
   const hasWorkspace = items.length > 0;
-  const clientMatches = Boolean(snapshot && (snapshot.company + ' ' + snapshot.founder.name).toLowerCase().includes(query));
+  const clientMatches = Boolean(snapshot && [snapshot.company, snapshot.founder.name, ...items.map(item => item.kind === 'source' ? item.source.name : item.packet.title)].join(' ').toLowerCase().includes(query));
   const requestedSource = params.get('source');
   const requestedVersion = params.get('version');
   const selected = items.find(item => item.id === requestedSource || (item.kind === 'packet' && (item.id === requestedVersion || String(item.packet.version) === requestedVersion)))
-    ?? (requestedSource || requestedVersion || params.get('open') === 'none' ? null : items[0] ?? null);
+    ?? (requestedSource || requestedVersion || params.get('open') === 'none' ? null : items.find(item => query && (item.kind === 'source' ? item.source.name : item.packet.title).toLowerCase().includes(query)) ?? items[0] ?? null);
   const selectedId = selected?.id ?? null;
   const serverMode = params.get('advisor_demo') === 'server';
   const latest = packets[0] ?? null;
@@ -120,6 +132,13 @@ export default function Screen() {
       version: item.id === selectedId ? null : item.kind === 'packet' ? item.id : null,
       open: item.id === selectedId ? 'none' : null,
     });
+  }
+
+  function selectCommunication(nextView: 'human' | 'private_ai'): void {
+    const next = new URLSearchParams(params);
+    if (nextView === 'human') next.set('audience', 'human');
+    else next.delete('audience');
+    navigate({ pathname: location.pathname, search: next.toString() ? `?${next}` : '', hash: nextView === 'human' ? '#message-side' : '' });
   }
 
   return <ScreenState>
@@ -184,16 +203,24 @@ export default function Screen() {
               <p className="advisor-client-version-note">Access to each packet is tied to its shared version. Questions and approval apply to the exact version under review.</p>
             </>}
       </section>
-      <aside className="advisor-client-assistant" aria-label="Private client AI chat">
-        <header className="advisor-client-assistant-head">
-          <div className="advisor-ai-avatar"><Icon name="agent" size={30}/></div>
-          <div><h2>Relay AI</h2><Badge>{serverMode ? 'Server synthetic context' : 'Select server context'}</Badge><p>Private to the server-assigned advisor</p></div>
-        </header>
-        <div className={`advisor-client-conversation ${serverMode ? 'server-chat-mode' : 'browser-chat-mode'}`}>
-          <AdvisorChat selectedPacketId={selected?.kind === 'packet' ? selected.id : latest?.id ?? null}/>
-          {!serverMode && <><p className="advisor-browser-chat-label">Browser demo conversation · simulated and saved only in this browser</p><Conversation privateOnly/></>}
+      <aside className="advisor-client-assistant" aria-label="Client communication">
+        <div className="advisor-client-communication-tabs" role="group" aria-label="Client communication view">
+          <button type="button" aria-pressed={communication === 'human'} aria-controls="advisor-client-communication-panel" onClick={() => selectCommunication('human')}>Messages</button>
+          <button type="button" aria-pressed={communication === 'private_ai'} aria-controls="advisor-client-communication-panel" onClick={() => selectCommunication('private_ai')}>Private AI</button>
         </div>
-        <p className="advisor-client-chat-note">{serverMode ? 'Server advisor AI uses only its exact shared synthetic packet and sources.' : 'Open the server synthetic workspace above for grounded advisor AI.'}</p>
+        <header className="advisor-client-assistant-head">
+          <div className="advisor-ai-avatar"><Icon name={communication === 'human' ? 'clients' : 'agent'} size={30}/></div>
+          {communication === 'human'
+            ? <div><h2>Messages with {snapshot.founder.name}</h2><Badge>Local demo</Badge><p>Saved in this browser. Delivery to {snapshot.founder.name} is simulated.</p></div>
+            : <div><h2>Relay AI</h2><Badge>{serverMode ? 'Server synthetic context' : 'Select server context'}</Badge><p>Private advisor review</p></div>}
+        </header>
+        <div id="advisor-client-communication-panel" className={`advisor-client-conversation ${communication === 'human' ? 'human-chat-mode' : serverMode ? 'server-chat-mode' : 'browser-chat-mode'}`}>
+          {communication === 'human'
+            ? <Conversation humanOnly/>
+            : <><AdvisorChat selectedPacketId={selected?.kind === 'packet' ? selected.id : latest?.id ?? null}/>
+                {!serverMode && <><p className="advisor-browser-chat-label">Browser private notes · saved only in this browser</p><Conversation privateOnly/></>}</>}
+        </div>
+        <div className="advisor-client-chat-note"><p>{communication === 'human' ? 'Only a confirmed browser message appears in the founder’s demo inbox. Server advisor AI and its drafts stay private.' : serverMode ? 'Server advisor AI uses only its exact shared synthetic packet and sources.' : 'Open the server synthetic workspace above for grounded advisor AI.'}</p><button type="button" onClick={() => selectCommunication(communication === 'human' ? 'private_ai' : 'human')}>{communication === 'human' ? 'Open Private AI' : `Message ${snapshot.founder.name}`}</button></div>
       </aside>
     </div>}
   </ScreenState>;

@@ -9,7 +9,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async input => new Response(JSON.stringify(
     String(input).includes('/checklist')
       ? [{ id: 'blocked-task', title: 'Confirm revenue', detail: 'Resolve the two revenue figures', state: 'blocked' }]
-      : [{ id: 'activity-1', actor: 'agent', text: 'Relay reviewed the revenue discrepancy', created_at: '2026-10-03T08:00:00Z' }],
+      : [{ id: 'activity-1', actor: 'agent', text: 'Relay reviewed the revenue discrepancy', created_at: '2026-10-03T08:00:00Z' },
+        { id: 'activity-2', actor: 'system', text: 'Case state refreshed', created_at: '2026-10-03T08:01:00Z' }],
   ), { headers: { 'Content-Type': 'application/json' } })));
 });
 afterEach(() => { cleanup(); adapter.reset(); vi.unstubAllGlobals(); });
@@ -33,8 +34,11 @@ describe('Founder AI Chat', () => {
     expect(await screen.findByText('Blocked')).toBeVisible();
     expect(screen.getByText('Confirm revenue')).toBeVisible();
     expect(await screen.findByText('Relay reviewed the revenue discrepancy')).toBeVisible();
+    expect(screen.getByText('Case state refreshed').closest('li')).toHaveTextContent('System');
     expect(screen.queryByRole('link', { name: 'Answer the question' })).not.toBeInTheDocument();
-    expect(screen.getByText(/Replies come from Relay's assistant on Bedrock/)).toBeVisible();
+    expect(screen.getByText(/Legacy case assistant requests use the configured backend when you send/)).toBeVisible();
+    expect(within(screen.getByLabelText('AI request status')).getByText('Idle')).toBeVisible();
+    expect(within(stateGroup).getByText('Browser packet draft state')).toBeVisible();
     expect(screen.getByRole('tab', {name: 'AI assistant'})).toHaveAttribute('aria-selected', 'true');
   });
 

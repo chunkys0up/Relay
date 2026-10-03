@@ -10,6 +10,26 @@ export interface AdvisorVersion {
   source_ids: string[];
 }
 
+export interface AdvisorExtraction {
+  provider: 'Amazon Textract';
+  status: 'succeeded';
+  filename: string;
+  content_type: 'application/pdf';
+  original_sha256: string;
+  bytes: number;
+  pages: number;
+  extracted_at: string;
+  lines: { page: number; text: string; confidence: number }[];
+  fields: { key: string; value: string; page: number; confidence: number }[];
+  tables: { page: number; rows: string[][] }[];
+}
+
+export interface AdvisorDocuments {
+  case_id: string;
+  versions: (Omit<AdvisorVersion, 'source_ids'> & { text: string; extraction?: AdvisorExtraction; original_url?: string })[];
+  sources: { id: string; version_id: string; hash: string; name: string; text: string; locator: { page?: number; field?: string }; extraction?: AdvisorExtraction; original_url?: string }[];
+}
+
 export interface AdvisorSession {
   mode: string;
   provider: string;
@@ -104,6 +124,8 @@ export const advisorApi = {
     }
     return bootstrapRequest;
   },
+  documents: (caseId: string, version: AdvisorVersion, signal?: AbortSignal) =>
+    jsonRequest<AdvisorDocuments>(`${casePath(caseId)}/packets/${encodeURIComponent(version.id)}/documents?packet_hash=${encodeURIComponent(version.hash)}`, { signal, cache: 'no-store' }),
   conversations: (caseId: string, versions: AdvisorVersion[], signal?: AbortSignal) => {
     const query = new URLSearchParams({ version_id: versions[0].id, version_hash: versions[0].hash });
     if (versions[1]) { query.set('compare_id', versions[1].id); query.set('compare_hash', versions[1].hash); }

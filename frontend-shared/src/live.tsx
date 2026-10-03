@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, EmptyState, Panel } from './ui';
 import { announceCaseUpdate, CASE_UPDATED_EVENT, documentUrl, LIVE_CASE_ID, listActivity, listChecklist, listDocuments, setChecklistState, uploadDocument } from './relayApi';
@@ -42,30 +42,81 @@ export interface CaseChecklist { items: ChecklistItem[] | null; error: string | 
 
 /** The case checklist the chat agent maintains; the founder can tick items off. */
 export function useCaseChecklist(caseId: string = LIVE_CASE_ID): CaseChecklist {
-  const [items, setItems] = useState<ChecklistItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [checklistState, setChecklistSnapshot] = useState<{ caseId: string; items: ChecklistItem[] } | null>(null);
+  const [loadError, setLoadError] = useState<{ caseId: string; message: string } | null>(null);
+  const [actionError, setActionError] = useState<{ caseId: string; message: string } | null>(null);
+  const activeCase = useRef<{ id: string; generation: number }>({ id: caseId, generation: 0 });
+  const loadGeneration = useRef(0);
+  const pendingItems = useRef(new Set<string>());
   const reload = useCaseReload();
+  const items = checklistState?.caseId === caseId ? checklistState.items : null;
+  const error = (actionError?.caseId === caseId ? actionError.message : null)
+    ?? (loadError?.caseId === caseId ? loadError.message : null);
+
+  useEffect(() => {
+    activeCase.current = { id: caseId, generation: activeCase.current.generation + 1 };
+    setActionError(null);
+    return () => { activeCase.current.generation += 1; };
+  }, [caseId]);
+
   useEffect(() => {
     const c = new AbortController();
-    listChecklist(caseId, c.signal).then(next => { setItems(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    const generation = ++loadGeneration.current;
+    setLoadError(null);
+    listChecklist(caseId, c.signal).then(next => {
+      if (!c.signal.aborted && generation === loadGeneration.current) {
+        setChecklistSnapshot({ caseId, items: next });
+      }
+    }).catch((e: unknown) => {
+      if (!c.signal.aborted && generation === loadGeneration.current) {
+        setLoadError({ caseId, message: errorText(e) });
+      }
+    });
     return () => c.abort();
   }, [caseId, reload]);
   const setState = useCallback(async (itemId: string, state: ChecklistState): Promise<void> => {
-    setItems(prev => prev?.map(item => item.id === itemId ? { ...item, state } : item) ?? prev);
-    try { await setChecklistState(caseId, itemId, state); } catch (e) { setError(errorText(e)); }
-    announceCaseUpdate();
+    const key = `${caseId}:${itemId}`;
+    if (pendingItems.current.has(key)) return;
+    pendingItems.current.add(key);
+    const generation = activeCase.current.generation;
+    setActionError(null);
+    try {
+      const updated = await setChecklistState(caseId, itemId, state);
+      if (activeCase.current.id !== caseId || activeCase.current.generation !== generation) return;
+      // A list request started before this mutation may still resolve after it.
+      loadGeneration.current += 1;
+      setChecklistSnapshot(prev => prev?.caseId === caseId
+        ? { caseId, items: prev.items.map(item => item.id === itemId ? updated : item) }
+        : prev);
+      announceCaseUpdate();
+    } catch (e) {
+      if (activeCase.current.id === caseId && activeCase.current.generation === generation) {
+        setActionError({ caseId, message: errorText(e) });
+        // The server may have saved the change before the response failed.
+        announceCaseUpdate();
+      }
+    } finally {
+      pendingItems.current.delete(key);
+    }
   }, [caseId]);
   return { items, error, setState };
 }
 
 /** Recent case activity: uploads, checklist changes and notes the agent logs. */
 export function useCaseActivity(caseId: string = LIVE_CASE_ID, limit = 8): { entries: ActivityEntry[] | null; error: string | null } {
-  const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [activityState, setActivityState] = useState<{ caseId: string; entries: ActivityEntry[] } | null>(null);
+  const [loadError, setLoadError] = useState<{ caseId: string; message: string } | null>(null);
   const reload = useCaseReload();
+  const entries = activityState?.caseId === caseId ? activityState.entries : null;
+  const error = loadError?.caseId === caseId ? loadError.message : null;
   useEffect(() => {
     const c = new AbortController();
-    listActivity(caseId, limit, c.signal).then(next => { setEntries(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    setLoadError(null);
+    listActivity(caseId, limit, c.signal).then(next => {
+      if (!c.signal.aborted) setActivityState({ caseId, entries: next });
+    }).catch((e: unknown) => {
+      if (!c.signal.aborted) setLoadError({ caseId, message: errorText(e) });
+    });
     return () => c.abort();
   }, [caseId, limit, reload]);
   return { entries, error };

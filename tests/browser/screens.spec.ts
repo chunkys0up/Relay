@@ -6,7 +6,7 @@ const routes = [
  ['founder-documents','/founder/documents'],['founder-call','/founder/call'],
  ['founder-clarification','/founder/home/clarification'],
  ['advisor-clients','/advisor/clients'],['advisor-reviews','/advisor/reviews'],
- ['advisor-documents','/advisor/documents'],['advisor-call','/advisor/call'],
+ ['advisor-documents','/advisor/documents?advisor_demo=browser'],['advisor-call','/advisor/call'],
 ] as const;
 
 async function prepareClarification(page:Page):Promise<void>{

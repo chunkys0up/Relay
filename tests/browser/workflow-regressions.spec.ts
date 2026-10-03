@@ -76,7 +76,7 @@ test('separate tabs receive confirmed human messages, preserve privacy, and reta
 test('an initial private draft appears to a second founder tab but not the advisor until handoff',async({page,context})=>{
  await page.goto('/founder/chat');
  const other=await context.newPage();await other.goto('/founder/chat');
- const advisor=await context.newPage();await advisor.goto('/advisor/documents');
+ const advisor=await context.newPage();await advisor.goto('/advisor/documents?advisor_demo=browser');
  await sendPrivate(page,'2026 revenue is $240,000. My reserve target is $60,000.');
  await expect(other.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
  await expect(advisor.getByRole('region',{name:/Packet version 2 preview/})).toHaveCount(0);

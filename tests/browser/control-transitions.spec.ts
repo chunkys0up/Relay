@@ -12,7 +12,7 @@ const routes = [
 ] as const;
 
 async function go(page:Page,path:string):Promise<void>{
-  await page.goto(path);
+  await page.goto(path === '/advisor/documents' ? path + '?advisor_demo=browser' : path);
   await expect(page.locator('main h1').first()).toBeVisible();
 }
 async function navigate(page:Page,label:string):Promise<void>{
@@ -247,7 +247,7 @@ test('Advisor Reviews: selection, search clear, open specific document and call'
 });
 
 test('Advisor Documents: each original, return to packet, version select and Back to clients',async({page})=>{
- await go(page,'/advisor/documents');
+ await go(page,'/advisor/documents?advisor_demo=browser');
  for(const [index,name] of sourceNames.entries()){
   await go(page,'/advisor/documents?version=00000000-0000-4000-8000-000000000021&source='+sourceIds[index]);
   await expect(page.getByRole('heading',{name,exact:true,level:2})).toBeVisible();
@@ -269,7 +269,7 @@ test('Advisor Documents: each original, return to packet, version select and Bac
 
 for(const path of ['/advisor/reviews','/advisor/documents','/advisor/call']){
  test(`${path}: every question/approval control has correct confirmation transition`,async({page})=>{
-  await go(page,path);
+  await go(page,path === '/advisor/documents' ? path + '?advisor_demo=browser' : path);
   if(path==='/advisor/call')await page.getByText('Review actions for v1',{exact:true}).click();
   const question=page.getByRole('textbox',{name:'Draft question to Alex Morgan'});
   await question.fill('');await expect(page.getByRole('button',{name:'Preview questions',exact:true})).toBeDisabled();

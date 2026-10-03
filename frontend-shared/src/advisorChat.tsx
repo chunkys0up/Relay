@@ -69,9 +69,9 @@ function Message({ message, session, versions }: { message: AdvisorMessage; sess
 }
 
 /** This chat has its own server session. The browser fixture supplies no authority or evidence. */
-export function AdvisorChat({ selectedPacketId }: { selectedPacketId: string | null }): ReactNode {
+export function AdvisorChat({ selectedPacketId, serverActive = false }: { selectedPacketId: string | null; serverActive?: boolean }): ReactNode {
   const [params, setParams] = useSearchParams();
-  const active = params.get('advisor_demo') === 'server';
+  const active = serverActive || params.get('advisor_demo') === 'server';
   const [session, setSession] = useState<AdvisorSession | null>(null);
   const [conversation, setConversation] = useState<AdvisorConversation | null>(null);
   const [status, setStatus] = useState('Checking advisor server…');
@@ -150,6 +150,7 @@ export function AdvisorChat({ selectedPacketId }: { selectedPacketId: string | n
       if (value) next.set(key, value);
       else next.delete(key);
     }
+    if ('server_version' in changes) next.delete('server_source');
     setParams(next);
   }
 

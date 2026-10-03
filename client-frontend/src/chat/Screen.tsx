@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
 import { Badge, Collapsible, Conversation, ScreenState, timeAgo, useCaseActivity, useCaseChecklist, useRelay } from '@relay/shared';
 import type { ChecklistItem, ChecklistState } from '../../../frontend-shared/src/relayApi';
+import type { AiRequestState } from '@relay/shared';
 import './styles.css';
 
 const aiStates = ['Idle', 'Thinking / Working', 'Needs input'] as const;
+const requestLabels: Record<AiRequestState, string> = { idle: 'Idle', responding: 'Thinking / Working', connected: 'Connected', error: 'AI unavailable', stopped: 'Stopped' };
 
 const stateLabels: Record<ChecklistState, string> = { todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done' };
 
@@ -14,6 +17,7 @@ function itemTone(item: ChecklistItem): 'neutral' | 'attention' | 'success' {
 
 function DemoScreen() {
   const { snapshot } = useRelay();
+  const [requestState, setRequestState] = useState<AiRequestState>('idle');
   const checklist = useCaseChecklist();
   const activity = useCaseActivity(undefined, 4);
   const items = checklist.items ?? [];
@@ -24,13 +28,14 @@ function DemoScreen() {
     <div className="founder-chat-main">
       <header className="founder-chat-header">
         <div><h1>AI Chat</h1><p>Prepare your packet with Relay</p></div>
-        <Badge tone={snapshot.ui_state === 'Needs input' ? 'attention' : 'neutral'}>{snapshot.ui_state}</Badge>
+        <div aria-label="AI request status"><small>AI request</small> <Badge tone={requestState === 'error' ? 'attention' : requestState === 'connected' ? 'success' : 'neutral'}>{requestLabels[requestState]}</Badge></div>
       </header>
       <div className="founder-chat-status" aria-label="Relay status">
+        <span className="founder-chat-draft-caption">Browser packet draft state</span>
         {aiStates.map((state) => <span key={state} aria-current={snapshot.ui_state === state ? 'step' : undefined} className={snapshot.ui_state === state ? 'is-current' : ''}><span aria-hidden="true"/>{state}</span>)}
       </div>
       <div className="founder-chat-conversation">
-        <Conversation large>
+        <Conversation large onRequestStateChange={setRequestState}>
       {sentClarification && <section className="founder-chat-clarification" aria-label="Advisor question"><p>{snapshot.advisors[0]?.name ?? 'Your advisor'} sent you a question about your packet.</p><Link className="founder-chat-action" to="/founder/home/clarification">Answer the question</Link></section>}
 </Conversation>
       </div>
@@ -43,11 +48,11 @@ function DemoScreen() {
           : <p className="founder-chat-empty">Relay adds items here as you talk through your packet.</p>}
       </Collapsible></section>
       <section className="founder-chat-activity" aria-labelledby="founder-chat-activity-title"><Collapsible id="chat-activity" headingId="founder-chat-activity-title" title="Recent activity">
-        {activity.entries?.length ? <ul className="founder-chat-activity-feed">{activity.entries.map((entry) => <li key={entry.id}><p>{entry.text}</p><small>{entry.actor === 'agent' ? 'Relay' : entry.actor === 'founder' ? 'You' : 'Advisor'} · {timeAgo(entry.created_at)}</small></li>)}</ul>
+        {activity.entries?.length ? <ul className="founder-chat-activity-feed">{activity.entries.map((entry) => <li key={entry.id}><p>{entry.text}</p><small>{entry.actor === 'agent' ? 'Relay' : entry.actor === 'founder' ? 'You' : entry.actor === 'advisor' ? 'Advisor' : 'System'} · {timeAgo(entry.created_at)}</small></li>)}</ul>
           : <p>{activity.error ?? (activity.entries === null ? 'Loading activity…' : 'Nothing yet.')}</p>}
         {nextItem && <small>Next: {nextItem.title}</small>}
       </Collapsible></section>
-      <section className="founder-chat-case" aria-labelledby="founder-chat-case-title"><Collapsible id="chat-case" headingId="founder-chat-case-title" title="Case details"><dl><div><dt>Name</dt><dd>{snapshot.company}</dd></div><div><dt>Status</dt><dd>{snapshot.status}</dd></div><div><dt>AI state</dt><dd>{snapshot.ui_state}</dd></div><div><dt>Packet</dt><dd>{snapshot.current_packet_version_id ? <Link to={`/founder/documents?version=${encodeURIComponent(snapshot.current_packet_version_id)}`}>View current version</Link> : 'No draft yet'}</dd></div></dl></Collapsible></section>
+      <section className="founder-chat-case" aria-labelledby="founder-chat-case-title"><Collapsible id="chat-case" headingId="founder-chat-case-title" title="Case details"><dl><div><dt>Name</dt><dd>{snapshot.company}</dd></div><div><dt>Status</dt><dd>{snapshot.status}</dd></div><div><dt>Browser packet draft state</dt><dd>{snapshot.ui_state}</dd></div><div><dt>Packet</dt><dd>{snapshot.current_packet_version_id ? <Link to={`/founder/documents?version=${encodeURIComponent(snapshot.current_packet_version_id)}`}>View current version</Link> : 'No draft yet'}</dd></div></dl></Collapsible></section>
     </aside>
   </div>}</ScreenState>;
 }

@@ -60,13 +60,20 @@ export async function streamChat(sessionId: string, message: string, onChunk: (t
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let reply = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    const text = decoder.decode(value, { stream: true });
-    if (text) { reply += text; onChunk(text); }
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      if (text) { reply += text; onChunk(text); }
+    }
+    const tail = decoder.decode();
+    if (tail) { reply += tail; onChunk(tail); }
+    if (!reply.trim()) throw new RelayApiError(0, 'The assistant returned an empty reply.');
+    return reply;
+  } finally {
+    reader.releaseLock();
   }
-  return reply;
 }
 
 export type ChecklistState = 'todo' | 'in_progress' | 'blocked' | 'done';

@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Conversation } from './conversation';
 import { RelayProvider, adapter } from './context';
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 beforeEach(()=>adapter.reset());
 
 function mount(role: 'founder'|'advisor', privateOnly = false): void {
@@ -17,7 +17,19 @@ describe('V2 chat audiences and document attachments', () => {
     expect(await screen.findByRole('textbox', {name: 'Message Relay'})).toBeVisible();
     expect(screen.queryByRole('tablist', {name: 'Message audience'})).not.toBeInTheDocument();
     expect(screen.queryByRole('textbox', {name: 'Message Alex Morgan'})).not.toBeInTheDocument();
-    expect(screen.getByRole('button', {name: 'Add file'})).toBeVisible();
+    expect(screen.queryByRole('button', {name: 'Add file'})).not.toBeInTheDocument();
+    expect(screen.getByRole('link', {name: 'open the server synthetic workspace'})).toHaveAttribute('href', '/advisor/clients?advisor_demo=server');
+  });
+  it('saves advisor private notes locally without calling the legacy founder API', async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal('fetch', fetchMock);
+    mount('advisor', true);
+    fireEvent.change(await screen.findByRole('textbox', {name: 'Message Relay'}), {target: {value: 'Private review note'}});
+    fireEvent.click(screen.getByRole('button', {name: 'Send'}));
+    expect(await screen.findByText('Private review note')).toBeVisible();
+    expect(fetchMock).not.toHaveBeenCalled();
+    const view = (await adapter.snapshot('advisor')).data;
+    expect(view.messages.find(message => message.text === 'Private review note')?.audience.kind).toBe('private_ai');
   });
   it('does not offer private uploads to a human recipient before packet handoff', async () => {
     const before=(await adapter.snapshot('founder')).data;
