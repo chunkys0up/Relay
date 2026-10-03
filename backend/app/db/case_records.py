@@ -76,3 +76,17 @@ async def log_activity(case_id: UUID, actor: Actor, text: str) -> dict[str, Any]
         case_id, actor, text,
     )
     return dict(row)
+
+
+async def list_case_documents(case_id: UUID) -> list[dict[str, Any]]:
+    rows = await get_pool().fetch(
+        "SELECT id, filename, s3_key, uploaded_at FROM documents WHERE case_id = $1 ORDER BY uploaded_at", case_id
+    )
+    return [dict(row) for row in rows]
+
+
+async def get_case_document(case_id: UUID, document_id: UUID) -> dict[str, Any] | None:
+    row = await get_pool().fetchrow(
+        "SELECT id, filename, s3_key, uploaded_at FROM documents WHERE id = $1 AND case_id = $2", document_id, case_id
+    )
+    return dict(row) if row else None

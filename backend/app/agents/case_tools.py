@@ -5,11 +5,13 @@ The case comes from the request's invocation_state, so one cached agent never wr
 
 from __future__ import annotations
 
+from typing import Any
 from uuid import UUID
 
 from strands import tool
 from strands.types.tools import ToolContext
 
+from app.agents.attachments import UnreadableFile, load_file_block
 from app.db import case_records
 from app.db.case_records import CHECKLIST_STATES
 
@@ -87,12 +89,52 @@ async def log_activity(text: str, tool_context: ToolContext) -> str:
     return "Logged."
 
 
-CASE_TOOLS = [list_checklist, add_checklist_item, update_checklist_item, log_activity]
+@tool(context=True)
+async def list_case_documents(tool_context: ToolContext) -> str:
+    """List the files the founder has uploaded to this case, with each file's id and upload date."""
+    case_id = _case_id(tool_context)
+    if case_id is None:
+        return NO_CASE
+    documents = await case_records.list_case_documents(case_id)
+    if not documents:
+        return "The founder hasn't uploaded any files yet."
+    return "\n".join(f"{doc['id']} | {doc['filename']} | uploaded {doc['uploaded_at']:%Y-%m-%d}" for doc in documents)
+
+
+@tool(context=True)
+async def read_case_document(document_id: str, tool_context: ToolContext) -> dict[str, Any]:
+    """Read the contents of one of the founder's uploaded files, so you can answer questions about it.
+
+    Args:
+        document_id: The file id from list_case_documents.
+    """
+    def error(text: str) -> dict[str, Any]:
+        return {"status": "error", "content": [{"text": text}]}
+
+    case_id = _case_id(tool_context)
+    if case_id is None:
+        return error(NO_CASE)
+    try:
+        parsed_id = UUID(document_id)
+    except ValueError:
+        return error(f"{document_id!r} is not a file id. Call list_case_documents to get ids.")
+    doc = await case_records.get_case_document(case_id, parsed_id)
+    if doc is None:
+        return error(f"No file {document_id} in this case.")
+    try:
+        block = await load_file_block(doc["filename"], doc["s3_key"])
+    except UnreadableFile as exc:
+        return error(str(exc))
+    return {"status": "success", "content": [{"text": f"Contents of {doc['filename']}:"}, block]}
+
+
+CASE_TOOLS = [list_checklist, add_checklist_item, update_checklist_item, log_activity, list_case_documents, read_case_document]
 
 INSTRUCTIONS = """You are Relay, helping a startup founder prepare a financial planning packet for their advisor.
 
 You keep the founder's case checklist and activity feed up to date with your tools:
 - When the founder needs to provide, decide or do something for the packet, or you spot something missing, add it to the checklist. Call list_checklist first so you don't add duplicates. Use short imperative titles, and write any detail to the founder as "you".
 - When the founder provides or completes something on the checklist, mark that item done.
-- Checklist changes appear in the founder's activity feed automatically. Use log_activity only for other meaningful work, such as reviewing an attached document.
-Mention checklist changes briefly in your reply, but never name the tools themselves. Keep replies concise."""
+- Checklist changes appear in the founder's activity feed automatically. Use log_activity only for other meaningful work, such as reviewing a document.
+- You can read the files the founder has uploaded to the case. When they ask about their documents, or a question depends on a file's contents, call list_case_documents and then read_case_document. Never ask them to re-upload a file that's already in the case. When an uploaded file covers a checklist item, mark it done.
+In your reply, briefly mention checklist changes you actually made. Don't narrate checks that changed nothing, or your own process, and never name the tools. Keep replies concise."""
