@@ -85,6 +85,16 @@ def test_real_strands_team_delegates_and_stages_only_writer_proposal() -> None:
     assert [step["role"] for step in result.agent_steps] == ["reader", "writer", "orchestrator"]
 
 
+def test_reader_accepts_one_json_fence_without_skipping_grounding() -> None:
+    provider, models, _ = _successful_team()
+    models["reader"].actions[-1] = ('```json\n' + json.dumps({
+        "proposals": [CHANGE], "reply": "Cash reserve is cited.",
+    }) + '\n```')
+    result = provider.plan(GOAL, [EXCERPT], context())
+    assert result.pdf_edit is not None
+    assert result.proposals[0].evidence[0].source_id == EXCERPT["source_id"]
+
+
 def test_writer_before_reader_is_rejected_without_invoking_specialist() -> None:
     provider, models, _ = scripted_team(
         [("consult_writer", {}), "I made the PDF."],
@@ -250,6 +260,10 @@ def test_verifier_requires_deterministic_pass_exact_hash_and_clean_agent_verdict
     assert "extracted_text" not in report
     assert tools["verifier"] == []
     assert models["verifier"].calls == 1
+
+    provider, _, _ = scripted_team([], verifier=['```json\n' + json.dumps({
+        "passed": True, "hash": digest, "issues": []}) + '\n```'])
+    assert provider.verify_pdf(pdf, {"cash_reserve": "$120"})["mode"] == "deterministic+agent"
 
     provider, _, _ = scripted_team([], verifier=[json.dumps({
         "passed": True, "hash": "wrong", "issues": []})])
