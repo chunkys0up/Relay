@@ -48,11 +48,12 @@ export async function documentUrl(documentId: string, signal?: AbortSignal): Pro
 }
 
 /** Streams the assistant reply, calling onChunk per text delta; resolves with the full reply. */
-export async function streamChat(sessionId: string, message: string, onChunk: (text: string) => void, signal?: AbortSignal, documentIds: string[] = []): Promise<string> {
+export async function streamChat(sessionId: string, message: string, onChunk: (text: string) => void, options: { signal?: AbortSignal; documentIds?: string[]; caseId?: string } = {}): Promise<string> {
+  const { signal, documentIds = [], caseId } = options;
   const response = await request('/api/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, session_id: sessionId, document_ids: documentIds }),
+    body: JSON.stringify({ message, session_id: sessionId, document_ids: documentIds, case_id: caseId }),
     signal,
   });
   if (!response.body) throw new RelayApiError(0, 'The backend returned no reply stream.');
@@ -67,3 +68,26 @@ export async function streamChat(sessionId: string, message: string, onChunk: (t
   }
   return reply;
 }
+
+export type ChecklistState = 'todo' | 'in_progress' | 'blocked' | 'done';
+export interface ChecklistItem { id: string; case_id: string; title: string; detail: string | null; state: ChecklistState; position: number; created_by: 'agent' | 'user'; created_at: string; updated_at: string }
+export interface ActivityEntry { id: string; case_id: string; actor: 'agent' | 'founder' | 'advisor' | 'system'; text: string; created_at: string }
+
+export async function listChecklist(caseId: string, signal?: AbortSignal): Promise<ChecklistItem[]> {
+  return (await request(`/api/cases/${encodeURIComponent(caseId)}/checklist`, { signal })).json() as Promise<ChecklistItem[]>;
+}
+
+export async function setChecklistState(caseId: string, itemId: string, state: ChecklistState): Promise<ChecklistItem> {
+  const response = await request(`/api/cases/${encodeURIComponent(caseId)}/checklist/${encodeURIComponent(itemId)}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state }),
+  });
+  return response.json() as Promise<ChecklistItem>;
+}
+
+export async function listActivity(caseId: string, limit = 20, signal?: AbortSignal): Promise<ActivityEntry[]> {
+  return (await request(`/api/cases/${encodeURIComponent(caseId)}/activity?limit=${limit}`, { signal })).json() as Promise<ActivityEntry[]>;
+}
+
+/** Fired after anything that can change the case's checklist, activity or documents (AI replies, uploads, ticks). */
+export const CASE_UPDATED_EVENT = 'relay:case-updated';
+export function announceCaseUpdate(): void { window.dispatchEvent(new Event(CASE_UPDATED_EVENT)); }

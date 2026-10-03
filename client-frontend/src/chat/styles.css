@@ -68,3 +68,6 @@ main:has(.founder-chat) .backend-workspace-entry{padding-block:6px}
 /* The paperclip is a plain icon button; older rules paint every composer-actions button blue. */
 .founder-chat-conversation .composer-actions .composer-attach{background:none;border:0;border-radius:50%;color:#52627f}
 .founder-chat-conversation .composer-actions .composer-attach:hover:not(:disabled){background:#f1f4f9;color:#1e293b}
+.founder-chat-activity-feed{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:10px}
+.founder-chat-activity-feed p{margin:0;font-size:12px;color:#1e293b}
+.founder-chat-activity-feed small{margin-top:2px!important}

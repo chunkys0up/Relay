@@ -1,20 +1,24 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Badge, Conversation, ScreenState, useRelay } from '@relay/shared';
-import type { Task } from '@relay/shared';
+import { Badge, Conversation, ScreenState, timeAgo, useCaseActivity, useCaseChecklist, useRelay } from '@relay/shared';
+import type { ChecklistItem, ChecklistState } from '../../../frontend-shared/src/relayApi';
 import './styles.css';
 
 const aiStates = ['Idle', 'Thinking / Working', 'Needs input'] as const;
 
-function taskTone(task: Task): 'neutral' | 'attention' | 'success' {
-  return task.state === 'Done' ? 'success' : task.state === 'Blocked' ? 'attention' : 'neutral';
+const stateLabels: Record<ChecklistState, string> = { todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done' };
+
+function itemTone(item: ChecklistItem): 'neutral' | 'attention' | 'success' {
+  return item.state === 'done' ? 'success' : item.state === 'blocked' ? 'attention' : 'neutral';
 }
 
 function DemoScreen() {
   const { snapshot } = useRelay();
-  const tasks = [...(snapshot?.tasks ?? [])].sort((a, b) => a.order - b.order);
+  const checklist = useCaseChecklist();
+  const activity = useCaseActivity(undefined, 4);
+  const items = checklist.items ?? [];
   const sentClarification = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
-  const nextTask = tasks.find((task) => task.state !== 'Done');
+  const nextItem = items.find((item) => item.state !== 'done');
 
   return <ScreenState>{snapshot && <div className="founder-chat">
     <div className="founder-chat-main">
@@ -32,10 +36,17 @@ function DemoScreen() {
       </div>
     </div>
     <aside className="founder-chat-aside" aria-label="Planning steps and case details">
-      <section aria-labelledby="founder-chat-steps-title"><h2 id="founder-chat-steps-title">Your next steps</h2>
-        {tasks.length ? <ol className="founder-chat-steps">{tasks.map((task) => <li key={task.id}><span className={`founder-chat-step-number ${task.state === 'Done' ? 'is-done' : ''}`}>{task.order}</span><div><strong>{task.title}</strong>{task.detail && <p>{task.detail}</p>}</div><Badge tone={taskTone(task)}>{task.state}</Badge></li>)}</ol> : <p className="founder-chat-empty">Tasks will appear as your packet work begins.</p>}
+      <section aria-labelledby="founder-chat-steps-title"><h2 id="founder-chat-steps-title">Checklist</h2>
+        {checklist.error ? <p className="founder-chat-empty" role="alert">{checklist.error}</p>
+          : checklist.items === null ? <p className="founder-chat-empty" role="status">Loading checklist…</p>
+          : items.length ? <ol className="founder-chat-steps">{items.map((item, index) => <li key={item.id}><span className={`founder-chat-step-number ${item.state === 'done' ? 'is-done' : ''}`}>{item.state === 'done' ? '✓' : index + 1}</span><div><strong>{item.title}</strong>{item.detail && <p>{item.detail}</p>}</div><Badge tone={itemTone(item)}>{stateLabels[item.state]}</Badge></li>)}</ol>
+          : <p className="founder-chat-empty">Relay adds items here as you talk through your packet.</p>}
       </section>
-      <section className="founder-chat-activity" aria-labelledby="founder-chat-activity-title"><h2 id="founder-chat-activity-title">Current activity</h2><p>{snapshot.activity ?? 'Waiting for your next step.'}</p>{nextTask && <small>Next task: {nextTask.title}</small>}</section>
+      <section className="founder-chat-activity" aria-labelledby="founder-chat-activity-title"><h2 id="founder-chat-activity-title">Recent activity</h2>
+        {activity.entries?.length ? <ul className="founder-chat-activity-feed">{activity.entries.map((entry) => <li key={entry.id}><p>{entry.text}</p><small>{entry.actor === 'agent' ? 'Relay' : entry.actor === 'founder' ? 'You' : 'Advisor'} · {timeAgo(entry.created_at)}</small></li>)}</ul>
+          : <p>{activity.error ?? (activity.entries === null ? 'Loading activity…' : 'Nothing yet.')}</p>}
+        {nextItem && <small>Next: {nextItem.title}</small>}
+      </section>
       <section className="founder-chat-case" aria-labelledby="founder-chat-case-title"><h2 id="founder-chat-case-title">Case details</h2><dl><div><dt>Name</dt><dd>{snapshot.company}</dd></div><div><dt>Status</dt><dd>{snapshot.status}</dd></div><div><dt>AI state</dt><dd>{snapshot.ui_state}</dd></div><div><dt>Packet</dt><dd>{snapshot.current_packet_version_id ? <Link to={`/founder/documents?version=${encodeURIComponent(snapshot.current_packet_version_id)}`}>View current version</Link> : 'No draft yet'}</dd></div></dl></section>
     </aside>
   </div>}</ScreenState>;

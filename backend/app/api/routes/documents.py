@@ -8,6 +8,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import settings
+from app.db.case_records import log_activity
 from app.db.pool import get_pool
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
 from app.storage.s3 import build_key, delete_object, presigned_download_url, upload_bytes
@@ -59,6 +60,7 @@ async def upload_document(
         await run_in_threadpool(delete_object, key)
         raise HTTPException(status_code=404, detail=f"case {case_id} not found")
 
+    await log_activity(case_id, "founder", f"Uploaded {filename}")
     return DocumentUploadResponse(
         id=row["id"],
         source_id=row["id"],

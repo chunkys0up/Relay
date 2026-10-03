@@ -1,10 +1,75 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, EmptyState, Panel } from './ui';
-import { documentUrl, LIVE_CASE_ID, listDocuments, uploadDocument } from './relayApi';
-import type { LiveDocument } from './relayApi';
+import { announceCaseUpdate, CASE_UPDATED_EVENT, documentUrl, LIVE_CASE_ID, listActivity, listChecklist, listDocuments, setChecklistState, uploadDocument } from './relayApi';
+import type { ActivityEntry, ChecklistItem, ChecklistState, LiveDocument } from './relayApi';
 
 const errorText = (error: unknown): string => error instanceof Error ? error.message : 'Request failed';
+
+/** Re-run a fetch whenever the case changes (AI reply, upload, checklist tick). */
+function useCaseReload(): number {
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const bump = (): void => setReload(n => n + 1);
+    window.addEventListener(CASE_UPDATED_EVENT, bump);
+    return () => window.removeEventListener(CASE_UPDATED_EVENT, bump);
+  }, []);
+  return reload;
+}
+
+/** Plain-text preview of a markdown message, for short blurbs. */
+export function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm, '')
+    .replace(/[*_~`|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const minutes = Math.round((now - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export interface CaseChecklist { items: ChecklistItem[] | null; error: string | null; setState: (itemId: string, state: ChecklistState) => Promise<void> }
+
+/** The case checklist the chat agent maintains; the founder can tick items off. */
+export function useCaseChecklist(caseId: string = LIVE_CASE_ID): CaseChecklist {
+  const [items, setItems] = useState<ChecklistItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCaseReload();
+  useEffect(() => {
+    const c = new AbortController();
+    listChecklist(caseId, c.signal).then(next => { setItems(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    return () => c.abort();
+  }, [caseId, reload]);
+  const setState = useCallback(async (itemId: string, state: ChecklistState): Promise<void> => {
+    setItems(prev => prev?.map(item => item.id === itemId ? { ...item, state } : item) ?? prev);
+    try { await setChecklistState(caseId, itemId, state); } catch (e) { setError(errorText(e)); }
+    announceCaseUpdate();
+  }, [caseId]);
+  return { items, error, setState };
+}
+
+/** Recent case activity: uploads, checklist changes and notes the agent logs. */
+export function useCaseActivity(caseId: string = LIVE_CASE_ID, limit = 8): { entries: ActivityEntry[] | null; error: string | null } {
+  const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCaseReload();
+  useEffect(() => {
+    const c = new AbortController();
+    listActivity(caseId, limit, c.signal).then(next => { setEntries(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    return () => c.abort();
+  }, [caseId, limit, reload]);
+  return { entries, error };
+}
 
 export interface CaseDocuments {
   documents: LiveDocument[] | null;
@@ -20,7 +85,9 @@ export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
   const [documents, setDocuments] = useState<LiveDocument[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [reload, setReload] = useState(0);
+  const [localReload, setReload] = useState(0);
+  const caseReload = useCaseReload();
+  const reload = localReload + caseReload;
 
   useEffect(() => {
     const c = new AbortController();
@@ -39,7 +106,7 @@ export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
       setError(errorText(e));
     } finally {
       setUploading(false);
-      setReload(n => n + 1);
+      announceCaseUpdate();
     }
   }, [caseId]);
 

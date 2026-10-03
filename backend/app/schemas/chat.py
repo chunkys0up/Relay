@@ -11,6 +11,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="User message to send to the agent")
     session_id: str = Field(default="default", description="Conversation/session identifier")
     document_ids: list[UUID] = Field(default_factory=list, max_length=MAX_ATTACHMENTS, description="Case documents to read with this message")
+    case_id: UUID | None = Field(default=None, description="Case whose checklist and activity the agent may update")
 
 
 class ChatResponse(BaseModel):

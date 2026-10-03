@@ -41,3 +41,11 @@
 @media(max-width:900px){.founder-home{grid-template-columns:1fr}.founder-home-aside{border-left:0;border-top:1px solid #e0e7f0}.founder-home-advisor{margin-left:auto}}
 @media(max-width:600px){.founder-home{margin:-20px -14px}.founder-home-content{padding:22px 14px}.founder-home-intro{gap:10px;flex-wrap:wrap;margin-bottom:30px}.founder-home-avatar{width:48px;height:48px;font-size:15px}.founder-home-intro h1{font-size:27px}.founder-home-intro p{font-size:13px}.founder-home-advisor{width:100%;margin:8px 0 0 58px;flex-wrap:wrap;white-space:normal}.founder-home-toolbar{display:grid}.founder-home-filters button{font-size:12px;padding:8px}.founder-home-file-head,.founder-home-file-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}.founder-home-file-head span:nth-child(2),.founder-home-file-row>span:nth-child(2){display:none}.founder-home-aside{padding:18px 14px 100px}}
 button.founder-home-file-name{border:0;background:none;padding:0;font:inherit;text-align:left;cursor:pointer}
+/* Live checklist: the check mark is a real toggle button. */
+button.founder-home-check{padding:0;background:#fff;font:inherit;font-size:13px;cursor:pointer}
+button.founder-home-check:hover:not(.is-done){border-color:#0caa5b}
+button.founder-home-check.is-done{background:#0caa5b}
+/* Activity feed: actor, text and time on one compact row; conversation previews cut off after two lines. */
+.founder-home-activity-feed li{grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;column-gap:8px}
+.founder-home-activity-feed li strong{color:#10182b}
+.founder-home-blurb{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
