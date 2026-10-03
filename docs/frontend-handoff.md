@@ -6,7 +6,7 @@ in their dedicated branch/worktree. Import primitives/types/hooks from
 backend, specs or other screen files. Report shared changes to Astra.
 
 Foundation is React/strict TypeScript, Vite and plain CSS. Existing directory
-spellings remain. A single dev server exposes separate role routes. The visible
+spellings remain. The runnable app, manifest, HTML, public assets and build config live in `frontend-shared/`, an npm workspace. A single dev server exposes separate role routes. The visible
 role switch is explicitly a local fixture selector, not authentication.
 
 `useRelay()` exposes `{snapshot,role,loading,busy,error,notice,scenario,run,refresh,
@@ -48,7 +48,7 @@ Fixtures intentionally show one missing reserve target and conflicting revenue,
 with source citations. Simulated answers create an unapproved new version; renewed
 handoff is required. All frontend persistence is in-memory, reset by full reload.
 
-Checks from repository root: `npm run lint`, `npm run typecheck`, `npm test`,
+Install dependencies once from the repository root. Root scripts delegate to the frontend workspace. Checks from repository root: `npm run lint`, `npm run typecheck`, `npm test`,
 `npm run build`, `npm run test:browser`. Shared dependency installation is owned by
 Astra. Screen worker may symlink root node_modules from foundation worktree to
 avoid independent installations. Commit only owned files to the screen branch.

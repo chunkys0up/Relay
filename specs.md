@@ -1,6 +1,6 @@
 # Relay product and technical specification
 
-Version 0.3 · 2 October 2026 · React/FastAPI, integrated calls, and document-retrieval plan
+Version 0.4 · 2 October 2026 · React/FastAPI, integrated calls, and document-retrieval plan
 
 **Relay is a working name.** This is a focused, fictional-data hackathon plan—not a production financial system, an LPL integration, or an institutional submission workflow. The repository currently contains separate `client-frontend/`, `advsior-frontend/` (existing spelling), and `backend/` directories; preserve those names unless a separately approved migration changes them.
 
@@ -74,15 +74,17 @@ Centralize them as `--lpl-navy`, `--lpl-orange`, and `--lpl-muted`. Navy serves 
 | AI | Amazon Bedrock via configured model/inference-profile ID | User reports a successful “Claude Sonnet 5” call; exact ID is **UNVERIFIED** and must be copied from that successful request/configuration |
 | Files | Private Amazon S3 | Originals, extracted text, packet drafts/versions |
 | Extraction | Amazon Textract | Validate supported types, store source/page evidence and extraction status |
-| Records | Amazon DynamoDB | Cases, facts, document catalog/version/status, tasks, messages, call/consent state, reviews |
+| Records | PostgreSQL on Amazon RDS | Cases, facts, document catalog/version/status, tasks, messages, call/consent state, reviews |
 | Calls | Amazon Chime SDK | Real founder/advisor calls after permissions and two-person test |
 | Speech processing | Chime capture → Amazon Transcribe → Bedrock | Only after explicit participant consent; no live AI suggestions |
 
 Run React clients and FastAPI locally for the demo. Lambda is a future migration requiring a deliberate redesign of hosting, workers, and WebSocket behavior; it is not a drop-in deployment promise. No sign-in is required for an isolated fictional demo, but a server-controlled, clearly labeled role switch must never become real authentication or a public unauthenticated deployment.
 
+Current backend status: `backend/db/schema.sql` defines the initial PostgreSQL tables and `backend/app/core/config.py` provides `DB_*` settings. No database client, migrations runner or persistence queries are connected yet. The workflow below describes the target design.
+
 ## 6. Data, retrieval, and agent boundaries
 
-S3 stores original documents, immutable drafts, and extracted text. DynamoDB stores the document catalog, version/hash, source locators, extraction status, facts, conflicts, tasks, messages, explicit sharing/consent, and version-bound reviews.
+S3 stores original documents, immutable drafts, and extracted text. The planned PostgreSQL repository stores the document catalog, version/hash, source locators, extraction status, facts, conflicts, tasks, messages, explicit sharing/consent, and version-bound reviews.
 
 The demo does **not** use managed Bedrock Knowledge Bases. A backend-owned retrieval tool selects authorized extracted passages by case and document type from S3, applies case/permission filters, and returns exact citations. Document status alone is not RAG. Indexed passage search is a future scaling option only after relevance, isolation, cost, and operations decisions.
 
@@ -102,12 +104,12 @@ For this synthetic demo, delete captured audio and transcript after processing s
 - Authorize every REST endpoint, WebSocket connection/message, source, preview, call action, event stream, and review. S3 keys use opaque IDs, not paths/names from users.
 - Use short-lived constrained upload/download access; validate/hash canonical stored files. Reject unsupported, encrypted, image-only, malformed, or oversized uploads with useful errors.
 - Persist task creation before work becomes claimable. Persist events before broadcasting; reconnects replay from a cursor.
-- Keep packet versions immutable. Conditional writes and idempotency keys prevent duplicate jobs/sends. Approval is exact-version and rejects stale state.
+- Keep packet versions immutable. PostgreSQL transactions, revision-checked updates and unique idempotency keys prevent duplicate jobs/sends. Approval is exact-version and rejects stale state.
 - Log IDs, timings, statuses, and safe errors; exclude document bodies, financial values, chat contents, audio, transcripts, tokens, and presigned URLs.
 
 ## 9. Setup gates and definition of done
 
-Before implementation, verify AWS identity/region, private S3 write/read, DynamoDB conditional write/read, Textract access, the exact successful Bedrock model or inference-profile ID and invocation permissions, Strands SDK compatibility, Chime permissions, Chime capture/Transcribe prerequisites, and two-person call setup. Do not create resources, expand permissions, or use real data without authorization.
+Before implementation, verify AWS identity/region, private S3 write/read, PostgreSQL connectivity, schema migrations and transaction/revision-conflict checks, Textract access, the exact successful Bedrock model or inference-profile ID and invocation permissions, Strands SDK compatibility, Chime permissions, Chime capture/Transcribe prerequisites, and two-person call setup. Do not create resources, expand permissions, or use real data without authorization.
 
 The accepted demo session is a fictional business-owner packet: attachment upload in founder Home chat → one cited contradiction and one missing fact → task-first clarification → packet v1 in Documents → advisor source-linked review → returned questions → founder answer → packet v2 → exact-version approval. It must show the three AI states, prominent to-do/current activity, integrated human messaging, the dedicated Call view with separate capture consent, and at least one real AWS operation. No mock may be claimed as live AI, Textract, storage, or audio.
 
@@ -118,4 +120,4 @@ The accepted demo session is a fictional business-owner packet: attachment uploa
 - [Amazon Bedrock inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html)
 - [Amazon Chime SDK Media Pipelines](https://docs.aws.amazon.com/chime-sdk/latest/APIReference/API_Operations_Amazon_Chime_SDK_Media_Pipelines.html)
 - [Amazon S3 presigned URLs](https://docs.aws.amazon.com/AmazonS3/latest/userguide/using-presigned-url.html)
-- [Amazon DynamoDB conditional writes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ConditionExpressions.html)
+- [PostgreSQL concurrency control](https://www.postgresql.org/docs/current/mvcc.html)

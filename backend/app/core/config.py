@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     aws_profile: str | None = None
     demo_tenant_id: str = "relay-demo"
+    chime_region: str = "us-east-1"
 
     # RDS Postgres. Schema lives in db/schema.sql; no ORM/client is wired up
     # yet — these are just typed config for whatever reads them next.

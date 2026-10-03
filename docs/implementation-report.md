@@ -88,7 +88,7 @@ Chromium desktop/emulated mobile were checked. Real touch devices, Safari/Firefo
 
 ## Run locally
 
-From `/home/tim/Relay-worktrees/integration`, use `npm run dev -- --port 5173`, or `npm run build` followed by `npx vite preview --host 127.0.0.1 --port 5173`. A local production preview was left running at `http://127.0.0.1:5173`. No deployment occurred.
+Current app: from `/home/tim/Relay`, use `npm run dev` (delegates to the `frontend-shared` workspace). For a production preview, run `npm run build`, then `cd frontend-shared && npx vite preview --host 127.0.0.1 --port 5179`. The older integration-worktree preview on port 5173 is historical and is not required to run the repository app. No deployment occurred.
 
 ## Orchestration observation
 
