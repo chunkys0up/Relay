@@ -158,3 +158,12 @@ db/
   schema.sql              Table definitions (applied to relay-db)
   seed.sql                 Sample rows
 ```
+
+## Strands / Bedrock workflow baseline
+
+The separate `app.workflow_app:app` service on loopback port 8001 now connects the
+founder backend workspace to the installed Strands SDK and a configured Bedrock
+model/profile. It adds owner-scoped WebSocket snapshots, source extraction,
+confirmed fields and immutable PDF output. The legacy `/api/chat` harness above
+is preserved. See [workflow setup](../docs/bedrock-workflow.md) for current support
+and the SQLite development/RDS boundary.

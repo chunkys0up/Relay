@@ -8,6 +8,6 @@ export default defineConfig({
   define: { global: 'globalThis' },
   optimizeDeps: { esbuildOptions: { define: { global: 'globalThis' } } },
   resolve: { alias: { '@relay/shared': fileURLToPath(new URL('./src/index.ts', import.meta.url)) } },
-  server: { fs: { allow: [repositoryRoot] } },
+  server: { proxy: { '/api/workflow': { target: 'http://127.0.0.1:8001', ws: true } }, fs: { allow: [repositoryRoot] } },
   test: { root: repositoryRoot, environment: 'jsdom', include: ['**/*.test.ts', '**/*.test.tsx'], setupFiles: ['./tests/setup.ts'] },
 });

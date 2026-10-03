@@ -11,8 +11,13 @@ dependencies = [
     "python-dotenv==1.2.4",
     "boto3>=1.43.108",
     "python-multipart>=0.0.32",
+    "pypdf==6.19.0",
+    "reportlab==5.0.1",
     "asyncpg>=0.31.0",
 ]
+
+[dependency-groups]
+test = ["pytest==9.1.1", "httpx==0.28.1"]
 
 [build-system]
 requires = ["hatchling"]

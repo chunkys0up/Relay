@@ -1,0 +1,80 @@
+import { test, expect } from '@playwright/test';
+
+const source = 'Company: Northstar Labs\nFounder: Alex Morgan\nSummary: Software for small teams\nAnnual revenue: 240000\nPeriod: 2026';
+
+test('input-driven packet through WebSocket, conflict confirmation, immutable PDF and template', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto('/founder/home?workspace=backend');
+  await expect(page.getByText('Simulated AI · test provider', { exact: true })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Northstar Labs');
+  await page.getByRole('textbox', { name: 'What would you like to prepare?' }).fill('Prepare my fictional founder planning packet.');
+  await page.getByRole('button', { name: 'Create backend case' }).click();
+  await expect(page.getByText('Live updates connected', { exact: true })).toBeVisible();
+  await page.getByLabel('Add source document').setInputFiles({ name: 'intake.txt', mimeType: 'text/plain', buffer: Buffer.from(source) });
+  await expect(page.getByText('intake.txt', { exact: true })).toBeVisible();
+  await page.getByLabel('Add source document').setInputFiles({ name: 'forecast.txt', mimeType: 'text/plain', buffer: Buffer.from('Annual revenue: 280000') });
+  await expect(page.getByText('forecast.txt', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Continue in AI Chat' }).click();
+  await page.getByLabel('Message Relay about this packet').fill('Please prepare this packet and identify any conflicting figures.');
+  await page.getByRole('button', { name: 'Analyze with test AI' }).click();
+  await expect(page.getByText('conflicting', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create confirmed PDF draft' })).toBeDisabled();
+  await expect(page.getByText('Please prepare this packet and identify any conflicting figures.', { exact: false }).first()).toBeVisible();
+  await page.getByLabel('Message Relay about this packet').fill('Cash reserve: 60000');
+  await page.getByRole('button', { name: 'Analyze with test AI' }).click();
+  await expect(page.getByRole('textbox', { name: 'Cash reserve (USD)', exact: true })).toHaveValue('60000');
+  await page.getByRole('textbox', { name: 'Annual revenue (USD)', exact: true }).fill('280000');
+  await page.getByRole('checkbox', { name: /I reviewed the displayed evidence/ }).check();
+  await page.getByRole('button', { name: 'Confirm reviewed values' }).click();
+  await expect(page.getByRole('button', { name: 'Create confirmed PDF draft' })).toBeEnabled();
+  await page.getByRole('textbox', { name: 'Cash reserve (USD)', exact: true }).fill('65000');
+  await expect(page.getByRole('button', { name: 'Create confirmed PDF draft' })).toBeDisabled();
+  await page.getByRole('checkbox', { name: /I reviewed the displayed evidence/ }).check();
+  await page.getByRole('button', { name: 'Confirm reviewed values' }).click();
+  await page.getByRole('button', { name: 'Create confirmed PDF draft' }).click();
+  await expect(page.getByRole('link', { name: 'Download v1' })).toBeVisible();
+  const url = await page.getByRole('link', { name: 'Download v1' }).getAttribute('href');
+  const pdf = await page.request.get(url!);
+  expect(pdf.status()).toBe(200);
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  const hash = pdf.headers()['x-content-sha256'];
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+    await page.evaluate(() => window.scrollTo(0, 0));
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+    await page.screenshot({ path: test.info().outputPath(`backend-chat-${width}.png`), fullPage: true });
+  }
+  await page.reload();
+  await expect(page.getByRole('link', { name: 'Download v1' })).toBeVisible();
+  await expect(page.getByText('Live updates connected', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Documents and uploads', exact: true }).click();
+  await page.getByLabel('Add PDF template').setInputFiles('/tmp/relay-workflow-form.pdf');
+  await expect(page.getByText('relay-workflow-form.pdf', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Continue in AI Chat' }).click();
+  await page.getByRole('combobox', { name: 'PDF layout' }).selectOption({ label: 'relay-workflow-form.pdf' });
+  await page.getByRole('button', { name: 'Create confirmed PDF draft' }).click();
+  await expect(page.getByRole('link', { name: 'Download v2' })).toBeVisible();
+  const original = await page.request.get(url!);
+  expect(original.headers()['x-content-sha256']).toBe(hash);
+  const filledUrl = await page.getByRole('link', { name: 'Download v2' }).getAttribute('href');
+  const filled = await page.request.get(filledUrl!);
+  expect(filled.status()).toBe(200);
+  await test.info().attach('filled-template.pdf', { body: await filled.body(), contentType: 'application/pdf' });
+  expect(errors).toEqual([]);
+});
+
+test('separate browser session cannot see another founder case', async ({ page, browser }) => {
+  await page.goto('/founder/home?workspace=backend');
+  await page.getByRole('textbox', { name: 'Company name', exact: true }).fill('Private Fictional Co');
+  await page.getByRole('textbox', { name: 'What would you like to prepare?' }).fill('Private draft');
+  await page.getByRole('button', { name: 'Create backend case' }).click();
+  await expect(page.getByText('Live updates connected', { exact: true })).toBeVisible();
+  const other = await browser.newContext();
+  const second = await other.newPage();
+  await second.goto('/founder/home?workspace=backend');
+  await expect(second.getByText('Simulated AI · test provider', { exact: true })).toBeVisible();
+  await expect(second.getByRole('combobox', { name: 'Backend case' }).locator('option')).toHaveCount(1);
+  await other.close();
+});
