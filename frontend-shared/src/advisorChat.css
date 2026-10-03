@@ -1,0 +1,36 @@
+.advisor-chat { display: flex; flex-direction: column; gap: 12px; min-height: 100%; font-size: 13px; }
+.advisor-chat-status { color: var(--text-muted); font-size: 12px; }
+.advisor-chat-error { color: #9b2432; background: #fff0f0; border: 1px solid #e9b6bc; padding: 9px; border-radius: 6px; }
+.advisor-chat-intro { padding: 12px; border: 1px solid var(--border); border-radius: 7px; background: #f8fbff; }
+.advisor-chat-intro p { margin: 0 0 12px; }
+.advisor-chat button { border: 1px solid #adc7ee; border-radius: 6px; background: #fff; color: #123f7a; padding: 7px 9px; font: inherit; cursor: pointer; }
+.advisor-chat button:hover:not(:disabled) { background: #eaf2ff; }
+.advisor-chat button:disabled { opacity: .48; cursor: not-allowed; }
+.advisor-chat-context { display: grid; gap: 7px; border: 1px solid #abc9ef; border-radius: 7px; background: #f3f8ff; padding: 10px; }
+.advisor-chat-context strong { font-size: 13px; }
+.advisor-chat-context small { color: var(--text-muted); }
+.advisor-chat-context label { display: grid; gap: 3px; }
+.advisor-chat-context select { width: 100%; min-width: 0; }
+.advisor-chat-context a { font-weight: 600; }
+.advisor-chat-shortcuts { display: flex; flex-wrap: wrap; gap: 5px; }
+.advisor-chat-shortcuts button { font-size: 11px; padding: 5px 7px; }
+.advisor-chat-history { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 100px; overflow: auto; }
+.advisor-chat-history > p { color: var(--text-muted); }
+.advisor-chat-message { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: #f9fbff; overflow-wrap: anywhere; }
+.advisor-chat-message.is-own { background: #eef6ff; }
+.advisor-chat-message p { white-space: pre-wrap; margin: 7px 0; }
+.advisor-answer-kind { margin-left: 7px; text-transform: capitalize; color: var(--text-muted); }
+.advisor-chat-message time { display: block; color: var(--text-muted); font-size: 10px; margin-top: 3px; }
+.advisor-chat-citations { display: flex; flex-wrap: wrap; gap: 6px; }
+.advisor-chat-citations a, .advisor-citation-unavailable { font-size: 11px; border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }
+.advisor-citation-unavailable { color: #9b2432; }
+.advisor-draft-question { display: grid; gap: 4px; margin-top: 8px; font-weight: 600; }
+.advisor-draft-question textarea { min-height: 65px; width: 100%; resize: vertical; font: inherit; }
+.advisor-draft-question small { font-weight: 400; color: var(--text-muted); }
+.advisor-chat-retry { border: 1px solid #e3ba78; padding: 9px; border-radius: 6px; background: #fffbf1; }
+.advisor-chat-retry p { margin: 0 0 7px; }
+.advisor-chat-retry button { margin-right: 6px; }
+.advisor-chat-composer { display: grid; gap: 7px; border-top: 1px solid var(--border); padding-top: 10px; }
+.advisor-chat-composer textarea { min-height: 70px; width: 100%; resize: vertical; font: inherit; }
+.advisor-chat-composer button { justify-self: end; }
+.advisor-chat-note { color: var(--text-muted); font-size: 11px; margin: 0; }

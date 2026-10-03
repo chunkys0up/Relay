@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Badge, Button, Conversation, EmptyState, Icon, PacketPreview,
+  advisorApi, advisorPacketHref, AdvisorChat, Badge, Button, Conversation, EmptyState, Icon, PacketPreview,
   ReviewControls, ScreenState, SourcePreview, useRelay,
 } from '@relay/shared';
-import type { PacketVersion, Source } from '@relay/shared';
+import type { AdvisorSession, PacketVersion, Source } from '@relay/shared';
 import './Screen.css';
 
 type SharedItem =
@@ -22,6 +22,58 @@ function updateParams(
     else next.delete(key);
   }
   setSearch(next);
+}
+
+function ServerWorkspace({ params, update }: { params: URLSearchParams; update: (next: URLSearchParams) => void }) {
+  const [session, setSession] = useState<AdvisorSession | null>(null);
+  const [packetText, setPacketText] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void advisorApi.session(controller.signal).then(value => {
+      if (!controller.signal.aborted) setSession(value);
+    }).catch(reason => {
+      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Advisor workspace unavailable.');
+    });
+    return () => controller.abort();
+  }, []);
+  const version = session?.workspace.versions.find(item => item.id === params.get('server_version'))
+    ?? session?.workspace.versions.at(-1) ?? null;
+  useEffect(() => {
+    setPacketText(null);
+    if (!session || !version) return;
+    const controller = new AbortController();
+    setError(null);
+    void advisorApi.packetText(session.workspace.case_id, version, controller.signal).then(value => {
+      if (!controller.signal.aborted) setPacketText(value);
+    }).catch(reason => {
+      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Server packet preview unavailable.');
+    });
+    return () => controller.abort();
+  }, [session, version]);
+  return <section className="advisor-server-workspace" aria-label="Server shared packet preview">
+    <nav className="advisor-client-breadcrumb" aria-label="Breadcrumb"><Link to="/advisor/home">Home</Link><span aria-hidden="true">›</span><strong>Server synthetic advisor workspace</strong></nav>
+    <header className="advisor-client-heading">
+      <h2>{session?.workspace.company ?? 'Server shared packet'}</h2>
+      <p>Server synthetic advisor workspace · Read-only evidence</p>
+      <Button variant="outline" onClick={() => updateParams(params, update, { advisor_demo: null, server_version: null, compare_version: null })}>Return to browser demo documents</Button>
+    </header>
+    {error && <p role="alert" className="advisor-server-error">{error}</p>}
+    {session && version && <>
+      <label className="advisor-server-version">Shared packet version
+        <select aria-label="Visible server packet" value={version.id} onChange={event => updateParams(params, update, { server_version: event.currentTarget.value, compare_version: null })}>
+          {session.workspace.versions.map(item => <option key={item.id} value={item.id}>{item.title} · v{item.version}</option>)}
+        </select>
+      </label>
+      <article className="advisor-server-document" aria-label={`Server packet version ${version.version}`}>
+        <h3>{version.title} · v{version.version}</h3>
+        <p>Exact server hash: <code>{version.hash}</code></p>
+        {packetText === null ? <p role="status">Loading authorized server packet…</p> : <pre>{packetText}</pre>}
+        <a href={advisorPacketHref(session.workspace.case_id, version)} target="_blank" rel="noopener noreferrer">Open authorized packet text</a>
+      </article>
+      <p className="advisor-client-version-note">This server version is the AI chat context. The browser demo's review controls do not change this server packet.</p>
+    </>}
+  </section>;
 }
 
 export default function Screen() {
@@ -53,6 +105,7 @@ export default function Screen() {
   const selected = items.find(item => item.id === requestedSource || (item.kind === 'packet' && (item.id === requestedVersion || String(item.packet.version) === requestedVersion)))
     ?? (requestedSource || requestedVersion || params.get('open') === 'none' ? null : items[0] ?? null);
   const selectedId = selected?.id ?? null;
+  const serverMode = params.get('advisor_demo') === 'server';
   const latest = packets[0] ?? null;
   const latestReview = latest ? snapshot?.reviews.filter(review => review.packet_version_id === latest.id).sort((a, b) => a.created_at.localeCompare(b.created_at)).at(-1) : null;
   const reviewState = latestReview?.decision === 'approved' || latest?.status === 'approved'
@@ -92,7 +145,8 @@ export default function Screen() {
         <p className="advisor-client-rail-note">Showing the one client available in this local demo.</p>
       </aside>
       <section className="advisor-client-workspace" aria-label="Shared client documents">
-        {!hasWorkspace
+        {serverMode ? <ServerWorkspace params={params} update={setParams}/>
+          : !hasWorkspace
           ? <EmptyState title="No shared client workspace"><p>Only files in a founder's confirmed handoff appear here.</p></EmptyState>
           : !clientMatches
             ? <EmptyState title="No matching assigned client"><p>Search checks the assigned client name.</p></EmptyState>
@@ -133,10 +187,13 @@ export default function Screen() {
       <aside className="advisor-client-assistant" aria-label="Private client AI chat">
         <header className="advisor-client-assistant-head">
           <div className="advisor-ai-avatar"><Icon name="agent" size={30}/></div>
-          <div><h2>Relay AI</h2><Badge>{snapshot.company} · {items.length} shared files</Badge><p>Private to {snapshot.advisors[0]?.name ?? 'this advisor'}</p></div>
+          <div><h2>Relay AI</h2><Badge>{serverMode ? 'Server synthetic context' : 'Select server context'}</Badge><p>Private to the server-assigned advisor</p></div>
         </header>
-        <div className="advisor-client-conversation"><Conversation privateOnly/></div>
-        <p className="advisor-client-chat-note">Uses this client's shared documents in the local demo.</p>
+        <div className={`advisor-client-conversation ${serverMode ? 'server-chat-mode' : 'browser-chat-mode'}`}>
+          <AdvisorChat selectedPacketId={selected?.kind === 'packet' ? selected.id : latest?.id ?? null}/>
+          {!serverMode && <><p className="advisor-browser-chat-label">Browser demo conversation · simulated and saved only in this browser</p><Conversation privateOnly/></>}
+        </div>
+        <p className="advisor-client-chat-note">{serverMode ? 'Server advisor AI uses only its exact shared synthetic packet and sources.' : 'Open the server synthetic workspace above for grounded advisor AI.'}</p>
       </aside>
     </div>}
   </ScreenState>;

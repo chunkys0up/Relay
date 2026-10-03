@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, CaseDocumentsPanel, EmptyState, Icon, ScreenState, useCaseDocuments, useRelay } from '@relay/shared';
+import { Badge, EmptyState, Icon, ScreenState, useRelay } from '@relay/shared';
 import type { CaseSnapshot, PacketVersion, Review } from '@relay/shared';
 import './Screen.css';
 
@@ -27,7 +27,6 @@ export default function Screen() {
   const { snapshot, role } = useRelay();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const caseDocuments = useCaseDocuments();
 
   if (!snapshot || role !== 'advisor') return <ScreenState>{null}</ScreenState>;
 
@@ -46,7 +45,6 @@ export default function Screen() {
   const responded = snapshot.reviews.some(item => item.decision === 'questions_returned' && sharedPackets.some(shared => shared.id === item.packet_version_id));
   const completed = Number(sharedSources.length > 0) + Number(sharedPackets.length > 0) + Number(responded || approved) + Number(approved);
   const progress = Math.round(completed / 4 * 100);
-  const uploadedCount = caseDocuments.documents?.length ?? 0;
   const visible = hasClient
     && (snapshot.company + ' ' + snapshot.founder.name).toLowerCase().includes(query.trim().toLowerCase())
     && (filter === 'all' || needsReview);
@@ -88,7 +86,7 @@ export default function Screen() {
               <tbody><tr><td><div className="advisor-home-client"><span className="advisor-home-initials">{initials(snapshot.founder.name)}</span><span><strong>{snapshot.founder.name}</strong><small>{snapshot.company}</small></span></div></td>
                 <td><div className="advisor-home-progress"><div className="advisor-home-progress-track" role="progressbar" aria-label={snapshot.company + ' progress'} aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: progress + '%' }}/></div><strong>{progress}%</strong><small>{completed} of 4 steps</small></div></td>
                 <td><Badge tone={approved ? 'success' : questionsReturned ? 'attention' : 'neutral'}>{stage}</Badge></td>
-                <td>{caseDocuments.documents === null ? '—' : `${uploadedCount} uploaded`}</td>
+                <td>{sharedPackets.length + sharedSources.length} shared</td>
                 <td><Link className={'button ' + (needsReview ? 'button-primary' : 'button-outline')} to={clientLink}>{action}</Link></td>
               </tr></tbody>
             </table>
@@ -102,7 +100,11 @@ export default function Screen() {
         ? <div className="advisor-home-attention-row"><div className="advisor-home-client"><span className="advisor-home-initials">{initials(snapshot.founder.name)}</span><span><strong>{snapshot.company}</strong><small>{snapshot.founder.name}</small></span></div><span>{activityText}</span><time dateTime={activityDate}>{activityDate ? new Date(activityDate).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}</time><Link className="button button-primary" to={clientLink}>Review packet</Link></div>
         : <p className="advisor-home-all-clear">No client is waiting for your review.</p>}
     </section>
-    <CaseDocumentsPanel canUpload={false} docs={caseDocuments} />
+    <section className="advisor-home-section" aria-label="Shared documents">
+      <h2>Shared documents</h2>
+      <p>Only packet versions and originals in this advisor’s confirmed handoff appear here.</p>
+      <Link className="button button-outline" to="/advisor/documents">View shared documents</Link>
+    </section>
     <p className="advisor-home-scope-note">This local demo contains one assigned client. Progress is based on shared sources, a shared packet, returned questions, and approval.</p>
   </div></ScreenState>;
 }
