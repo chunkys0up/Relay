@@ -5,7 +5,6 @@ import { BackendWorkspace } from '../workflow/BackendWorkspace';
 import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
 import type { ActivityEntry, ChecklistState } from '../../../frontend-shared/src/relayApi';
-import { fileContentBase64 } from '../../../frontend-shared/src/intake';
 import { Tabs } from '../../../frontend-shared/src/tabs';
 import './styles.css';
 
@@ -26,7 +25,7 @@ const checklistLabels: Record<ChecklistState, string> = { todo: 'To do', in_prog
 const actorLabels: Record<ActivityEntry['actor'], string> = { agent: 'Relay', founder: 'You', advisor: 'Advisor', system: 'System' };
 
 function DemoScreen() {
-  const { snapshot, error, notice, run, busy } = useRelay();
+  const { snapshot, error, notice } = useRelay();
   const caseDocuments = useCaseDocuments();
   const checklist = useCaseChecklist();
   const activity = useCaseActivity();
@@ -34,9 +33,6 @@ function DemoScreen() {
   const [filter, setFilter] = useState<DocumentFilter>('all');
   const [asideTab, setAsideTab] = useState<'progress' | 'activity'>('progress');
   const [dragging, setDragging] = useState(false);
-  const [localFile, setLocalFile] = useState<File | null>(null);
-  const [readingLocalFile, setReadingLocalFile] = useState(false);
-  const [localFileError, setLocalFileError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const { uploading } = caseDocuments;
 
@@ -52,34 +48,9 @@ function DemoScreen() {
     if (!uploading) void caseDocuments.upload(Array.from(event.dataTransfer.files));
   }
 
-  function onLocalFileChange(event: ChangeEvent<HTMLInputElement>): void {
-    setLocalFile(event.currentTarget.files?.[0] ?? null);
-    setLocalFileError(null);
-    event.currentTarget.value = '';
-  }
-
-  async function addLocalSource(): Promise<void> {
-    if (!localFile || !snapshot || readingLocalFile) return;
-    setReadingLocalFile(true);
-    setLocalFileError(null);
-    try {
-      const content_base64 = await fileContentBase64(localFile);
-      const saved = await run({ kind: 'upload', expected_revision: snapshot.revision, name: localFile.name,
-        mime_type: localFile.type, bytes: localFile.size, content_base64 });
-      if (saved) setLocalFile(null);
-    } catch (reason) {
-      setLocalFileError(reason instanceof Error ? reason.message : 'Cannot read this local source.');
-    } finally {
-      setReadingLocalFile(false);
-    }
-  }
-
   const normalizedQuery = query.trim().toLowerCase();
   const documents = caseDocuments.documents?.filter((doc) =>
     (filter !== 'packets') && (!normalizedQuery || doc.filename.toLowerCase().includes(normalizedQuery)),
-  ) ?? [];
-  const sources = snapshot?.sources.filter((source) =>
-    filter !== 'packets' && (!normalizedQuery || source.name.toLowerCase().includes(normalizedQuery)),
   ) ?? [];
   const packets = snapshot?.packets.filter((packet) =>
     (filter !== 'originals') && (!normalizedQuery || `${packet.title} ${packet.status} v${packet.version}`.toLowerCase().includes(normalizedQuery)),
@@ -116,19 +87,6 @@ function DemoScreen() {
           <input ref={fileInput} className="sr-only" type="file" multiple aria-label="Upload documents" onChange={onFileChange} disabled={uploading}/>
           <small>Backend case upload. Advisor access requires an explicit shared handoff.</small>
         </div>
-        <div className="founder-home-local-entry">
-          <label>Browser demo source · saved locally
-            <input type="file" aria-label="Attach a source" disabled={busy || readingLocalFile} onChange={onLocalFileChange}/>
-          </label>
-          <small>Local sources appear below and can be shared only through the browser demo handoff.</small>
-        </div>
-        {localFile && <div className="founder-home-upload-confirm">
-          <strong>Selected locally: {localFile.name}</strong>
-          <p>{Math.round(localFile.size / 1024)} KB · Add actual bytes to this browser only. UTF-8 text and CSV previews are supported; PDF and binary extraction is unavailable. Maximum 10 MB.</p>
-          {localFileError && <p role="alert">{localFileError}</p>}
-          <div><button type="button" className="founder-home-upload-button" disabled={busy || readingLocalFile} onClick={() => { void addLocalSource(); }}>Add source locally</button>
-            <button type="button" className="founder-home-cancel-button" disabled={busy || readingLocalFile} onClick={() => { setLocalFile(null); setLocalFileError(null); }}>Cancel attachment</button></div>
-        </div>}
         {(caseDocuments.error || error) && <p className="founder-home-feedback is-error" role="alert">{caseDocuments.error || error}</p>}
         {notice && <p className="founder-home-feedback" role="status">{notice}</p>}
 
@@ -139,15 +97,11 @@ function DemoScreen() {
             <button type="button" className="founder-home-file-name" onClick={() => { void caseDocuments.open(doc.id); }}><Icon name="file" size={25}/><span>{doc.filename}</span></button>
             <span>Original</span><span className="founder-home-status is-ready">Uploaded {new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </div>)}
-          {sources.map((source) => <div className="founder-home-file-row" key={source.id}>
-            <Link className="founder-home-file-name" to={`/founder/sources?source=${encodeURIComponent(source.id)}`}><Icon name="file" size={25}/><span>{source.name}</span></Link>
-            <span>Local original</span><span className="founder-home-status is-ready">Browser demo · {source.extraction === 'ready' ? 'Source ready' : source.extraction}</span>
-          </div>)}
           {[...packets].reverse().map((packet) => <div className="founder-home-file-row" key={packet.id}>
             <Link className="founder-home-file-name" to={`/founder/documents?version=${encodeURIComponent(packet.id)}`}><Icon name="file" size={25}/><span>{packet.title} v{packet.version}</span></Link>
             <span>Packet</span><span className={`founder-home-status ${packet.status === 'approved' ? 'is-ready' : 'is-draft'}`}>{packetStatus(packet)}</span>
           </div>)}
-          {(caseDocuments.documents !== null || snapshot.sources.length + snapshot.packets.length === 0) && documents.length + sources.length + packets.length === 0 && <p className="founder-home-no-documents">{query ? 'No documents match your search.' : 'No documents in this view yet.'}</p>}
+          {caseDocuments.documents !== null && documents.length + packets.length === 0 && <p className="founder-home-no-documents">{query ? 'No documents match your search.' : 'No documents in this view yet.'}</p>}
         </div>
       </section>
     </div>
@@ -166,7 +120,7 @@ function DemoScreen() {
           </Collapsible>
         </section>
         <section className="founder-home-next" aria-labelledby="founder-home-next-title"><Collapsible id="home-next" headingId="founder-home-next-title" title="Next steps">
-          {nextItem ? <div className="founder-home-next-step"><span className="founder-home-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}<Link className="founder-home-chat-link" to="/founder/chat#message-main">Open AI Chat</Link></div></div>
+          {nextItem ? <div className="founder-home-next-step"><span className="founder-home-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
             : <p className="founder-home-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
           {currentQuestion && <Link className="founder-home-chat-link" to="/founder/home/clarification">Answer {snapshot.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
           <Link className="founder-home-packet-link" to="/founder/documents">Review packet versions →</Link>
@@ -181,7 +135,6 @@ function DemoScreen() {
         <Collapsible id="home-conversation" as="h3" title="Recent conversation">
         {lastMessages.length ? <ul>{lastMessages.map((message) => <li key={message.id}><strong>{message.author.name}</strong><span className="founder-home-blurb">{plainText(message.text)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>No conversation yet.</p>}
         </Collapsible>
-        <Link className="founder-home-chat-link" to="/founder/chat#message-main">Open AI Chat</Link>
       </div>}
       <p className="founder-home-privacy">Uploads stay private until you choose what to share.</p>
     </aside>
