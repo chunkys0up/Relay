@@ -242,7 +242,7 @@ def generate_packet_pdf(fields: dict[str, str], version: int) -> bytes:
     title_style = ParagraphStyle("title", fontName=font, fontSize=19, leading=25, textColor=colors.HexColor("#00205B"), spaceAfter=10)
     label_style = ParagraphStyle("label", fontName=font, fontSize=9, leading=14, textColor=colors.HexColor("#52627A"), spaceBefore=12, spaceAfter=3)
     value_style = ParagraphStyle("value", fontName=font, fontSize=11, leading=17, textColor=colors.HexColor("#202C3D"), alignment=TA_LEFT)
-    story: list[Any] = [Paragraph("Northstar · Planning packet", title_style), Paragraph(f"Version {version} · Fictional demo", value_style), Spacer(1, 12)]
+    story: list[Any] = [Paragraph("Relay · Planning packet", title_style), Paragraph(f"Version {version} · Fictional demo", value_style), Spacer(1, 12)]
     for key, label in _PACKET_FIELDS.items():
         if key in values:
             story.append(Paragraph(escape(label), label_style))
