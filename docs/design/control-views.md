@@ -1,9 +1,0 @@
-# Missing control destinations
-
-Generated with the built-in ImageGen tool on 2026-10-02. Reference: the existing Relay Home screenshot. The [concept sheet](search-settings-concept.png) guided the Search and Settings views; the application uses real React controls, not the image as an interface.
-
-Prompt:
-
-> Use case: ui-mockup. Create a high fidelity design reference sheet of TWO Relay financial planning web app views side by side: Search results and Settings. Match the attached/reference Relay app aesthetic: light #F5F7FA background, white bordered cards, navy #00205B headings/actions, orange #B35000 only for simulated status, muted blue gray #99A5BD, Inter typography, modest radius, left slim icon navigation with Home Sources Documents Call and Settings below, R Relay wordmark, top global search. No photos or new branding. Search view: heading Search, query 'planning', All/Sources/Documents filter buttons with counts, results grouped originals versus generated packet versions with 'Open source'/'Open document' links and version/status. Settings view: heading Settings, Profile / Call privacy / About this demo horizontal tabs; selected Call privacy panel explains per-call separate consent, capture off by default, button 'Open Call'; side card 'Local simulation' and return-to-workspace link. Keep simulation banner visible and never imply live backend account saving. This is a design concept to guide HTML/CSS implementation, not an app screenshot to use as interface. Clean restrained hierarchy consistent with current Relay screenshot.
-
-Implementation uses the actual fixture counts and roles instead of invented content in the generated reference. Settings exposes workspace identity, current per-participant consent and links to the existing Call controls. It does not imply editable backend account settings. Version history reuses existing document cards, badges and button styles.

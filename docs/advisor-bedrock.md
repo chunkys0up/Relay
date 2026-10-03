@@ -1,43 +1,22 @@
-# Advisor Bedrock chat
+# Server synthetic advisor workspace
 
-This is a loopback-only synthetic advisor workspace in `app.workflow_app`, alongside the separate founder packet workflow. It is not production authentication and does not import browser grants, founder uploads, private founder messages, or the legacy Postgres/S3 catalog.
+The Advisor Clients screen offers a server synthetic workspace alongside the browser demo. It is served by `app.workflow_app` on loopback and uses its own SQLite-backed assignments, exact packet/source grants, conversations and idempotency records. It does not import browser grants, founder uploads, legacy Postgres/S3 documents or owner-scoped founder workflow cases.
 
-In Advisor → Clients, open the server synthetic advisor workspace. The packet shown in the central preview and the chat version selector come from the server's exact-version grants. Browser demo review controls remain available in browser demo mode. Server chat cannot approve, save, share, submit, or send. Follow-up questions are editable private drafts; external delivery is not implemented.
+## Use
 
-## Run with existing dependencies
+Start the local workflow service and Vite app using the existing project setup; see [founder workflow setup](bedrock-workflow.md) for the loopback service command and dependency requirements. The advisor API is mounted on the same port, normally 8001. Open Advisor → Clients and choose **Open server synthetic advisor workspace**. Without `BEDROCK_ORCHESTRATOR_MODEL_ID`, session and packet previews remain available while chat reports that its model is not configured.
 
-Use the existing nonsecret Bedrock configuration and Windows credential bridge:
+The advisor mode comes from the server, not the browser role selector. The server issues an HttpOnly session cookie and CSRF token. Mutations require same-origin/loopback checks and idempotency keys. Each fresh synthetic session receives its own actor and private conversation history.
 
-```bash
-cd /home/tim/Relay-worktrees/advisor-bedrock-loop/backend
-.venv/bin/python scripts/run_bedrock.py serve --config /home/tim/Relay/backend/.relay/bedrock.json --port 8029
-```
+## Evidence and action limits
 
-In another terminal:
+- The seed contains two granted packet versions, one later unshared version, and one private source for authorization checks.
+- Each conversation is tied to one or two exact packet IDs and hashes. List/read tools and packet/source preview routes re-check the server-owned assignment and grants.
+- The read-only model can list shared versions, read an authorized packet, and read an authorized source. The service validates output shape, citation hashes/quotes, and that cited evidence was actually read. Unknowns and conflicts remain explicit; model reasoning is not exposed.
+- The chat can answer questions, compare two selected shared versions, or create editable private follow-up drafts. It cannot approve, save packets, change grants, share documents, send questions, or contact a client. Browser demo review controls remain a separate simulated workflow.
+- Work is bounded to two active requests (one per conversation), four model turns, eight tool calls, 4096 output tokens and 60 seconds. There is no autonomous revision loop or model-side action tool.
+- The model is optional. The environment variable `BEDROCK_ORCHESTRATOR_MODEL_ID` enables the advisor provider. The founder multi-agent workflow has separate role settings. A configured model is not evidence of account access or live quality.
 
-```bash
-cd /home/tim/Relay-worktrees/advisor-bedrock-loop
-npm run dev -- --config ../advisor.vite.config.ts --port 5200
-```
+This loopback synthetic service is not production authentication or an integrated handoff. The legacy case/chat/document API continues to use caller-supplied case IDs and does not gain advisor grant enforcement from this service. Live calls and AWS model checks are separate operations; ordinary automated tests do not prove them.
 
-Open `http://127.0.0.1:5200/advisor/clients`. These ports and Vite cache are separate from the existing demo server. The advisor API uses a same-origin `/api/advisor` proxy. No package installation is part of this task.
-
-## Boundaries
-
-- The server issues a separate HttpOnly advisor cookie and CSRF token. New browser sessions receive distinct synthetic actors and their own private histories. Local-storage role selection grants no API access.
-- The local SQLite store owns assignments, immutable packet/source bytes and hashes, exact-version grants, conversations and idempotency records. The first synthetic seed includes two granted versions, a later unshared version and a private source for negative tests.
-- Every conversation read, tool retrieval, final response and citation preview checks the server-owned scope. Source links resolve through advisor-authorized preview routes, never the generic document presign API.
-- The advisor uses one Sonnet orchestrator with read-only tools. Reader/writer/verifier model roles are unnecessary for this read-only chat. The existing founder PDF workflow retains its extractor/orchestrator/reader/writer/verifier roles and explicit confirmation gates.
-- Advisor request limits: two active model jobs maximum, one per conversation; four model turns, eight tool calls, 4096 output tokens, sixty seconds. No automatic open-ended retry and no model-side action tools.
-- Responses are released only after structured evidence validation, including actual reads and exact source/version hashes. Unknowns and conflicts must remain explicit. No hidden model reasoning is exposed.
-
-## Verification
-
-`LOOP.md` contains the fixed acceptance contract and stop rules. `ADVISOR-VERIFICATION-LOG.md` records attempts. `ADVISOR-RESULTS.md` records actual final verification and limitations.
-
-The original live founder evaluator remains unchanged. The combined `backend/scripts/check_advisor_bedrock.py` runs it, then checks a cited advisor answer covering missing/conflicting evidence and a comparison of two authorized versions. `run_advisor_check.py` reuses the unchanged launcher credential bridge. Running its `check` command is billable and consumes one of the explicitly authorized smoke attempts; do not run it beyond the loop allowance. Its `preflight` command performs only identity/catalog reads.
-
-Current loop status: advisor live checks passed; founder live PDF check failed WRITER_REQUIRED twice. All three authorized smoke attempts are consumed. The explicit advisor-only harness mode was used for the final independent check; it does not claim combined acceptance. Further billable checks require a new allowance. See ADVISOR-RESULTS.md.
-
-
-Follow-up resolution: the subsequent explicitly authorized Sol writer loop passed the unchanged live founder evaluator. Final writer details and bounds (nine writer turns, existing tool/token/time limits) are in ../WRITER-RESULTS.md. Two of three fresh attempts were used and testing stopped on success. The earlier incomplete status above is historical.
+See [implemented transport boundaries](api-contract.md), [multi-agent workflow](multiagent-workflow.md), and [specs](../specs.md).

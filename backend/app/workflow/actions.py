@@ -89,6 +89,7 @@ def resolve_edit(repo: Repository, owner: str, case_id: str, action_id: str,
         if action['status'] == 'superseded':
             if dismiss:
                 action['status'] = 'dismissed'
+                reconcile_tasks(state)
                 return {'action_id': action_id, 'status': 'dismissed'}, []
             raise WorkflowError('STALE_PREVIEW')
         if action['status'] != 'pending':
@@ -98,6 +99,7 @@ def resolve_edit(repo: Repository, owner: str, case_id: str, action_id: str,
         if dismiss:
             action['status'] = 'dismissed'
             state['activity'] = 'Proposed PDF dismissed; no document changed.'
+            reconcile_tasks(state)
             return {'action_id': action_id, 'status': 'dismissed'}, []
         verification = action.get('verification')
         if not isinstance(verification, dict) or verification.get('passed') is not True or verification.get('hash') != preview_hash or verification.get('mode') not in ('deterministic', 'deterministic+agent'):
@@ -133,7 +135,8 @@ def resolve_edit(repo: Repository, owner: str, case_id: str, action_id: str,
             })
         packet_id = uid()
         packet = {'id': packet_id, 'version': action['version'], 'fields': fields,
-                  'hash': preview_hash, 'template_id': action['template_id'], 'created_at': now()}
+                  'hash': preview_hash, 'template_id': action['template_id'],
+                  'verification': verification, 'created_at': now()}
         state['packets'].append(packet)
         state['current_packet_id'] = packet_id
         state['analysis_required'] = False

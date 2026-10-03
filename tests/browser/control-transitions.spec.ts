@@ -1,7 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 
 const sourceNames = ['Founder intake.pdf', 'Cap table summary.xlsx', 'Forecast assumptions.pdf'] as const;
+const sourceIds = ['00000000-0000-4000-8000-000000000011', '00000000-0000-4000-8000-000000000012', '00000000-0000-4000-8000-000000000013'] as const;
 const packetName = 'Founder planning packet';
 const routes = [
   ['/founder/chat','AI Chat',false], ['/founder/sources','Sources',false],
@@ -37,7 +38,7 @@ async function sendQuestion(page:Page,mode:'return'|'send'='return'):Promise<voi
 async function createV2(page:Page):Promise<void>{
   await sendQuestion(page);
   await switchRole(page,'founder');
-  await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
+  await page.getByRole('link',{name:"Answer Maya Chen's question",exact:true}).click();
   await page.getByRole('textbox',{name:'Answer Maya Chen’s question'}).fill('Audit answer: revenue $240,000 and reserve target $60,000.');
   await page.getByRole('button',{name:'Preview answer',exact:true}).click();
   await page.getByRole('button',{name:'Create simulated draft v2',exact:true}).click();
@@ -114,15 +115,17 @@ for(const [path,title,humanOnly] of routes){
  test(`${path}: audience, message preview/edit and confirmed send change thread`,async({page})=>{
   await go(page,path);await expect(page.locator('main h1').first()).toHaveText(title);
   if(humanOnly)await page.getByRole('button',{name:/^Call (Alex Morgan|Maya Chen)$/}).click();
-  const audience=page.getByLabel('Message audience',{exact:true});
+  const audience=page.getByRole('tablist',{name:'Message audience',exact:true});
   if(!humanOnly){
-   await expect(page.getByRole('button',{name:'Send to simulated AI',exact:true})).toBeDisabled();
+   await expect(page.getByRole('button',{name:'Send',exact:true})).toBeDisabled();
    await page.getByRole('textbox',{name:'Message Relay',exact:true}).fill(`Private audit on ${path}`);
-   await page.getByRole('button',{name:'Send to simulated AI',exact:true}).click();
+   await page.getByRole('button',{name:'Send',exact:true}).click();
    await expect(page.locator('.message-bubble').filter({hasText:`Private audit on ${path}`})).toHaveCount(1);
    await expect(page.getByRole('textbox',{name:'Message Relay',exact:true})).toHaveValue('');
-   if(path==='/advisor/clients'){await expect(audience.locator('option')).toHaveCount(1);await go(page,'/advisor/documents?audience=human');}else await audience.selectOption('human');
-  }else await expect(audience.locator('option')).toHaveCount(1);
+   await expect(page.getByRole('button',{name:'Send',exact:true})).toBeVisible();
+   if(path==='/advisor/clients'){await expect(audience).toHaveCount(0);await go(page,'/advisor/documents?audience=human');}
+   else await audience.getByRole('tab',{name:path.startsWith('/founder')?'Maya Chen':'Alex Morgan',exact:true}).click();
+  }else await expect(audience).toHaveCount(0);
   const recipient=path.startsWith('/founder')?'Maya Chen':'Alex Morgan';
   const text=`Human audit on ${path}`;
   const input=page.getByRole('textbox',{name:`Message ${recipient}`,exact:true});
@@ -136,24 +139,39 @@ for(const [path,title,humanOnly] of routes){
   await page.getByRole('button',{name:'Confirm simulated send',exact:true}).click();
   await expect(page.locator('.message-bubble').filter({hasText:text})).toHaveCount(1);
   await expect(input).toHaveValue('');
-  if(!humanOnly){await audience.selectOption('private_ai');await expect(page.locator('.message-bubble').filter({hasText:text})).toHaveCount(0);}
+  if(!humanOnly){await audience.getByRole('tab',{name:'AI assistant',exact:true}).click();await expect(page.locator('.message-bubble').filter({hasText:text})).toHaveCount(0);}
  });
 }
 
-test('Home: chat entry, recent links and every source selection',async({page})=>{
+test('Home: chat entry, backend originals filters and packet links',async({page,documentsApi})=>{
  await go(page,'/founder/home');
- await page.getByRole('link',{name:'Open AI Chat',exact:true}).click();
+ await page.getByRole('link',{name:'Start in AI Chat',exact:true}).click();
  await expect(page.getByRole('textbox',{name:'Message Relay',exact:true})).toBeFocused();
- for(const name of sourceNames){
-  await go(page,'/founder/home');await page.getByRole('link',{name,exact:true}).click();
-  await expect(page.locator('.source-excerpt')).toBeVisible();
-  await expect(page.locator('.founder-sources-preview-title h2')).toHaveText(name);
+ await go(page,'/founder/home');
+ for(const name of ['balance.csv','overview.txt']){
+  await page.getByLabel('Upload documents',{exact:true}).setInputFiles({name,mimeType:'text/plain',buffer:Buffer.from('Offline original: '+name)});
+  await expect(page.getByRole('button',{name,exact:true})).toBeVisible();
  }
- await go(page,'/founder/home');await page.getByRole('link',{name:packetName+' v1',exact:true}).click();
+ expect(documentsApi.uploads).toHaveLength(2);
+ await page.getByRole('searchbox',{name:'Search documents',exact:true}).fill('balance');
+ await expect(page.getByRole('button',{name:'balance.csv',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'overview.txt',exact:true})).toHaveCount(0);
+ await page.getByRole('searchbox',{name:'Search documents',exact:true}).fill('');
+ await page.getByRole('button',{name:'Packets',exact:true}).click();
+ await expect(page.getByRole('button',{name:'balance.csv',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('link',{name:packetName+' v1',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Original files',exact:true}).click();
+ await expect(page.getByRole('link',{name:packetName+' v1',exact:true})).toHaveCount(0);
+ for(const name of ['balance.csv','overview.txt']){
+  const opened=page.waitForEvent('popup');
+  await page.getByRole('button',{name,exact:true}).click();
+  const popup=await opened;
+  await expect(popup.locator('body')).toContainText('Offline original: '+name);
+  await popup.close();
+ }
+ await page.getByRole('button',{name:'All documents',exact:true}).click();
+ await page.getByRole('link',{name:packetName+' v1',exact:true}).click();
  await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
- await go(page,'/founder/home');await page.getByRole('button',{name:'Original files',exact:true}).click();
- await page.getByRole('link',{name:sourceNames[0],exact:true}).click();
- await expect(page.locator('main h1')).toHaveText('Sources');
 });
 
 test('Sources: every file button, source citation, search clearing and Home links',async({page})=>{
@@ -172,7 +190,7 @@ test('Sources: every file button, source citation, search clearing and Home link
  await page.getByRole('link',{name:/Open AI Chat/}).click();
  await expect(page.locator('main h1')).toHaveText('AI Chat');
  await navigate(page,'Sources');await page.getByRole('link',{name:/Upload documents on Home/}).click();
- await expect(page.getByLabel('Attach a source')).toBeAttached();
+ await expect(page.getByLabel('Upload documents',{exact:true})).toBeAttached();
 });
 
 test('Documents: real tabs, history selection, citations and ancillary destinations',async({page})=>{
@@ -180,7 +198,7 @@ test('Documents: real tabs, history selection, citations and ancillary destinati
  await expect(page.getByRole('button',{name:'Compare versions',exact:true})).toBeDisabled();
  await page.getByRole('tab',{name:'Version history',exact:true}).click();
  await expect(page.getByRole('tab',{name:'Version history',exact:true})).toHaveAttribute('aria-selected','true');
- await expect(page.getByRole('tabpanel')).toContainText('Initial synthetic draft');
+ await expect(page.getByRole('tabpanel',{name:'Version history',exact:true})).toContainText('Initial synthetic draft');
  await page.getByRole('button',{name:/View version 1/}).click();
  await expect(page.getByRole('tab',{name:'Preview',exact:true})).toHaveAttribute('aria-selected','true');
  await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
@@ -230,8 +248,9 @@ test('Advisor Reviews: selection, search clear, open specific document and call'
 
 test('Advisor Documents: each original, return to packet, version select and Back to clients',async({page})=>{
  await go(page,'/advisor/documents');
- for(const name of sourceNames){
-  await page.getByRole('button',{name:new RegExp(name.replace('.','\\.'))}).click();
+ for(const [index,name] of sourceNames.entries()){
+  await go(page,'/advisor/documents?version=00000000-0000-4000-8000-000000000021&source='+sourceIds[index]);
+  await expect(page.getByRole('heading',{name,exact:true,level:2})).toBeVisible();
   await expect(page.locator('.source-excerpt')).toBeVisible();
   await expect(page.getByRole('button',{name:'Review approval of v1',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Return to packet v1',exact:true}).click();
@@ -304,8 +323,15 @@ test('V2: comparison toggle/selector, historical controls, handoff choices and a
  await page.getByRole('combobox',{name:'Packet version',exact:true}).selectOption({label:'v1 · Questions returned'});
  await expect(page.getByRole('button',{name:'Review approval of v1',exact:true})).toHaveCount(0);
  await page.getByRole('combobox',{name:'Packet version',exact:true}).selectOption({label:'v2 · Review required'});
- await expect(page.getByRole('button',{name:'Founder intake.pdf Original · shared by founder Source ready',exact:true})).toBeVisible();
- await expect(page.getByRole('button',{name:/Forecast assumptions.pdf Original/})).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Packet version 2 preview'})).toBeVisible();
+ const v2=await page.getByRole('combobox',{name:'Packet version',exact:true}).inputValue();
+ await go(page,'/advisor/documents?version='+v2+'&source='+sourceIds[0]);
+ await expect(page.locator('.source-excerpt')).toContainText('$240,000');
+ await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Return to packet v2',exact:true}).click();
+ await go(page,'/advisor/documents?version='+v2+'&source='+sourceIds[2]);
+ await expect(page.locator('.source-excerpt')).toHaveCount(0);
+ await expect(page.getByRole('region',{name:'Packet version 2 preview'})).toBeVisible();
  await page.getByRole('button',{name:'Review approval of v2',exact:true}).click();
  await page.getByRole('button',{name:'Confirm simulated approval of v2',exact:true}).click();
  await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
@@ -313,7 +339,7 @@ test('V2: comparison toggle/selector, historical controls, handoff choices and a
 
 test('Clarification: preview/edit, answer, exact message citation and success destinations',async({page})=>{
  await sendQuestion(page);await switchRole(page,'founder');
- await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
+ await page.getByRole('link',{name:"Answer Maya Chen's question",exact:true}).click();
  await expect(page.getByRole('button',{name:'Preview answer',exact:true})).toBeDisabled();
  await page.getByRole('textbox',{name:'Answer Maya Chen’s question'}).fill('Audit clarification with provenance.');
  await page.getByRole('button',{name:'Preview answer',exact:true}).click();
@@ -328,7 +354,7 @@ test('Clarification: preview/edit, answer, exact message citation and success de
  await expect(page.locator('main h1')).toHaveText('Hi, Alex');
  await navigate(page,'Documents');
  await page.locator('.founder-documents-citations').getByRole('link',{name:/Founder answer/}).click();
- await expect(page.getByRole('combobox',{name:'Message audience'})).toHaveValue('human');
+ await expect(page.getByRole('tab',{name:'Maya Chen',exact:true})).toHaveAttribute('aria-selected','true');
  await expect(page.locator('.message-bubble').filter({hasText:'Audit clarification final.'})).toHaveCount(1);
 });
 
@@ -337,7 +363,8 @@ for(const initiator of ['founder','advisor'] as const){
   await go(page,`/${initiator}/call`);
   const other=initiator==='founder'?'Maya Chen':'Alex Morgan';
   await expect(page.getByRole('checkbox')).toHaveCount(0);
-  await expect(page.getByRole('combobox',{name:'Camera device'})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Camera off',exact:true})).toBeDisabled();
+  await expect(page.getByRole('button',{name:'Microphone muted',exact:true})).toBeDisabled();
   await page.getByRole('button',{name:`Call ${other}`,exact:true}).click();
   await page.getByRole('button',{name:'Cancel invite',exact:true}).click();
   await expect(page.getByRole('heading',{name:'Ready to call?'})).toBeVisible();
@@ -360,19 +387,17 @@ for(const initiator of ['founder','advisor'] as const){
  });
 }
 
-test('Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation',async({page})=>{
+test('Test states: empty file selection, slow cancel, explicit retry and reconnect',async({page,documentsApi})=>{
  await go(page,'/founder/home');
- await page.getByLabel('Attach a source').setInputFiles({name:'control-audit.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic audit')});
- await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Add source locally',exact:true}).click();
- await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
- await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
- await page.getByRole('button',{name:'Cancel attachment',exact:true}).click();
- await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Upload documents',{exact:true}).setInputFiles([]);
+ expect(documentsApi.uploads).toHaveLength(0);
+ await expect(page.locator('.founder-home-upload-button')).toBeEnabled();
  await navigate(page,'AI Chat');
  await scenario(page,'slow');
- await page.getByRole('textbox',{name:'Message Relay',exact:true}).fill('Audit cancelled slow message');
- await page.getByRole('button',{name:'Send to simulated AI',exact:true}).click();
+ await page.getByRole('tab',{name:'Maya Chen',exact:true}).click();
+ await page.getByRole('textbox',{name:'Message Maya Chen',exact:true}).fill('Audit cancelled slow message');
+ await page.getByRole('button',{name:'Preview message',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm simulated send',exact:true}).click();
  await expect(page.getByRole('button',{name:'Cancel request',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Cancel request',exact:true}).click();
  await expect(page.getByRole('alert')).toContainText('cancelled');
@@ -435,7 +460,7 @@ test('Founder Documents tabs support keyboard selection with correct timeline/pr
  await page.getByRole('tab',{name:'Preview',exact:true}).focus();
  await page.keyboard.press('ArrowRight');
  await expect(page.getByRole('tab',{name:'Version history',exact:true})).toBeFocused();
- await expect(page.getByRole('tabpanel')).toContainText('Initial synthetic draft');
+ await expect(page.getByRole('tabpanel',{name:'Version history',exact:true})).toContainText('Initial synthetic draft');
  await page.keyboard.press('Home');
  await expect(page.getByRole('tab',{name:'Preview',exact:true})).toBeFocused();
  await expect(page.getByRole('region',{name:'Packet version 1 preview'})).toBeVisible();
@@ -462,8 +487,8 @@ for(const [path,link,heading] of emptyLinks){
 
 test('Clarification conversation: human-only audience, preview/edit/send and breadcrumb',async({page})=>{
  await sendQuestion(page);await switchRole(page,'founder');
- await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
- await expect(page.getByRole('combobox',{name:'Message audience'}).locator('option')).toHaveCount(1);
+ await page.getByRole('link',{name:"Answer Maya Chen's question",exact:true}).click();
+ await expect(page.getByRole('tablist',{name:'Message audience',exact:true})).toHaveCount(0);
  const input=page.getByRole('textbox',{name:'Message Maya Chen',exact:true});
  await input.fill('Clarification conversation audit message.');
  await page.getByRole('button',{name:'Preview message',exact:true}).click();

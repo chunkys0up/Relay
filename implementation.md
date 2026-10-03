@@ -1,176 +1,53 @@
-> **Approved V2 UI override (2 October 2026):** Client navigation is Home / AI Chat / Call; uploads and documents are on Home. Advisor navigation is Home / Clients / Call; Clients includes expandable documents, exact-version review, and private AI chat. Both roles have pre-call and active-call layouts with no capture/transcript controls. These approved mockups supersede conflicting historical navigation/capture-UI requirements below. Backend plans and access safeguards remain unchanged. See README and REDESIGN-RESULTS for implemented scope.
-# Relay implementation plan
+# Relay implementation map
 
-Version 0.4 · React/FastAPI local demo
+Version 0.6 · 3 October 2026 · Current routes, behavior and limits
 
-Read [specs.md](specs.md) and this file before changing the application. This plan is documentation only; it does not create AWS resources, enable permissions, record calls, delete data, deploy, or prove an integration.
+Read [specs.md](specs.md) before changing product behavior. This file maps the current UI to its service boundaries. Keep the separate browser, legacy, founder workflow and advisor workspace data paths clear.
 
-## 1. Setup gate
+## Current application map
 
-Preserve the existing repository layout: `client-frontend/`, `advsior-frontend/` (existing spelling), and `backend/`. Do not rename unrelated directories. Use React + TypeScript frontends and a local Python FastAPI backend; do not retain Next.js Route Handler or Node worker assumptions.
+The Vite/React app is in `frontend-shared/`. Routes are registered in `frontend-shared/src/main.tsx`. Role screens remain in `client-frontend/` and `advsior-frontend/` (existing spelling).
 
-Create a Python virtual environment and pin compatible dependencies only once implementation is authorized. Expected categories: `fastapi`, an ASGI server, WebSocket support, AWS SDK for Python, Pydantic, Strands Agents SDK, and focused test tooling. Frontend dependencies remain React/TypeScript and the existing chosen styling/component approach. Use the repository’s existing package manager when it exists; otherwise document the selected frontend toolchain.
+| Surface | Route | Current behavior |
+| --- | --- | --- |
+| Founder Home | `/founder/home` | Lists/uploads/opens original files through legacy FastAPI → S3/PostgreSQL. Packet versions and recent human conversation come from the browser adapter. Checklist and activity load from legacy case endpoints. A separate link opens the owner-scoped packet workspace. |
+| Founder AI Chat | `/founder/chat` | Browser adapter saves demo messages and simulated human delivery. Private AI replies stream from legacy `/api/chat/stream`; optional file attachments upload to the case and the live agent can read them. Agent checklist/activity changes persist through case tools. The separate owner-scoped packet workspace is linked here too. |
+| Founder Call | `/founder/call` | Pre-call/active layouts show a selected shared version with PDF and Packet summary tabs, plus human-message controls. Choose simulated Demo or live Amazon Chime; ordinary packet state and human conversation stay separate. |
+| Advisor Home | `/advisor/home` | Browser snapshot only: summary and counts for its grant-visible synthetic sources and packet versions. It has no raw backend-uploaded-file list. |
+| Advisor Clients | `/advisor/clients` | Browser mode shows grant-visible synthetic sources/packets, inline exact-version reviews and demo conversation. The explicit server synthetic mode uses the separate advisor API for granted packet context, private persisted chat and citations. |
+| Advisor Call | `/advisor/call` | Shared browser-demo packet, review actions and human-message controls with simulated Demo or explicit live Chime. |
+| Settings, Search | `/{role}/settings`, `/{role}/search` | Utilities. Search uses the role-visible browser snapshot. Settings shows synthetic identity and call privacy; it does not expose capture/transcription controls. |
+| Contextual tools | Founder `/founder/sources`, `/founder/documents`, `/founder/home/clarification`; advisor `/advisor/reviews`, `/advisor/documents` | Direct routes linked from relevant screens; not primary navigation. Advisor Documents previews only grant-visible browser packet versions and sources. |
+| Owner-scoped packet workspace | Founder Home/AI Chat link with `?workspace=backend` | Separate session-owned case flow for source/template upload, extraction, confirmed facts, bounded agent analysis and verified PDF proposals. SQLite development state; requires its own configured service. |
+| Server advisor workspace | Advisor Clients link/selector | Separate `/api/advisor` session and SQLite seed/grants. Read-only chat can cite authorized, actually read packet/source evidence and compare selected versions. No client send, approval or share action. |
 
-Current database settings are `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASSWORD`; `Settings.database_url` assembles them but is not yet consumed. See [backend/.env.example](backend/.env.example). The remaining integration settings below describe the target design; placeholders are not values to invent:
+Primary navigation is Founder Home / AI Chat / Call and Advisor Home / Clients / Call. Settings and Search remain utilities. Sources, Documents, Reviews and clarification remain routed contextual tools. There is no call recording, capture-consent, transcript or call-AI-support interface.
 
-```dotenv
-AWS_REGION=us-east-1
-S3_BUCKET=<permitted-private-bucket>
-DB_HOST=<permitted-rds-host>
-DB_PORT=5432
-DB_NAME=relay
-DB_USER=<database-user>
-DB_PASSWORD=<database-password>
-BEDROCK_MODEL_OR_PROFILE_ID=<copy exact ID from successful request>
-DEMO_MODE=true
-DEMO_TENANT_ID=relay-demo
-APP_ORIGIN=http://localhost:<frontend-port>
-CHIME_REGION=<verified-region>
-```
+## Runtime and service boundaries
 
-The exact `us.anthropic.claude-sonnet-5` inference profile was verified through AWS CLI catalog, entitlement, and successful Converse calls on 2026-10-03. Per-role model settings, Windows-login/WSL startup, and live verification are documented in [Bedrock role setup](docs/bedrock-role-setup.md).
+- `RelayProvider` and `MockRelayAdapter` in `frontend-shared/src/context.tsx` and `mock.ts` own browser packet snapshots, grant-filtered role views, local message history, reviews and simulated calls.
+- `Conversation` in `frontend-shared/src/conversation.tsx` stores visible messages/delivery state in the browser adapter. Private AI requests stream through `relayApi.ts` to the legacy FastAPI chat endpoint; attachments upload through the document endpoint and their IDs are passed with the case ID. Human delivery is simulated.
+- The legacy agent in `backend/app/agents/factory.py` has six registered tools for checklist/activity and case-document listing/reading. Checklist/activity endpoints are served from PostgreSQL and refreshed in Home/Chat. Tool data is scoped to the request’s case ID, not a production authenticated user. Do not describe the generic chat as grant-scoped advisor AI.
+- `useCaseDocuments` uses `/api/documents` routes. Original files go to S3 and metadata to PostgreSQL. This is not the source catalog, packet store or sharing logic of the browser adapter or SQLite workflow.
+- `BackendWorkspace` uses `/api/workflow` on `app.workflow_app`, normally port 8001. The SQLite service owns case sessions, sources, tasks/facts and immutable PDF bytes. Updates require loopback session/CSRF/revision/idempotency checks and explicit confirmations.
+- `AdvisorChat` calls `/api/advisor` on that same local workflow service but uses its own synthetic SQLite tables, cookie/CSRF session, assignment/version/source grants, conversations and request idempotency. Its model tools are read-only and source-read validated. It does not import founder records or browser grants.
+- `callsApi.ts` and `liveCall.tsx` connect the explicit Chime mode to legacy FastAPI and SDK. The legacy service accepts caller-supplied identity and keeps call records in memory. Demo calls remain simulated browser state.
 
-Preflight gates: AWS identity/region; S3 canonical write/read; PostgreSQL connectivity, schema migrations and transaction/revision-conflict checks; Textract extraction permission; Bedrock invoke permission and exact configured ID; Strands SDK compatibility; Chime SDK permissions; Chime media-capture and Transcribe prerequisites; and a two-person Chime audio test. New cloud resources, permission changes, credentials, or real data require team authorization.
+Do not describe these four paths as an end-to-end integrated founder-to-advisor system: browser adapter; legacy case/chat/document/Chime API; owner-scoped founder workflow; and server synthetic advisor API.
 
-The runnable React app lives in `frontend-shared/` (package, entrypoint, assets and build config), importing the two role-specific screen directories. Root npm scripts delegate to that workspace; install once at the repository root with `npm ci`.
+## Behavior and security constraints
 
-## 2. Proposed structure
+Preserve the current route map, contextual links, keyboard access and responsive layouts. Keep Demo, backend upload, live AI, workflow and Chime actions labeled according to their actual state.
 
-```text
-frontend-shared/
-  package.json
-  index.html
-  vite.config.ts
-  tsconfig.json
-  eslint.config.js
-  public/assets/
-  src/
-client-frontend/
-  src/{home,sources,documents,call,settings,assistant,chat,tasks}/
-advsior-frontend/
-  src/{clients,reviews,documents,call,settings,preview,assistant,chat}/
-backend/
-  app/
-    main.py
-    api/{cases,documents,messages,calls,reviews,events}.py
-    ws/{case_hub,protocol}.py
-    domain/{schemas,transitions,permissions}.py
-    services/{repository,storage,textract,retrieval,chime,transcribe}.py
-    ai/{bedrock,strands_orchestrator,specialists,prompts}.py
-    jobs/{dispatch,leases}.py
-  db/{schema.sql,seed.sql,migrations/}
-  tests/{unit,integration,e2e}/
-  scripts/{seed,aws_smoke}.py
-fixtures/{founder,advisor,sources,expected}/
-specs.md
-implementation.md
-```
+The legacy case tools use the supplied case ID and are not actor-authenticated. The owner workflow is loopback/session scoped. The advisor API has its own server session, CSRF protection and exact grants, but operates on seeded synthetic data. None of these limitations should be hidden behind the browser role selector.
 
-Keep browser code away from credentials. Share generated or manually maintained safe DTOs; never serialize complete server case objects or AWS credentials into a client.
+Within browser state, exact-version/hash grants control ordinary advisor visibility and review. Human messages require a visible confirmation and remain simulated. The advisor backend chat may only read assigned shared versions; cite only sources actually read. Model-generated follow-ups are editable private drafts, not messages.
 
-## 3. Domain contracts
+Do not add Chime capture or Transcribe. Preserve server-side file validation, source hash checks, idempotency and bounded work in the flows that already implement them; do not imply the separate services share these protections or data.
 
-Use UUIDs, ISO timestamps, explicit currency/period, and integer minor units or decimal strings for money.
+## References
 
-```python
-UiState = Literal["Idle", "Thinking / Working", "Needs input"]
-TaskState = Literal["Pending", "In progress", "Blocked", "Done"]
-CallState = Literal["ringing", "connecting", "connected", "ended", "failed"]
-FactState = Literal["proposed", "confirmed", "conflicting", "unknown"]
-```
-
-Pydantic schemas cover:
-
-- `Case`: service/template revision, founder, authorized advisors, current packet, case/UI status.
-- `Document`: canonical S3 key, hash, original name/MIME/bytes, version, Textract extraction status, permitted excerpts.
-- `Excerpt`: document ID/hash, page/row/field locator, text, case/type metadata.
-- `Fact` and `Conflict`: value/state/revision plus valid evidence.
-- `Task` and `Job`: ordered task, dependencies, actor, idempotency key, checkpoint/lease, bounded failure.
-- `Message`: actual human/AI author, explicit audience, text, selected attachments, status, idempotency key.
-- `CallSession`: invited/accepted participants, Chime meeting/attendee references kept server-side, call state, mute events, consent and capture/process/delete state.
-- `PacketVersion`, `Review`, `ShareGrant`, `Consent`, and replayable `Event`.
-
-PostgreSQL on Amazon RDS is the record store. Extend the existing `backend/db/schema.sql` tables (`cases`, `documents`, `facts`, `drafts`, `messages`, `advisor_actions`) through versioned migrations; add the task/job, conflict, sharing, consent/call and replayable-event records required by the domain contracts. Scope records and queries by tenant/case, enforce foreign keys and unique case/version and actor/idempotency keys, and index case-scoped lookups. Keep originals, extracted text and packet bodies in S3; store their keys, hashes, metadata and lifecycle state in PostgreSQL.
-
-Apply revision-checked updates and row locks inside transactions for job leases, handoffs and exact-version decisions. Commit state changes and their events together before broadcasting; workers must not hold database transactions open across AWS or model calls. These persistence behaviors are planned: the current schema/config scaffold has no database client or application queries, and the initial SQL script is not a migration runner.
-
-## 4. Backend APIs and WebSockets
-
-All HTTP and WebSocket paths derive actor/role/case server-side, validate data, authorize scope, redact errors, and use expected revision/idempotency keys for mutations.
-
-| Endpoint | Contract |
-| --- | --- |
-| `GET/POST /api/cases` | List authorized demo folders / create own fictional case |
-| `GET /api/cases/{id}` | Safe case snapshot |
-| `POST /api/cases/{id}/uploads` | Validate metadata and issue constrained staging upload |
-| `POST /api/cases/{id}/uploads/{source_id}/complete` | Canonicalize, hash, catalogue, trigger Textract |
-| `GET /api/cases/{id}/sources/{source_id}/preview` | Authorized short-lived preview |
-| `POST /api/cases/{id}/messages` | Store human/AI draft according to audience/confirmation rules |
-| `POST /api/cases/{id}/run` | Persist visible tasks, then enqueue bounded work |
-| `POST /api/cases/{id}/handoff` | Confirm exact advisor/version/source manifest |
-| `POST /api/cases/{id}/clarifications` | Create question preview |
-| `POST /api/cases/{id}/clarifications/{qid}/send` | Confirm unchanged recipient/content and send once |
-| `POST /api/cases/{id}/calls` | Create idempotent Chime invitation for permitted participant |
-| `POST /api/cases/{id}/calls/{call_id}/actions` | Accept/decline/mute/unmute/end after authorization |
-| `POST /api/cases/{id}/calls/{call_id}/capture-consent` | Record per-participant opt-in; never infer it |
-| `POST /api/cases/{id}/reviews` | Approve exact version or return confirmed questions |
-| `WS /ws/cases/{id}` | Authenticated, case-scoped events: messages, tasks, draft progress, reviews, call state |
-
-The FastAPI WebSocket hub validates session and case access before accepting, attaches an audience/actor scope, persists events before fan-out, and supports replay after reconnect. Do not stream private reasoning or raw model traces.
-
-## 5. Retrieval and orchestration
-
-Do not add Bedrock Knowledge Bases for the demo. After Textract output is normalized into S3, a backend retrieval tool accepts only authorized `case_id`, allowed document types, and a bounded query. It filters by case and sharing manifest, selects relevant passages, and returns source ID/hash/page/field citations. A document status flag is not retrieval. Indexed passage search is future work.
-
-Use Strands Agents SDK in Python for one orchestrator. Registered specialist agents/functions become scoped tools: extraction, validation/conflict check, clarification draft, packet draft, and advisor routing. The orchestrator alone produces AI chat/current-activity messages; human messages preserve verified authorship. Every specialist gets least-privilege case data and cannot send, approve, grant access, invoke arbitrary network/shell, or change credentials.
-
-Bound work to two specialists concurrently, four model calls per job including repair, a timeout, and one transient retry. Validate model and tool output with Pydantic; verify each citation against authorized excerpts. Missing evidence, invalid output, or exhausted budget blocks a visible task with a safe retry path.
-
-## 6. Real calls, capture, and after-call flow
-
-Use Amazon Chime SDK only after a working two-person audio test. The server creates/authorizes meeting participation; clients use official Chime SDK components. A mock must be visibly marked and cannot count as a real call.
-
-Audio capture is separate from joining a call. Require each participant’s explicit consent before creating the approved Chime media-capture path. On consented capture: record durable processing state → capture media chunks to S3 → concatenate and validate audio format → batch Amazon Transcribe → Bedrock after-call summary/proposed changes → human review/confirmation. Do not show live AI suggestions.
-
-For fictional demo data, delete audio and transcript after transcription/summary succeeds and the summary is confirmed. If any step fails, preserve only the unprocessed artifact/state needed for a visible retry and cleanup task; never silently lose data or claim a deletion that failed. Verify capture destination, Transcribe output, KMS/permissions as applicable, and cleanup results before claiming this path works.
-
-## 7. UI implementation rules
-
-Founder navigation is Home / Sources / Documents / Call plus Settings. Home centers the main AI chat; its attachment control is the only upload path. Keep the to-do list and current activity prominent on the right. Sources reads/browses uploaded originals and extraction metadata only; Documents shows generated drafts and advisor-reviewed versions. Do not create Work or separate Chat navigation.
-
-Advisor navigation is Clients / Reviews / Documents / Call plus Settings. Retain client folders, source-linked document review, preview, and right AI chat. Call is a dedicated destination combining the document under review, authorized human video controls, human-message history, labeled AI support, and separate per-participant capture consent; it is not merely an inline Home toggle.
-
-Render exactly three AI modes and four task states; call state is separate. Persist task list before planning/execution and publish activity through drafting/routing. Clarifications remain previewable until confirmed. Approval is version-bound; returning questions and sending are idempotent.
-
-Use light surfaces and centralized sampled reference-image colors: navy `#00205B`, orange `#B35000`, muted `#99A5BD`. They are samples from the supplied LPL hackathon background, not verified universal brand standards. Use Midday file storage as visual inspiration only.
-
-## 8. Phases and checks
-
-1. **Foundation:** React navigation shells, FastAPI/Pydantic contracts, server-controlled demo role switch, repository interface, task/event persistence. Gate: Home / Sources / Documents / Call routes work; cross-case access fails; three AI modes/four task states render.
-2. **Document flow:** chat attachment upload only, constrained S3 storage, Textract, S3 excerpt retrieval with citations, PostgreSQL catalog/status. Gate: Sources reads originals; Documents separates packet versions; unsupported uploads fail safely.
-3. **Orchestrator:** Strands tools, configured Bedrock invocation, task-first jobs, WebSocket replay, one cited contradiction plus one missing fact, clarification, and packet v1.
-4. **Advisor and call loop:** client folders, source-linked review, returned-question loop, dedicated Call destination with packet context/human-message history, Chime invitation/state, and separate consent/capture path after prerequisites.
-5. **Verification:** record pass/fail/not-run separately. Typical commands after scripts exist: frontend lint/type/test/build; `python -m pytest`; FastAPI integration tests; browser founder/advisor two-session navigation/message/call tests; `python backend/scripts/aws_smoke.py`.
-
-Test Home/Sources/Documents/Call route permissions, chat-attachment-only upload, original-versus-generated document separation, unauthorized REST/WebSocket/source/event/call access, private-AI isolation, upload injection, fabricated citations, malformed model output, duplicate send/job/call action, reconnect, stale approval, consent withdrawal, capture/transcription/summary/cleanup failure, the one-missing-fact/one-contradiction demo, rejection-to-questions/v2 flow, and that mocks never imply real integration.
-
-## 9. Coding-agent kickoff
-
-```text
-Read specs.md and implementation.md completely, then inspect the existing
-client-frontend, advsior-frontend, and backend directories and repository
-instructions. Preserve working code and the existing directory names. Build only
-the fictional-data Relay demo when implementation is authorized: React clients,
-a local Python FastAPI backend, FastAPI WebSockets, Strands-based hidden
-specialists, S3/Textract/PostgreSQL, and a configured Bedrock model/profile copied
-from a successful request. Do not invent a model ID, create AWS resources,
-expand permissions, deploy publicly, or use real customer data.
-
-Implement task-first orchestration, exactly three AI UI modes, source-linked
-facts, versioned drafts, explicit handoffs/sends, and the advisor
-return/revise/approve loop. Founder Home centers AI chat with attachment-only uploads, visible to-do/current activity, and Home / Sources / Documents / Call navigation. Make Call a dedicated destination with the reviewed document, human video/message history, labeled AI support, and separate capture consent. Use Chime only
-after real permissions and a two-person test; capture requires every
-participant’s explicit consent, Transcribe and Bedrock run after the call, and
-humans confirm proposed changes. Label every mock/fallback honestly. Run
-applicable checks and report passed, failed, and not-run results.
-```
+- [App routes](frontend-shared/src/main.tsx)
+- [Conversation and live adapter](frontend-shared/src/conversation.tsx), [API transport](frontend-shared/src/relayApi.ts)
+- [Advisor Clients](advsior-frontend/src/clients/Screen.tsx), [advisor API](frontend-shared/src/advisorApi.ts)
+- [Backend endpoint status](backend/README.md), [workflow transport](docs/api-contract.md)

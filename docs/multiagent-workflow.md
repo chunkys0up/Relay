@@ -51,8 +51,8 @@ Agents are created fresh per request with immutable case context. No cross-case
 agent memory, shell/web tools, automatic tool discovery, or hidden SDK retries.
 Reader and writer can each be delegated to once. Each gets up to four model turns;
 the orchestrator gets four, and verification gets one: at most 13 model turns for
-an edit job. Plan tool execution has a shared 12-call ceiling, plus each scoped
-toolset's eight-call ceiling. Planning times out after 90 seconds; verification
+an edit job. Plan tool execution has a shared 18-call ceiling, plus each scoped
+toolset's eight-call ceiling. Exceeding either ceiling remains a terminal failure even when the SDK converts a tool exception into a model-visible result. Planning times out after 90 seconds; verification
 after 35 seconds. Timed-out work cannot persist a late result.
 
 This replaces the earlier single-agent four-call budget to accommodate actual
@@ -69,9 +69,11 @@ verification. The user can correct inputs and submit a new request.
 - `backend/app/workflow_app.py`: selects MultiAgentProvider when a model is configured.
 - `client-frontend/src/workflow/`: shows one conversation and PDF check status.
 
-The original teammate session chat harness remains available and unchanged;
-this team is the default for the isolated backend packet workspace. Existing
-setup instructions in `bedrock-workflow.md` still apply. No new packages required.
+The legacy founder AI Chat agent is a separate Strands workflow in
+`backend/app/agents/`. It has six case-scoped checklist, activity and document
+tools; it does not use this PDF specialist hierarchy or production actor
+authorization. This team is used only by the isolated backend packet workspace.
+Existing setup instructions in `bedrock-workflow.md` still apply. No new packages required.
 Live AWS invocation, model quality and production storage/identity remain unverified.
 
 Pattern reference: [Strands agents as tools](https://strandsagents.com/docs/user-guide/sdk/multi-agent/agents-as-tools/).

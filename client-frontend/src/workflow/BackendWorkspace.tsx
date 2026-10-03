@@ -79,7 +79,7 @@ export function BackendWorkspace({ view }: { view: 'documents' | 'chat' }) {
     latestRevision.current = currentId.current === next.id ? Math.max(latestRevision.current, next.revision) : next.revision;
     currentId.current = next.id;
     setCurrent(previous => previous?.id === next.id && previous.revision > next.revision ? previous : next);
-    sessionStorage.setItem('relay.backend.case', next.id);
+    try { sessionStorage.setItem('relay.backend.case', next.id); } catch { /* Selection remains usable without browser storage. */ }
   }, []);
   const refresh = useCallback(async (id: string) => {
     const next = await workflowRequest<WorkflowCase>(`/cases/${encodeURIComponent(id)}`);
@@ -96,12 +96,20 @@ export function BackendWorkspace({ view }: { view: 'documents' | 'chat' }) {
       const { items: list } = await workflowRequest<{ items: WorkflowCase[] }>('/cases');
       if (!mounted.current || sequence.current !== run) return;
       setCases(list);
-      const saved = sessionStorage.getItem('relay.backend.case');
+      let saved: string | null = null;
+      try { saved = sessionStorage.getItem('relay.backend.case'); } catch { /* Use the first available case when storage is blocked. */ }
       const selected = list.find(item => item.id === saved) ?? list[0];
-      if (selected) { currentId.current = selected.id; await refresh(selected.id); }
-    } catch (cause) { if (mounted.current) setError(errorText(cause)); }
-    finally { if (mounted.current) setLoading(false); }
-  }, [refresh]);
+      if (selected) {
+        currentId.current = selected.id;
+        const next = await workflowRequest<WorkflowCase>(`/cases/${encodeURIComponent(selected.id)}`);
+        if (mounted.current && sequence.current === run && currentId.current === selected.id) applyCase(next);
+      } else {
+        currentId.current = null;
+        setCurrent(null);
+      }
+    } catch (cause) { if (mounted.current && sequence.current === run) setError(errorText(cause)); }
+    finally { if (mounted.current && sequence.current === run) setLoading(false); }
+  }, [applyCase]);
   useEffect(() => { mounted.current = true; void bootstrap(); return () => { mounted.current = false; }; }, [bootstrap]);
   useEffect(() => {
     if (!current?.id || !session) return;

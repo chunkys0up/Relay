@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 
 const routes = [
@@ -15,7 +15,7 @@ async function prepareClarification(page:Page):Promise<void>{
  await page.getByRole('button',{name:'Return review with these questions',exact:true}).click();
  await expect(page.getByRole('button',{name:'Return review with these questions',exact:true})).toHaveCount(0);
  await page.getByRole('combobox',{name:'Demo role'}).selectOption('founder');
- await page.getByRole('link',{name:'Answer clarification in chat',exact:true}).click();
+ await page.getByRole('link',{name:"Answer Maya Chen's question",exact:true}).click();
  await expect(page.getByRole('heading',{name:'Clarify packet details'})).toBeVisible();
 }
 
@@ -41,7 +41,13 @@ for(const [name,route] of routes){
   await page.getByText('Test states',{exact:true}).click();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('empty');
   if(name==='founder-home')await expect(page.getByText('No documents in this view yet.',{exact:true})).toBeVisible();
-  else if(name==='founder-chat')await expect(page.getByText('Tasks will appear as your packet work begins.',{exact:true})).toBeVisible();
+  else if(name==='founder-chat'){
+   await expect(page.getByText('Ask Relay anything about your packet.',{exact:true})).toBeVisible();
+   await expect(page.locator('.message-bubble')).toHaveCount(0);
+   await page.setViewportSize({width:1600,height:1000});
+   await expect(page.getByText('Relay adds items here as you talk through your packet.',{exact:true})).toBeVisible();
+   await page.setViewportSize({width:390,height:844});
+  }
   else await expect(page.getByRole('heading').filter({hasText:/No |Your workspace is ready|Home conversation|Call/}).first()).toBeVisible();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('error');
   await expect(page.getByRole('heading',{name:'Workspace unavailable'})).toBeVisible();
@@ -82,19 +88,21 @@ test('returned questions create an unapproved version and require renewed handof
  await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
 });
 
-test('local attachment intake succeeds and slow sends can be cancelled',async({page})=>{
+test('backend document intake succeeds and slow simulated sends can be cancelled',async({page,documentsApi})=>{
  await page.goto('/founder/home');
- await page.getByLabel('Attach a source').setInputFiles({name:'fictional.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic fixture')});
- await expect(page.getByText('Selected locally: fictional.pdf')).toBeVisible();
- await page.getByRole('button',{name:'Add source locally'}).click();
- await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
- await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
- await page.getByRole('button',{name:'Cancel attachment'}).click();
+ await page.getByLabel('Upload documents',{exact:true}).setInputFiles({name:'fictional.txt',mimeType:'text/plain',buffer:Buffer.from('synthetic fixture')});
+ await expect(page.getByRole('button',{name:'fictional.txt',exact:true})).toBeVisible();
+ expect(documentsApi.uploads).toHaveLength(1);
+ expect(documentsApi.uploads[0].content.toString()).toBe('synthetic fixture');
+ await page.getByLabel('Upload documents',{exact:true}).setInputFiles([]);
+ expect(documentsApi.uploads).toHaveLength(1);
  await page.getByText('Test states',{exact:true}).click();
  await page.getByRole('link',{name:'AI Chat',exact:true}).click();
  await page.getByRole('combobox',{name:'Test scenario'}).selectOption('slow');
- await page.getByLabel('Message Relay',{exact:true}).fill('Cancelled message');
- await page.getByRole('button',{name:'Send to simulated AI'}).click();
+ await page.getByRole('tab',{name:'Maya Chen',exact:true}).click();
+ await page.getByLabel('Message Maya Chen',{exact:true}).fill('Cancelled message');
+ await page.getByRole('button',{name:'Preview message',exact:true}).click();
+ await page.getByRole('button',{name:'Confirm simulated send',exact:true}).click();
  await page.getByRole('button',{name:'Cancel request'}).click();
  await expect(page.getByRole('alert')).toContainText('cancelled');
  await expect(page.locator('.message-bubble').filter({hasText:'Cancelled message'})).toHaveCount(0);
@@ -126,9 +134,33 @@ test('unsent drafts survive reconnect and stay scoped to role and audience',asyn
  await expect(page.getByRole('heading',{name:'Workspace unavailable'})).toBeVisible();
  await page.getByRole('button',{name:'Reconnect / refresh'}).click();
  await expect(page.getByLabel('Message Relay',{exact:true})).toHaveValue('Private unsent founder draft');
- await page.getByRole('combobox',{name:'Message audience'}).selectOption('human');
+ await page.getByRole('tab',{name:'Maya Chen',exact:true}).click();
  await expect(page.getByLabel('Message Maya Chen',{exact:true})).toHaveValue('');
  await page.getByRole('combobox',{name:'Demo role'}).selectOption('advisor');
  await page.getByRole('link',{name:'Clients',exact:true}).click();
  await expect(page.getByLabel('Message Relay',{exact:true})).toHaveValue('');
+});
+
+
+test('Home backend checklist updates and activity survive a page reload',async({page,documentsApi})=>{
+ const caseId='22222222-2222-2222-2222-222222222222';
+ const stamp='2026-10-03T00:00:00Z';
+ documentsApi.checklist.push(
+  {id:'overview',case_id:caseId,title:'Read company overview',detail:'Inspect the uploaded original.',state:'done',position:1,created_by:'agent',created_at:stamp,updated_at:stamp},
+  {id:'reserve',case_id:caseId,title:'Confirm reserve target',detail:'Provide the current reserve amount.',state:'todo',position:2,created_by:'agent',created_at:stamp,updated_at:stamp},
+ );
+ documentsApi.activity.push({id:'activity-1',case_id:caseId,actor:'agent',text:'Read the company overview.',created_at:stamp});
+ await page.goto('/founder/home');
+ const progress=page.getByRole('progressbar',{name:'Checklist items done',exact:true});
+ await expect(progress).toHaveAttribute('aria-valuenow','1');
+ await expect(progress).toHaveAttribute('aria-valuemax','2');
+ await page.getByRole('checkbox',{name:'Confirm reserve target: mark done',exact:true}).click();
+ await expect(page.getByRole('checkbox',{name:'Confirm reserve target: mark not done',exact:true})).toHaveAttribute('aria-checked','true');
+ expect(documentsApi.checklist.find(item=>item.id==='reserve')?.state).toBe('done');
+ await expect(progress).toHaveAttribute('aria-valuenow','2');
+ await page.reload();
+ await expect(page.getByRole('checkbox',{name:'Confirm reserve target: mark not done',exact:true})).toHaveAttribute('aria-checked','true');
+ await expect(progress).toHaveAttribute('aria-valuenow','2');
+ await page.getByRole('tab',{name:'Activity',exact:true}).click();
+ await expect(page.locator('.founder-home-activity-feed')).toContainText('Read the company overview.');
 });

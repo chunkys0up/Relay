@@ -85,7 +85,7 @@ function DemoScreen() {
           <span>or <button type="button" className="founder-home-text-button" onClick={() => fileInput.current?.click()} disabled={uploading}>choose files</button></span>
           <button className="founder-home-upload-button" type="button" onClick={() => fileInput.current?.click()} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload documents'}</button>
           <input ref={fileInput} className="sr-only" type="file" multiple aria-label="Upload documents" onChange={onFileChange} disabled={uploading}/>
-          <small>Backend case upload. Advisor access requires an explicit shared handoff.</small>
+          <small>Upload to this backend case. Sharing with your advisor is a separate step.</small>
         </div>
         {(caseDocuments.error || error) && <p className="founder-home-feedback is-error" role="alert">{caseDocuments.error || error}</p>}
         {notice && <p className="founder-home-feedback" role="status">{notice}</p>}
@@ -136,7 +136,7 @@ function DemoScreen() {
         {recentMessages?.length ? <ul>{recentMessages.map((message) => <li key={message.id}><strong>{message.sender_type === 'ai' ? 'Relay assistant' : message.sender_type === 'founder' ? snapshot.founder.name : snapshot.advisors[0]?.name}</strong><span className="founder-home-blurb">{plainText(message.content)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>{recentMessages === null ? 'Loading…' : 'No conversation yet.'}</p>}
         </Collapsible>
       </div>}
-      <p className="founder-home-privacy">Uploads stay private until you choose what to share.</p>
+      <p className="founder-home-privacy">Packet versions require a separate handoff to your advisor.</p>
     </aside>
   </div>}</ScreenState>;
 }

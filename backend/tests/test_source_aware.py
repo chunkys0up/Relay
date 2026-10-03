@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi.testclient import TestClient
+import pytest
 
 from app.workflow.model import ModelFailure
 from app.workflow.schemas import FIELDS, ModelResult
@@ -236,3 +237,29 @@ def test_verifier_retry_promotes_covered_source_and_preview_task(
     assert case["jobs"][-1]["status"] == "needs_input"
     assert case["sources"][0]["interpretation_status"] == "review_needed"
     assert next(task for task in case["tasks"] if task["key"] == "packet")["state"] == "Pending"
+
+
+@pytest.mark.parametrize('content_type, expected_type', [
+    ('text/plain; charset=utf-8', 'text/plain'),
+    ('TEXT/PLAIN', 'text/plain'),
+    ('text/csv; charset=utf-8', 'text/csv'),
+])
+def test_supported_mime_variants_roundtrip_source_preview(
+    tmp_path: Path, content_type: str, expected_type: str,
+) -> None:
+    client, headers = setup_client(tmp_path)
+    case = new_case(client, headers)
+    body = b'Company: Studio'
+    response = client.post(f"/api/workflow/cases/{case['id']}/sources",
+        data={'expected_revision': case['revision']},
+        files={'file': ('record.txt', body, content_type)},
+        headers={**headers, 'Idempotency-Key': str(uuid4())})
+    assert response.status_code == 201, response.text
+    source = response.json()['source']
+    assert source['extraction_status'] == 'ready'
+    preview = client.get(f"/api/workflow/cases/{case['id']}/sources/{source['id']}/preview")
+    assert preview.status_code == 200, preview.text
+    assert preview.content == body
+    assert preview.headers['content-type'].split(';', 1)[0] == expected_type
+    assert preview.headers['x-content-type-options'] == 'nosniff'
+    assert preview.headers['content-security-policy'] == 'sandbox'

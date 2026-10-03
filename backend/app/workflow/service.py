@@ -71,6 +71,12 @@ class WorkflowService:
 
         if len(data) > 10 * 1024 * 1024:
             raise WorkflowError("FILE_TOO_LARGE", 413)
+        digest = hashlib.sha256(data).hexdigest()
+        request = {"expected_revision": expected_revision, "filename": filename,
+                   "content_type": content_type, "hash": digest, "analyze": analyze}
+        prior = self.repo.replay(owner, case_id, "upload_source", key, request)
+        if prior is not None:
+            return prior
         source_id = uid()
         failure: str | None = None
         try:
@@ -78,7 +84,6 @@ class WorkflowService:
         except ValueError as exc:
             excerpts = []
             failure = str(exc)[:200]
-        digest = hashlib.sha256(data).hexdigest()
         source = {
             "id": source_id, "name": filename[:120], "mime_type": content_type,
             "bytes": len(data), "hash": digest, "created_at": now(),
@@ -94,8 +99,6 @@ class WorkflowService:
              "page": e.page, "text": e.text}
             for e in excerpts
         ]
-        request = {"expected_revision": expected_revision, "filename": filename,
-                   "content_type": content_type, "hash": digest, "analyze": analyze}
 
         def change(state: dict[str, Any]) -> tuple[dict[str, Any], list[tuple[str, str, bytes]]]:
             if any(j["status"] in ("queued", "working") for j in state["jobs"]):
@@ -185,6 +188,11 @@ class WorkflowService:
     ) -> dict[str, Any]:
         if len(data) > 10 * 1024 * 1024:
             raise WorkflowError("FILE_TOO_LARGE", 413)
+        digest = hashlib.sha256(data).hexdigest()
+        request = {"expected_revision": expected_revision, "hash": digest, "filename": filename}
+        prior = self.repo.replay(owner, case_id, "upload_template", key, request)
+        if prior is not None:
+            return prior
         try:
             from io import BytesIO
             from pypdf import PdfReader
@@ -199,10 +207,8 @@ class WorkflowService:
         except Exception as exc:
             raise WorkflowError("INVALID_TEMPLATE", 422) from exc
         template_id = uid()
-        digest = hashlib.sha256(data).hexdigest()
         template = {"id": template_id, "name": filename[:120], "fields": sorted(fields),
                     "hash": digest, "created_at": now()}
-        request = {"expected_revision": expected_revision, "hash": digest, "filename": filename}
 
         def change(state: dict[str, Any]) -> tuple[dict[str, Any], list[tuple[str, str, bytes]]]:
             state["templates"].append(template)

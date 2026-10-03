@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import type { Page, Route } from '@playwright/test';
 
 const version = { id: '00000000-0000-4000-8000-000000000021', version: 1, hash: 'a'.repeat(64), title: 'Founder planning packet', source_ids: ['00000000-0000-4000-8000-000000000011'] };

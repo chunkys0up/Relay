@@ -1,61 +1,56 @@
 # Relay
 
-Relay is a synthetic founder/advisor demo for turning source documents and founder clarifications into a versioned packet for human review.
+Relay is a fictional founder/advisor workspace for preparing source-backed planning packets and reviewing exact document versions.
 
-## Project layout
+## Current interface
 
-- `client-frontend/` — client Home (profile, documents, uploads, progress), AI Chat and Call.
-- `advsior-frontend/` — advisor Home, Clients with inline review and private AI, and Call (existing folder spelling).
-- `frontend-shared/` — runnable Vite app: package, HTML entrypoint, build config, public assets, routing and shared UI/state.
-- `backend/` — FastAPI chat, S3 uploads and Chime call endpoints, plus a Postgres schema awaiting application integration.
+- **Founder:** Home / AI Chat / Call. Home combines uploaded originals from the legacy backend with local synthetic packet versions; checklist and activity come from the legacy backend. AI Chat uses the legacy Strands chat service for private AI replies and keeps human messages in the browser demo. Call shows the shared PDF or packet summary and offers a simulated preview or an explicitly selected Amazon Chime connection.
+- **Advisor:** Home / Clients / Call. The ordinary screens show browser demo grants and exact-version review. Clients also offers an explicit server synthetic advisor workspace with its own session, granted versions, grounded private chat and citations.
+- Search and Settings are utilities. Sources, Documents, Reviews and clarification URLs remain contextual tools. Calls have pre-call and active review layouts; recording and transcription controls are absent.
+
+The current repo UI is the design baseline. [specs.md](specs.md) records product behavior and [implementation.md](implementation.md) maps it to code and current service boundaries. Historical reports and old mockups are not feature requirements.
 
 ## Run locally
 
-For the frontend, run `npm ci` once, then `npm run dev` from this directory. Root scripts delegate to the `frontend-shared` npm workspace; `cd frontend-shared && npm run dev` also works. Both roles share this app. Documents, chat, sharing and reviews use a synthetic local adapter. The Call page also offers Amazon Chime live media through FastAPI; select the live connection explicitly. Starting the backend does not connect the other workflows automatically.
+With dependencies installed, run `npm run dev` at the root (or in `frontend-shared/`). For fresh setup, install the locked dependencies with `npm ci` after obtaining any required package-install approval.
 
-See the [backend README](backend/README.md) for architecture, endpoints, configuration and backend startup.
+The default workspace uses a synthetic browser adapter for packet versions, grants, review state and human conversation. Founder AI turns stream from the separate legacy FastAPI/Strands service. Chat attachments upload to S3/Postgres and are read by its case-scoped tools; checklist and activity also use legacy case endpoints. The legacy service has no production actor authorization, so a caller-selected case ID is not an access-control boundary.
 
-## Design and integration
+The founder Home and AI Chat screens also offer **Open backend packet workspace**. That separate service uses owner-scoped SQLite state, source extraction, bounded Strands agents, task updates and confirmed PDF generation/editing. See [workflow setup](docs/bedrock-workflow.md). Vite proxies `/api/workflow` to loopback port 8001 by default; `RELAY_WORKFLOW_PORT` overrides that port for isolated local testing.
 
-The intended flow is upload → extract facts and resolve missing/conflicting values → draft → advisor questions → revised version → exact-version approval. This end-to-end backend flow is not implemented yet.
+Advisor Clients also offers an explicit **server synthetic advisor workspace**. It uses separate server-issued sessions, version/source grants, read-only evidence tools, persisted private conversations and authorized citation previews. Its seeded synthetic records are independent of browser grants, legacy uploads and founder workflow cases. It cannot send to a client or approve/share a packet. See [advisor boundaries](docs/advisor-bedrock.md).
 
-- [API contract](docs/api-contract.md) — proposed frontend/backend boundary, pending confirmation.
-- [Product specification](specs.md) and [implementation plan](implementation.md) — intended behavior. PostgreSQL on Amazon RDS is the selected record store; see the backend README for current implementation status.
-- Frontend checks: `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, `npm run test:browser`.
+See [backend setup](backend/README.md) for the legacy FastAPI service, S3/Postgres uploads, case checklist/activity, Strands chat and Chime. Live AWS or media operations require existing configuration and authorization. A demo label or configured provider is not proof of a successful live request.
 
-## V2 Design
+## Project layout
 
-The approved October 2 mockups supersede older navigation requirements in the
-planning documents. Sources, Documents, Reviews and clarification URLs remain
-available as contextual tools; primary navigation uses the destinations above.
-Both roles have pre-call preparation and an active review layout with an explicit Demo / Amazon Chime connection selector. Chime uses the same document and review composition; document access still follows the local exact-version grant.
-There are no recording or transcript controls.
+| Directory | Responsibility |
+| --- | --- |
+| `frontend-shared/` | Runnable Vite app, shared UI/state, routing and assets |
+| `client-frontend/` | Founder screens and optional backend workspace |
+| `advsior-frontend/` | Advisor screens (existing folder spelling) |
+| `backend/` | Legacy integration service and separate SQLite packet/advisor services |
+| `tests/` | Browser scenarios and frontend test setup |
+| `docs/` | Current setup, transport and architecture references |
 
-This adapter contains one assigned client. Progress and shared document counts
-come from that case; additional clients and live AI/storage/audio are not
-fabricated. Call acceptance reaches the adapter's **Connecting** state, not a
-real media connection. Device controls are explicitly unavailable. Originals
-stay private until packet handoff; human chat can attach only originals already
-shared with its named recipient. Text/CSV can be previewed locally; PDF and
-binary extraction remains unsupported.
+## Verification
 
-Implementation evidence and limitations: [V2 verification](docs/v2-design-verification.md).
-The isolated branch is `V2-Design` (Git does not permit spaces in branch names).
-## Bedrock packet workflow baseline
+```bash
+npm run lint
+npm run typecheck
+npm test -- --maxWorkers=2
+npm run build
+npm run test:browser -- --workers=1
+npm run test:workflow
+PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests -q
+```
 
-The founder Home/AI Chat screens also offer an explicit backend workspace using
-Strands, configured Sonnet 5 access, WebSocket task/message updates and confirmed
-PDF generation/filling. See [setup, boundaries and tests](docs/bedrock-workflow.md).
-This local workflow uses SQLite development persistence; existing local demo and
-Chime behavior remain available. Live AWS invocation is not verified by local tests.
+Browser suites start isolated loopback services. The workflow suite uses deterministic model fixtures, not AWS. Production identity, an integrated server-backed founder/advisor handoff, real device behavior and cloud availability require separate validation.
 
-The backend packet workspace uses one orchestrator with separate document reader,
-writer and PDF verifier agents. See [multi-agent architecture](docs/multiagent-workflow.md).
+## Technical references
 
-## Private advisor Bedrock chat
-
-Advisor Clients now has an explicit server synthetic workspace with version-bound
-private chat, authorized citations, comparison and editable follow-up drafts.
-Its SQLite grants and conversations are separate from browser demo state and the
-legacy generic chat/document APIs. See [advisor setup and boundaries](docs/advisor-bedrock.md)
-and [bounded-loop results](ADVISOR-RESULTS.md) for verification status.
+- [Implemented transport boundaries](docs/api-contract.md)
+- [Backend packet workflow](docs/bedrock-workflow.md)
+- [Agent architecture and limits](docs/multiagent-workflow.md)
+- [Advisor chat boundaries](docs/advisor-bedrock.md)
+- [Bedrock role configuration](docs/bedrock-role-setup.md)
