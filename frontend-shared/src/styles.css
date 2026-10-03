@@ -68,3 +68,9 @@ main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavi
 .file-chip button{border:0;background:none;padding:0 2px;font-size:16px;line-height:1;color:var(--text-muted);cursor:pointer}
 .composer-attach{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-right:auto;border:0;border-radius:50%;background:none;color:#52627f;cursor:pointer}
 .composer-attach:hover:not(:disabled){background:#f1f4f9;color:#1e293b}.composer-attach:disabled{opacity:.4;cursor:not-allowed}
+/* Collapsible sidebar headings (collapsible.tsx). */
+.collapsible-heading button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.collapsible-heading button svg{flex-shrink:0;color:var(--text-muted);transition:transform .15s}
+.collapsible-heading button[aria-expanded=false] svg{transform:rotate(-90deg)}
+.collapsible-heading:has(button[aria-expanded=false]){margin-bottom:0!important}
+@media(prefers-reduced-motion:reduce){.collapsible-heading button svg{transition:none}}

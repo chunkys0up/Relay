@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRelay } from '@relay/shared';
+import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
 import type { ActivityEntry, ChecklistState } from '../../../frontend-shared/src/relayApi';
 import { fileContentBase64 } from '../../../frontend-shared/src/intake';
@@ -156,28 +156,31 @@ function DemoScreen() {
       <div className="founder-home-aside-tabs"><Tabs id="founder-home-aside" label="Workspace details" items={[{ id: 'progress', label: 'Progress' }, { id: 'activity', label: 'Activity' }]} value={asideTab} onChange={(value) => setAsideTab(value as 'progress' | 'activity')}/></div>
       {asideTab === 'progress' ? <div id="founder-home-aside-progress-panel" role="tabpanel" aria-labelledby="founder-home-aside-progress-tab" tabIndex={0} className="founder-home-aside-panel">
         <section aria-labelledby="founder-home-checklist-title">
-          <h2 id="founder-home-checklist-title">Checklist</h2>
+          <Collapsible id="home-checklist" headingId="founder-home-checklist-title" title="Checklist">
           <p>{doneCount} of {items.length} done · {fileCount} file{fileCount === 1 ? '' : 's'} received</p>
           <div className="founder-home-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>
           {checklist.error ? <p className="founder-home-empty" role="alert">{checklist.error}</p>
             : checklist.items === null ? <p className="founder-home-empty" role="status">Loading checklist…</p>
             : items.length ? <ul className="founder-home-checklist">{items.map((item) => <li key={item.id}><button type="button" role="checkbox" aria-checked={item.state === 'done'} aria-label={`${item.title}: mark ${item.state === 'done' ? 'not done' : 'done'}`} className={`founder-home-check ${item.state === 'done' ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, item.state === 'done' ? 'todo' : 'done'); }}>{item.state === 'done' ? '✓' : ''}</button><span>{item.title}</span><small>{checklistLabels[item.state]}</small></li>)}</ul>
             : <p className="founder-home-empty">Relay adds items here as you chat about your packet. <Link to="/founder/chat#message-main">Start in AI Chat</Link></p>}
+          </Collapsible>
         </section>
-        <section className="founder-home-next" aria-labelledby="founder-home-next-title"><h2 id="founder-home-next-title">Next steps</h2>
+        <section className="founder-home-next" aria-labelledby="founder-home-next-title"><Collapsible id="home-next" headingId="founder-home-next-title" title="Next steps">
           {nextItem ? <div className="founder-home-next-step"><span className="founder-home-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}<Link className="founder-home-chat-link" to="/founder/chat#message-main">Open AI Chat</Link></div></div>
             : <p className="founder-home-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
           {currentQuestion && <Link className="founder-home-chat-link" to="/founder/home/clarification">Answer {snapshot.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
           <Link className="founder-home-packet-link" to="/founder/documents">Review packet versions →</Link>
-        </section>
+        </Collapsible></section>
       </div> : <div id="founder-home-aside-activity-panel" role="tabpanel" aria-labelledby="founder-home-aside-activity-tab" tabIndex={0} className="founder-home-aside-panel founder-home-activity-panel">
-        <h2>Activity</h2>
+        <Collapsible id="home-activity" title="Activity">
         {activity.error ? <p className="founder-home-empty" role="alert">{activity.error}</p>
           : activity.entries === null ? <p className="founder-home-empty" role="status">Loading activity…</p>
           : activity.entries.length ? <ul className="founder-home-activity-feed">{activity.entries.map((entry) => <li key={entry.id}><strong>{actorLabels[entry.actor]}</strong><span>{entry.text}</span><small>{timeAgo(entry.created_at)}</small></li>)}</ul>
           : <p className="founder-home-empty">No activity yet. Uploads, checklist changes and Relay&apos;s work show up here.</p>}
-        <h3>Recent conversation</h3>
+        </Collapsible>
+        <Collapsible id="home-conversation" as="h3" title="Recent conversation">
         {lastMessages.length ? <ul>{lastMessages.map((message) => <li key={message.id}><strong>{message.author.name}</strong><span className="founder-home-blurb">{plainText(message.text)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>No conversation yet.</p>}
+        </Collapsible>
         <Link className="founder-home-chat-link" to="/founder/chat#message-main">Open AI Chat</Link>
       </div>}
       <p className="founder-home-privacy">Uploads stay private until you choose what to share.</p>
