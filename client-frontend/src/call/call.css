@@ -57,7 +57,7 @@ main:has(:is(.founder-call-screen,.advisor-call-screen)) .app-footer{display:non
    the negative margin keeps the cards aligned with the page edge. */
 :is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column{padding-right:12px;margin-right:-12px}
 /* Pre-call message to the other person: size to its content instead of the full chat page's height. */
-.relay-call-pre-message>.conversation{min-height:0;padding:12px 14px;gap:10px}
+.relay-call-pre-message>.conversation{min-height:0;padding:0;gap:10px;border:0;border-radius:0;background:none;box-shadow:none}
 .relay-call-pre-message .message-list{flex:none;max-height:240px;gap:12px}
 .relay-call-pre-message .message-list>p.muted{margin:0}
 .relay-call-pre-message .composer textarea{min-height:44px}
