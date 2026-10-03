@@ -54,11 +54,13 @@ function PacketChangesPanel({ packet }: { packet: LivePacket }): ReactNode {
     return () => c.abort();
   }, [packet.case_id, packet.id, packet.version]);
   if (packet.version < 2) return null;
+  // Without the comparison (an older backend, or AWS unavailable) show just the note, or nothing.
+  if (error && !packet.change_note) return null;
   const shown = data?.id === packet.id ? data.value : null;
   return <section className="packet-changes" aria-label={`What changed in packet v${packet.version}`}>
     <div className="packet-changes-head"><strong>What changed since v{packet.version - 1}</strong>{packet.created_by && <small>by {packet.created_by}</small>}</div>
     {packet.change_note && <p className="packet-changes-note">“{packet.change_note}”</p>}
-    {error ? <p className="packet-summary-note" role="alert">{error}</p>
+    {error ? null
       : !shown ? <p className="packet-changes-loading" role="status">Relay is comparing the versions…</p>
       : shown.changes && <MarkdownText text={shown.changes}/>}
   </section>;
