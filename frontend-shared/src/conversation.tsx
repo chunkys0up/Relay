@@ -34,18 +34,19 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
   thread?: ChatThread; onThreadChange?: (thread: ChatThread) => void;
   onRequestStateChange?: (state: AiRequestState) => void;
 }): ReactNode {
-  const { snapshot, role, busy: caseBusy, run } = useRelay();
+  const { snapshot, role, mode, busy: caseBusy, run } = useRelay();
+  const caseId=mode==='server'?snapshot?.id ?? '':LIVE_CASE_ID;
   const [params] = useSearchParams();
   const requestedAudience = params.get('audience');
-  const initialKind: ChatKind = !privateOnly && (humanOnly || requestedAudience === 'human') ? 'human' : 'ai';
+  const initialKind: ChatKind = mode !== 'server' && !privateOnly && (humanOnly || requestedAudience === 'human') ? 'human' : 'ai';
   const [ownThread, setOwnThread] = useState<ChatThread>({ kind: initialKind, id: startNew ? null : undefined });
   const active = thread ?? ownThread;
-  const kind: ChatKind = privateOnly ? 'ai' : humanOnly ? 'human' : active.kind;
+  const kind: ChatKind = mode === 'server' ? 'ai' : privateOnly ? 'ai' : humanOnly ? 'human' : active.kind;
   const advisorLocal = role === 'advisor' && kind === 'ai';
   const setThread = (next: ChatThread): void => { if (onThreadChange) onThreadChange(next); else setOwnThread(next); };
-  const { chats, error: chatsError } = useChats(kind, role, LIVE_CASE_ID, !advisorLocal);
+  const { chats, error: chatsError } = useChats(kind, role, caseId, !advisorLocal && Boolean(caseId));
   const conversationId = advisorLocal ? null : active.id === undefined ? chats?.[0]?.id ?? null : active.id;
-  const scope = advisorLocal ? 'advisor-local' : `${kind}:${conversationId ?? 'new'}`;
+  const scope = advisorLocal ? 'advisor-local' : `${caseId}:${kind}:${conversationId ?? 'new'}`;
   // The thread on screen right now, so a reply that finishes after the user switches chats doesn't overwrite it.
   const shownScope = useRef(scope);
   shownScope.current = scope;
@@ -76,7 +77,7 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
   const loadGeneration = useRef(0);
   const choosingLatest = active.id === undefined;
 
-  useEffect(() => { if (!privateOnly && requestedAudience === 'human') setOwnThread({ kind: 'human', id: undefined }); }, [requestedAudience, privateOnly]);
+  useEffect(() => { if (mode !== 'server' && !privateOnly && requestedAudience === 'human') setOwnThread({ kind: 'human', id: undefined }); }, [requestedAudience, privateOnly, mode]);
   useEffect(() => () => stream.current?.abort(), []);
   // Links like /founder/chat#message-main jump straight to the composer.
   const location = useLocation();
@@ -97,14 +98,14 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
     if (!conversationId) { setMessages([]); return; }
     const c = new AbortController();
     const generation = ++loadGeneration.current;
-    listChatMessages(LIVE_CASE_ID, conversationId, role, c.signal).then(next => {
+    listChatMessages(caseId, conversationId, role, c.signal).then(next => {
       if (c.signal.aborted || generation !== loadGeneration.current) return;
       cache.current.set(conversationId, next);
       setMessages(prev => sameMessages(prev, next) ? prev : next);
     })
       .catch((error: unknown) => { if (!c.signal.aborted && generation === loadGeneration.current) setChatError(errorText(error, 'Messages could not be loaded.')); });
     return () => c.abort();
-  }, [conversationId, role, reload, poll]);
+  }, [conversationId, role, caseId, reload, poll]);
   // Pick up the other person's replies while a human conversation is open.
   useEffect(() => {
     if (kind !== 'human' || !conversationId) return;
@@ -135,20 +136,21 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
   if (!snapshot) return null;
   const me = role === 'founder' ? snapshot.founder : snapshot.advisors[0];
   const other = role === 'founder' ? snapshot.advisors[0] : snapshot.founder;
-  const showTabs = !humanOnly && !privateOnly;
+  const showTabs = mode !== 'server' && !humanOnly && !privateOnly;
   const tabsId = `audience-${large ? 'main' : 'side'}`;
   const inputId = `message-${large ? 'main' : 'side'}`;
   const replying = streaming !== null;
   const busy = sending || replying || (choosingLatest && (chats === null || Boolean(chatsError))) || (advisorLocal && caseBusy);
   const uploadingFiles = files.some(f => !f.id && !f.failed);
   const readyFiles: ChatFile[] = files.flatMap(f => f.id ? [{ id: f.id, name: f.name }] : []);
+  const syncedSources = mode === 'server' ? snapshot.sources.filter(source => source.cloud_status === 'synced') : [];
   const localNotes: ChatMessage[] = advisorLocal ? snapshot.messages.filter(message => message.audience.kind === 'private_ai' && message.author.id === me.id).map(message => ({
-    id: message.id, conversation_id: 'local', case_id: LIVE_CASE_ID, sender_type: 'advisor', content: message.text, files: [], created_at: message.created_at,
+    id: message.id, conversation_id: 'local', case_id: caseId, sender_type: 'advisor', content: message.text, files: [], created_at: message.created_at,
   })) : [];
   const shown = advisorLocal ? localNotes : [...(visibleMessages ?? []), ...(visiblePending ? [visiblePending] : [])];
 
   const addFiles = (picked: File[]): void => {
-    if (kind === 'ai' && role !== 'founder') return;
+    if (mode === 'server' || kind === 'ai' && role !== 'founder') return;
     const targetScope = scope;
     setPreview(false);
     const room = Math.max(5 - files.length, 0);
@@ -156,7 +158,7 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
     for (const file of picked.slice(0, room)) {
       const key = crypto.randomUUID();
       setFiles(prev => [...prev, { key, name: file.name }]);
-      void uploadDocument(LIVE_CASE_ID, file).then(doc => { setFiles(prev => prev.map(f => f.key === key ? { ...f, id: doc.id } : f)); announceCaseUpdate(); },
+      void uploadDocument(caseId, file).then(doc => { setFiles(prev => prev.map(f => f.key === key ? { ...f, id: doc.id } : f)); announceCaseUpdate(); },
         (error: unknown) => { setFiles(prev => prev.map(f => f.key === key ? { ...f, failed: true } : f)); setChatError(`${file.name}: ${errorText(error, 'upload failed')}`, targetScope); });
     }
   };
@@ -178,7 +180,7 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
     setStreaming({ conversationId: id, text: '' });
     try {
       await streamChat(`conv-${id}`, prompt, chunk => { partial += chunk; setStreaming({ conversationId: id, text: partial }); },
-        { signal: c.signal, documentIds, caseId: LIVE_CASE_ID, conversationId: id });
+        { signal: c.signal, documentIds, caseId: caseId, conversationId: id });
       return { stopped: false };
     } catch (error) {
       if (c.signal.aborted) return { stopped: true };
@@ -205,7 +207,7 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
     setPreview(false);
     setSending(true);
     loadGeneration.current += 1;
-    setPending({ scope, message: { id: 'pending', conversation_id: conversationId ?? '', case_id: LIVE_CASE_ID, sender_type: role, content, files: sentFiles, created_at: new Date().toISOString() } });
+    setPending({ scope, message: { id: 'pending', conversation_id: conversationId ?? '', case_id: caseId, sender_type: role, content, files: sentFiles, created_at: new Date().toISOString() } });
     let id = conversationId;
     let accepted = false;
     let failure: unknown = null;
@@ -213,20 +215,20 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
     try {
       if (!id) {
         // A human chat is created with its first message; an AI chat gets it through the reply stream.
-        id = (await createChat(LIVE_CASE_ID, kind, role, kind === 'human' ? { content, files: sentFiles } : undefined)).id;
-        writeDraft(`${role}:message:${snapshot.id}:${kind}:${id}`, content);
-        setPending(prev => prev ? { ...prev, scope: `${kind}:${id}` } : prev);
+        id = (await createChat(caseId, kind, role, kind === 'human' ? { content, files: sentFiles } : undefined)).id;
+        writeDraft(`${role}:message:${snapshot.id}:${caseId}:${kind}:${id}`, content);
+        setPending(prev => prev ? { ...prev, scope: `${caseId}:${kind}:${id}` } : prev);
         setThread({ kind, id });
         if (kind === 'human') accepted = true;
       } else if (kind === 'human') {
-        await sendChatMessage(LIVE_CASE_ID, id, role, content, sentFiles);
+        await sendChatMessage(caseId, id, role, content, sentFiles);
         accepted = true;
       }
       if (kind === 'ai') {
         updateRequestState('responding');
         const result = await reply(id, content, sentFiles.map(f => f.id));
         updateRequestState(result.stopped ? 'stopped' : 'connected');
-        if (result.stopped) setChatError('Reply stopped. A partial answer may appear after the conversation refreshes.', `${kind}:${id}`);
+        if (result.stopped) setChatError('Reply stopped. A partial answer may appear after the conversation refreshes.', `${caseId}:${kind}:${id}`);
         else accepted = true;
       }
     } catch (error) {
@@ -237,9 +239,9 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
       if (id) {
         const generation = ++loadGeneration.current;
         try {
-          const saved = await listChatMessages(LIVE_CASE_ID, id, role);
+          const saved = await listChatMessages(caseId, id, role);
           cache.current.set(id, saved);
-          if (generation === loadGeneration.current && shownScope.current === `${kind}:${id}`) { setMessages(saved); setLoadedScope(`${kind}:${id}`); }
+          if (generation === loadGeneration.current && shownScope.current === `${caseId}:${kind}:${id}`) { setMessages(saved); setLoadedScope(`${caseId}:${kind}:${id}`); }
           if (saved.some(message => message.sender_type === role && message.content === content && !knownMessages.has(message.id))) accepted = true;
         } catch {
           refreshFailure = true;
@@ -247,13 +249,13 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
       }
       if (accepted) {
         setText('');
-        if (id) writeDraft(`${role}:message:${snapshot.id}:${kind}:${id}`, '');
+        if (id) writeDraft(`${role}:message:${snapshot.id}:${caseId}:${kind}:${id}`, '');
         setFiles([]);
       }
       if (failure) setChatError(accepted
           ? errorText(failure, 'The assistant could not reply.')
-          : `${errorText(failure, 'The message could not be sent.')} Check the conversation before trying again.`, `${kind}:${id ?? 'new'}`);
-      else if (refreshFailure) setChatError('The conversation could not be refreshed. Check it before trying again.', `${kind}:${id ?? 'new'}`);
+          : `${errorText(failure, 'The message could not be sent.')} Check the conversation before trying again.`, `${caseId}:${kind}:${id ?? 'new'}`);
+      else if (refreshFailure) setChatError('The conversation could not be refreshed. Check it before trying again.', `${caseId}:${kind}:${id ?? 'new'}`);
       setPending(null);
       setStreaming(null);
       setSending(false);
@@ -295,8 +297,18 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
         onChange={e => { setText(e.target.value); setPreview(false); }}
         onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}/>
       <div className="composer-actions">
-        {(kind === 'human' || role === 'founder') && <button type="button" className="composer-attach" aria-label="Add file" title="Add file" onClick={() => fileInput.current?.click()} disabled={busy || files.length >= 5}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>}
-        <input ref={fileInput} type="file" multiple hidden accept=".pdf,.csv,.doc,.docx,.xls,.xlsx,.html,.txt,.md,.png,.jpg,.jpeg,.gif,.webp" onChange={e => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}/>
+        {mode === 'server' && role === 'founder' && <>
+          <select aria-label="Attach synced source" value="" disabled={busy || files.length >= 5 || syncedSources.length === 0} onChange={event => {
+            const source = syncedSources.find(item => item.id === event.target.value);
+            if (source && !files.some(file => file.id === source.id)) setFiles(previous => [...previous, { key: crypto.randomUUID(), id: source.id, name: source.name }]);
+          }}>
+            <option value="">Attach source</option>
+            {syncedSources.filter(source => !files.some(file => file.id === source.id)).map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
+          </select>
+          <Link to="/founder/home" className="composer-upload-link">Upload on Home</Link>
+        </>}
+        {mode !== 'server' && (kind === 'human' || role === 'founder') && <button type="button" className="composer-attach" aria-label="Add file" title="Add file" onClick={() => fileInput.current?.click()} disabled={busy || files.length >= 5}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button>}
+        {mode !== 'server' && <input ref={fileInput} type="file" multiple hidden accept=".pdf,.csv,.doc,.docx,.xls,.xlsx,.html,.txt,.md,.png,.jpg,.jpeg,.gif,.webp" onChange={e => { addFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}/>}
         {replying
           ? <Button variant="outline" aria-label="Stop" onClick={() => stream.current?.abort()}>{large ? <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"/></svg> : 'Stop'}</Button>
           : <Button type="submit" aria-label={kind === 'human' ? undefined : 'Send'} disabled={busy || uploadingFiles || !text.trim()}>{kind === 'human' ? (preview ? 'Confirm send' : 'Preview message') : large ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg> : 'Send'}</Button>}

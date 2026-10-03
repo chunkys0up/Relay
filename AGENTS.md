@@ -1,7 +1,7 @@
 # Project: Relay
 
 ## Purpose
-Relay is a fictional founder/advisor planning-packet demo with an optional local backend packet workflow.
+Relay is a fictional founder/advisor planning-packet app. Normal document and packet views use the owner-session backend; browser fixtures are explicit test/demo mode only.
 
 ## UI and documentation authority
 - The current routed UI in `frontend-shared/src/main.tsx` and its screens is the baseline. Preserve its layout and navigation during maintenance unless the user explicitly requests a product change.
@@ -23,6 +23,7 @@ Package installation needs explicit authorization. Offline tests are not evidenc
 
 ## Structure and invariants
 - `frontend-shared/`: Vite entry point, routing, shared adapter and components. `client-frontend/` and `advsior-frontend/`: role screens; the advisor directory spelling is existing public project structure.
-- Browser demo state, the legacy service (`app.main`, port 8000), and the two separate services mounted in `app.workflow_app` (owner-scoped founder packets and server synthetic advisor workspace, port 8001) are separate systems. Do not imply shared authorization or persistence between them.
+- `app.main` serves legacy integration, owner-scoped founder packets and the server synthetic advisor workspace on port 8000. Vite proxies all `/api` traffic to `RELAY_BACKEND_PORT` (default 8000), including WebSockets. Browser state, PostgreSQL/S3 legacy data and SQLite packet/advisor data retain separate authorization and persistence boundaries.
 - Preserve exact-version/hash review and sharing, source-read-before-cite checks, private role/audience history, explicit human save/share/send/approval, bounded terminal tool failures, and idempotent retries.
-- The server advisor workspace is synthetic and isolated; no integrated server-backed founder-to-advisor handoff or production identity exists. Browser grants and caller-supplied legacy case IDs are not production authorization.
+- The server advisor AI workspace remains synthetic and isolated. Normal advisor packet views require a separate session that redeems a persisted exact-version invitation. Keep selected-source grants, per-advisor review privacy, revoke enforcement and current-packet checks. These are local capability sessions, not production personal identity. Never turn role selection into approval authority.
+- Workflow packet stages, originals and hashes come from stored server records. Cloud synchronization must verify S3 bytes before registering matching PostgreSQL case/document IDs, and expose pending/failed/unconfigured states. Mirrored workflow IDs require the owner session on legacy endpoints.

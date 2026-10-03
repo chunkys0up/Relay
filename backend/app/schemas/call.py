@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -8,22 +9,18 @@ CallState = Literal["ringing", "connecting", "connected", "ended", "failed"]
 
 
 class ActorIn(BaseModel):
-    # Demo-only: there is no real auth yet, so the caller states who they are.
+    # Constructed from the authorized workflow session, never from request JSON.
     id: str = Field(min_length=2, max_length=64)
     name: str = Field(min_length=1, max_length=100)
     role: Literal["founder", "advisor"]
 
 
-class CreateCallRequest(BaseModel):
-    actor: ActorIn
+class LeaveCallRequest(BaseModel):
+    join_id: UUID
 
 
 class JoinCallRequest(BaseModel):
-    actor: ActorIn
-
-
-class EndCallRequest(BaseModel):
-    actor: ActorIn
+    join_id: UUID
 
 
 class Participant(BaseModel):

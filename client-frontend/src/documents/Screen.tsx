@@ -1,3 +1,4 @@
+import ServerPacketLibrary from '../../../frontend-shared/src/ServerPacketLibrary';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge, CitationLink, Conversation, EmptyState, HandoffControls, Icon, PageTitle, PacketPreview, Panel, ScreenState, useRelay } from '@relay/shared';
@@ -18,7 +19,7 @@ function packetTone(packet: PacketVersion): 'neutral' | 'attention' | 'success' 
   return packet.status === 'approved' ? 'success' : packet.status === 'questions_returned' ? 'attention' : 'neutral';
 }
 
-export default function Screen() {
+function FixtureScreen() {
   const { snapshot } = useRelay();
   const [searchParams, setSearchParams] = useSearchParams();
   const [compareMode, setCompareMode] = useState(false);
@@ -149,3 +150,5 @@ export default function Screen() {
     </ScreenState>
   );
 }
+
+export default function Screen() { const {mode}=useRelay(); return mode==='server'?<ServerPacketLibrary view="documents"/>:<FixtureScreen/>; }

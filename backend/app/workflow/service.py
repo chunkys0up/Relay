@@ -41,6 +41,7 @@ class WorkflowService:
         case_id = uid()
         state = {
             "id": case_id, "revision": 0, "company": company, "goal": goal,
+            "legacy_sync": {"status": "unconfigured"},
             "status": "Information needed", "ui_state": "Idle", "activity": None,
             "created_at": now(), "sources": [], "templates": [],
             "facts": {name: empty_fact() for name in FIELDS},
@@ -58,7 +59,25 @@ class WorkflowService:
 
     @staticmethod
     def _public(state: dict[str, Any]) -> dict[str, Any]:
-        return {**state, "sources": [
+        """Expose old stored packet versions with explicit compatibility metadata."""
+        packets = []
+        for saved in state["packets"]:
+            packet = dict(saved)
+            if "stage" not in packet:
+                packet["stage"] = "draft"
+                packet["stage_events"] = [{
+                    "id": f"migration:{packet['id']}", "from_stage": None,
+                    "to_stage": "draft", "actor": "system_migration",
+                    "action": "legacy_packet_mapped_to_draft",
+                    "at": packet["created_at"], "packet_hash": packet["hash"],
+                    "synthetic_example": False,
+                }]
+            packet.setdefault("title", f"Planning packet v{packet['version']}.pdf")
+            packet.setdefault("cloud", {"status": "unconfigured"})
+            packets.append(packet)
+        return {**state, "packets": packets,
+                "legacy_sync": state.get("legacy_sync", {"status": "unconfigured"}),
+                "sources": [
             {key: value for key, value in source.items() if key != "excerpts"}
             for source in state["sources"]
         ]}
@@ -522,6 +541,9 @@ class WorkflowService:
         packet_id = uid()
         packet = {"id": packet_id, "version": version,
                   "hash": hashlib.sha256(pdf).hexdigest(), "created_at": now(),
+                  "title": f"Planning packet v{version}.pdf", "kind": "generated",
+                  "stage": "draft", "stage_events": [],
+                  "cloud": {"status": "unconfigured"},
                   "fields": fields, "template_id": template_id, "verification": verification}
         def change(state: dict[str, Any]) -> tuple[dict[str, Any], list[tuple[str, str, bytes]]]:
             if any(f["state"] != "confirmed" for f in state["facts"].values()):

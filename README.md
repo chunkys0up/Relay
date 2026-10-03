@@ -4,21 +4,19 @@ Relay is a fictional founder/advisor workspace for preparing source-backed plann
 
 ## Current interface
 
-- **Founder:** Home / AI Chat / Documents. Home combines uploaded originals from the legacy backend with local synthetic packet versions; checklist and activity come from the legacy backend. AI Chat uses the legacy Strands chat service for private AI replies and persists conversations in PostgreSQL. Human messages require preview and confirmation. Documents shows the shared PDF or packet summary, and the shared sidebar provides Amazon Chime call controls.
-- **Advisor:** Home / Clients / Call. The ordinary screens show browser demo grants and exact-version review. Clients also offers an explicit server synthetic advisor workspace with its own session, granted versions, grounded private chat and citations.
-- Search and Settings are utilities. Sources, Documents, Reviews and clarification URLs remain contextual tools. Calls have pre-call and active review layouts; recording and transcription controls are absent.
+- **Founder:** Home / AI Chat / Documents. Normal mode lists session-owned server cases, original sources and immutable packet PDFs. Packet stages and task progress come from the workflow backend.
+- **Advisor:** Home / Clients / Call. Packet views are read-only local previews. The role selector does not authenticate an advisor or authorize approval.
+- Search and Settings remain utilities. Existing legacy chat/call services and the separate advisor AI workspace retain their documented boundaries.
 
-The current repo UI is the design baseline. [specs.md](specs.md) records product behavior and [implementation.md](implementation.md) maps it to code and current service boundaries. Historical reports and old mockups are not feature requirements.
+The current UI remains the design baseline. See [specs](specs.md), [implementation](implementation.md), and [document packets](docs/document-packets.md).
 
 ## Run locally
 
 With dependencies installed, run `npm run dev` at the root (or in `frontend-shared/`). For fresh setup, install the locked dependencies with `npm ci` after obtaining any required package-install approval.
 
-The default workspace loads sample packet/source content from real synthetic PDFs stored in S3 and extracted by Amazon Textract. Start the advisor/workflow backend on port 8001 with the imported SQLite database before opening the frontend; see [synthetic packet setup](docs/synthetic-packets.md). Missing imported evidence produces a load error instead of a hardcoded packet fallback. A hash-specific browser adapter keeps a local copy for simulated grants, review state and clarification drafts. Use `VITE_PACKET_DATA_MODE=fixture npm run dev` only for an intentional offline fixture demo. Founder AI turns stream from the separate legacy FastAPI/Strands service. Chat attachments upload to S3/Postgres and are read by its case-scoped tools; checklist and activity also use legacy case endpoints. The legacy service has no production actor authorization, so a caller-selected case ID is not an access-control boundary.
+Normal mode reads real case, source and packet records from the workflow API on port 8000. A new owner session starts empty; unavailable services never fall back to hardcoded packets. Use explicit example creation for fictional PDF packages at different persisted stages, or import your own PDFs. See [document packets](docs/document-packets.md).
 
-A separate packet-workflow service (no longer linked from Home or AI Chat) backs the call screen's PDF viewer and the advisor AI chat. It uses owner-scoped SQLite state, source extraction, bounded Strands agents, task updates and confirmed PDF generation/editing. See [workflow setup](docs/bedrock-workflow.md). Vite proxies `/api/workflow` to loopback port 8001 by default; `RELAY_WORKFLOW_PORT` overrides that port for isolated local testing.
-
-Advisor Clients also offers an explicit **server synthetic advisor workspace**. It uses separate server-issued sessions, version/source grants, read-only evidence tools, persisted private conversations and authorized citation previews. Its seeded synthetic records are independent of browser grants, legacy uploads and founder workflow cases. It cannot send to a client or approve/share a packet. See [advisor boundaries](docs/advisor-bedrock.md).
+Use `VITE_PACKET_DATA_MODE=fixture npm run dev` only for an intentional offline fixture demo or tests. Fixture reviews remain simulations. Configured cloud synchronization verifies S3 bytes and registers the same case and document IDs in PostgreSQL; cloud status is separate from local persistence. Legacy chat and calls use the selected registered case. The role selector and caller-supplied identity are not production authorization.
 
 See [backend setup](backend/README.md) for the legacy FastAPI service, S3/Postgres uploads, case checklist/activity, Strands chat and Chime. Live AWS or media operations require existing configuration and authorization. A demo label or configured provider is not proof of a successful live request.
 
@@ -29,7 +27,7 @@ See [backend setup](backend/README.md) for the legacy FastAPI service, S3/Postgr
 | `frontend-shared/` | Runnable Vite app, shared UI/state, routing and assets |
 | `client-frontend/` | Founder screens and optional backend workspace |
 | `advsior-frontend/` | Advisor screens (existing folder spelling) |
-| `backend/` | Legacy integration service and separate SQLite packet/advisor services |
+| `backend/` | Unified API entry point with legacy integration and isolated SQLite packet/advisor modules |
 | `tests/` | Browser scenarios and frontend test setup |
 | `docs/` | Current setup, transport and architecture references |
 
@@ -55,3 +53,7 @@ Browser suites start isolated loopback services. Production identity, an integra
 - [Bedrock role configuration](docs/bedrock-role-setup.md)
 
 Persisted legacy conversations require migration `backend/db/migrations/002_conversations.sql`. The migration is separate from the advisor SQLite import; neither system grants access in the other.
+
+## Single backend entry point
+
+Run `cd backend && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000` to serve legacy, workflow and advisor APIs in one process. Start Vite separately with `npm run dev`. All `/api` requests (including workflow WebSockets) proxy to port 8000; `RELAY_BACKEND_PORT` overrides that target. `RELAY_WORKFLOW_PORT` remains a compatibility alias. Legacy clients default to the same origin; `VITE_API_URL` is an optional explicit override. A production frontend host must likewise forward `/api` to the backend. SQLite and PostgreSQL state and authorization remain separate. Run from `backend/` to reuse its existing `.relay/workflow.sqlite3`, or set `RELAY_WORKFLOW_DB` to an explicit database path. The Bedrock launcher also starts this unified entry point.

@@ -15,22 +15,25 @@ From `backend/`, after installing the approved dependencies:
 ```bash
 export BEDROCK_MODEL_OR_PROFILE_ID='us.anthropic.claude-sonnet-5'
 export AWS_REGION='us-east-1'
-.venv/bin/uvicorn app.workflow_app:app --host 127.0.0.1 --port 8001
+.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-The profile above is an AWS-documented **example**, not proof of access in your
-account. Use the profile from your successful Sonnet 5 request. The service does
-not read `.env` automatically. Supply existing approved credentials through the
-normal AWS SDK chain when you intentionally enable live calls. Do not put AWS
-credentials in browser code. No AWS resources are provisioned by this change.
+The model ID above is an AWS-documented **example**, not proof of access in your
+account. Use an ID from a successful model request. The unified backend loads the
+repository root `.env` at startup. Set `BEDROCK_MODEL_OR_PROFILE_ID` there for
+packet roles and `BEDROCK_ORCHESTRATOR_MODEL_ID` for advisor chat; role-specific
+IDs can override the packet fallback. An existing named `AWS_PROFILE` is used
+when available in WSL. If it is absent and complete environment credentials are
+configured, AWS clients use those credentials. Keep credentials out of browser
+code. No AWS resources are provisioned by startup.
 
 AWS model reference:
 https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-sonnet-5.html
 
 From the repository root, `npm run dev` starts the frontend. Vite proxies
-`/api/workflow` HTTP and WebSocket traffic to port 8001. Choose **Open backend
-packet workspace** on founder Home or AI Chat. This creates a separate backend
-case instead of importing browser demo state or silently sharing documents.
+all `/api` HTTP and WebSocket traffic to port 8000. The workflow API remains
+available for packet previews and advisor features; its former founder workspace
+screen is no longer linked from Home or AI Chat.
 Production hosting would need the equivalent same-origin proxy.
 
 1. Create a fictional case on Home. Upload text, CSV or text-based PDFs, or supply facts directly in chat.

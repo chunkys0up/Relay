@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import boto3
+import botocore.session
 import pytest
 import strands
 
@@ -33,6 +34,12 @@ def offline_bedrock(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
             return SimpleNamespace(meta=SimpleNamespace(region_name=self.region_name))
 
     monkeypatch.setattr(boto3, "Session", Session)
+    store = SimpleNamespace(set_config_variable=lambda _key, _value: None)
+    monkeypatch.setattr(botocore.session, "get_session",
+                        lambda: SimpleNamespace(
+                            available_profiles={"workshop"},
+                            get_component=lambda _name: store,
+                        ))
     monkeypatch.setattr(strands, "Agent", lambda **kwargs: SimpleNamespace(**kwargs))
     return sessions
 

@@ -1,3 +1,4 @@
+import ServerPacketLibrary from '../../../frontend-shared/src/ServerPacketLibrary';
 import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -17,7 +18,9 @@ function setParams(search: URLSearchParams, update: (next: URLSearchParams) => v
 }
 
 export default function Screen() {
+  const {mode}=useRelay();
   const [params] = useSearchParams();
+  if(mode==='server')return params.get('advisor_demo')==='server'?<ServerDocuments/>:<ServerPacketLibrary view="documents"/>;
   const browserMode = params.get('advisor_demo') === 'browser'
     || (params.get('advisor_demo') !== 'server' && ['version', 'source', 'audience'].some(key => params.has(key)));
   return browserMode ? <BrowserDocuments/> : <ServerDocuments/>;
