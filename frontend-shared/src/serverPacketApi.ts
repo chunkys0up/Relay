@@ -68,6 +68,27 @@ export async function reviewServerPacket(caseId:string,packet:PacketVersion,revi
   await workflowRequest(`/cases/${encodeURIComponent(caseId)}/packets/${encodeURIComponent(packet.id)}/review`,
     {method:'POST',key,body:{expected_revision:revision,packet_hash:packet.hash,decision,note}});
 }
+export interface AnswerPreview {
+  preview_id:string; preview_hash:string; packet_id:string; packet_hash:string;
+  review_id:string; version:number; pages:number; case_revision:number;
+}
+export const serverAnswerPreviewUrl=(caseId:string,previewId:string):string=>
+  `/api/workflow/cases/${encodeURIComponent(caseId)}/answer-previews/${encodeURIComponent(previewId)}/pdf`;
+export async function createServerAnswerPreview(caseId:string,packet:PacketVersion,reviewId:string,answer:string,revision:number,key:string):Promise<AnswerPreview>{
+  await initializeWorkflowSession();
+  return workflowRequest(`/cases/${encodeURIComponent(caseId)}/packets/${encodeURIComponent(packet.id)}/answer-preview`,
+    {method:'POST',key,body:{expected_revision:revision,packet_hash:packet.hash,review_id:reviewId,answer}});
+}
+export async function confirmServerAnswer(caseId:string,preview:AnswerPreview,revision:number,key:string):Promise<{packet_id:string;packet_hash:string;version:number}>{
+  await initializeWorkflowSession();
+  return workflowRequest(`/cases/${encodeURIComponent(caseId)}/answer-previews/${encodeURIComponent(preview.preview_id)}/confirm`,
+    {method:'POST',key,body:{expected_revision:revision,preview_hash:preview.preview_hash}});
+}
+export async function discardServerAnswer(caseId:string,preview:AnswerPreview,revision:number,key:string):Promise<void>{
+  await initializeWorkflowSession();
+  await workflowRequest(`/cases/${encodeURIComponent(caseId)}/answer-previews/${encodeURIComponent(preview.preview_id)}/discard`,
+    {method:'POST',key,body:{expected_revision:revision,preview_hash:preview.preview_hash}});
+}
 const validStages = new Set<PacketVersion['status']>(['draft', 'in_review', 'questions_returned', 'approved']);
 function packetStage(value: string | undefined): PacketVersion['status'] {
   if (!value || !validStages.has(value as PacketVersion['status'])) throw new Error('The server returned a packet without a recognized stage.');
@@ -110,7 +131,7 @@ export function mapServerCase(state: ServerCase): CaseSnapshot {
     sources, packets, tasks, messages: [], flags, clarifications: [],
     reviews:(state.reviews??[]).map(item=>({id:item.id,revision:state.revision,
       reviewer:{id:item.reviewer_id,name:'Advisor',role:'advisor' as const},
-      packet_version_id:item.packet_id,packet_hash:item.packet_hash,decision:item.decision,
+      packet_version_id:item.packet_id,packet_hash:item.packet_hash,decision:item.decision,note:item.note,
       clarification_id:null,created_at:item.created_at})),
     grants:(state.shares??[]).filter(item=>item.active&&item.advisor_id).map(item=>({
       id:item.grant_id??item.id,revision:state.revision,advisor_id:item.advisor_id!,

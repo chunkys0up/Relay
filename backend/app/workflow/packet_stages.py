@@ -82,7 +82,7 @@ def transition_packet(
             permitted = {("draft", "in_review"), ("in_review", "questions_returned"),
                          ("questions_returned", "in_review"), ("in_review", "approved")}
         else:
-            permitted = {("draft", "in_review"), ("questions_returned", "in_review")}
+            permitted = {("draft", "in_review")}
         if (current, target_stage) not in permitted:
             raise WorkflowError("INVALID_STAGE_TRANSITION")
         if synthetic_example and not state.get("synthetic_example"):

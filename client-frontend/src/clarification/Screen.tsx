@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, Button, CitationLink, Conversation, EmptyState, Icon, PageTitle, Panel, useDraft, useRelay } from '@relay/shared';
+import { Badge, Button, CitationLink, Conversation, EmptyState, Icon, PageTitle, Panel, ServerReturnedAnswer, useDraft, useRelay } from '@relay/shared';
 import './clarification.css';
 
 function ConversationPanel(): ReactNode {
@@ -14,11 +14,23 @@ function ConversationPanel(): ReactNode {
 }
 
 export default function Screen(): ReactNode {
-  const { snapshot, busy, run } = useRelay();
+  const { snapshot, busy, run, mode, serverActorRole } = useRelay();
   const [answer, setAnswer] = useDraft('answer:' + (snapshot?.clarifications.filter(item => item.status === 'sent').at(-1)?.id ?? 'none'));
   const [previewing, setPreviewing] = useState(false);
 
   if (!snapshot) return null;
+
+  if (mode === 'server') {
+    const current = snapshot.packets.find(item=>item.id===snapshot.current_packet_version_id);
+    const returned = current?.status==='questions_returned'
+      ? snapshot.reviews.find(item=>item.packet_version_id===current.id&&item.packet_hash===current.hash&&item.decision==='questions_returned')
+      : undefined;
+    return <section className="clarification-screen"><PageTitle title="Advisor questions" subtitle="Answer the returned review for the exact PDF version."/>
+      {serverActorRole==='founder'&&current&&returned
+        ? <ServerReturnedAnswer key={returned.id} caseId={snapshot.id} packet={current} review={returned}/>
+        : <EmptyState title="No saved advisor question needs an answer"><p>{current?.status==='questions_returned'&&snapshot.server_synthetic_example?'This example stage is synthetic and has no real advisor note. Confirm the missing source-backed facts on Home, then create a new packet.':'An advisor return on a shared packet will appear here.'}</p><Link className="button button-outline" to="/founder/documents">Open Documents</Link></EmptyState>}
+    </section>;
+  }
 
   const clarification = snapshot.clarifications.filter((item) => item.status === 'sent').at(-1);
   const packet = clarification
