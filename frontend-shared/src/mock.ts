@@ -98,7 +98,7 @@ export class MockRelayAdapter implements RelayAdapter {
    case 'message':{
     validText(command.text);if(command.audience.kind==='human'&&(!command.confirmed||command.audience.recipient_id!==(role==='founder'?advisor.id:founder.id)))throw new RelayError('FORBIDDEN','Confirm the named recipient before sending.');
     const allowed=new Set(this.visible(role).sources.map(s=>s.id));if(command.attachments.some(id=>!allowed.has(id)))throw new RelayError('NOT_FOUND','An attachment is unavailable.');
-    const m=message(command.text,command.audience,command.attachments);
+    const m=message(command.text,command.audience,command.attachments);if(command.files?.length)m.files=command.files;
     const initial=role==='founder'&&command.audience.kind==='private_ai'&&this.state.ui_state!=='Thinking / Working'&&this.state.tasks.some(task=>task.state==='Blocked'&&task.title==='Confirm reserve target and revenue')&&!this.state.clarifications.some(q=>q.status==='sent')?initialFounderAnswer([...this.state.messages,m],actor.id):null;
     if(initial){
      const evidence=await Promise.all(initial.messages.map(item=>this.messageCitation(item)));

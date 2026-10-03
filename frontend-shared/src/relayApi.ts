@@ -48,11 +48,11 @@ export async function documentUrl(documentId: string, signal?: AbortSignal): Pro
 }
 
 /** Streams the assistant reply, calling onChunk per text delta; resolves with the full reply. */
-export async function streamChat(sessionId: string, message: string, onChunk: (text: string) => void, signal?: AbortSignal): Promise<string> {
+export async function streamChat(sessionId: string, message: string, onChunk: (text: string) => void, signal?: AbortSignal, documentIds: string[] = []): Promise<string> {
   const response = await request('/api/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, session_id: sessionId }),
+    body: JSON.stringify({ message, session_id: sessionId, document_ids: documentIds }),
     signal,
   });
   if (!response.body) throw new RelayApiError(0, 'The backend returned no reply stream.');

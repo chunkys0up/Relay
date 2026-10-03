@@ -60,3 +60,11 @@ main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavi
 .typing{display:inline-flex;gap:4px;align-items:center;height:22px}.typing span{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:relay-typing 1.2s infinite ease-in-out}.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
 @keyframes relay-typing{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 @media(prefers-reduced-motion:reduce){.typing span{animation:none}}
+/* Files attached to AI chat messages (composer chips and sent-message chips). */
+.composer-files,.message-files{display:flex;flex-wrap:wrap;gap:6px}.message-files{margin-bottom:6px}
+.file-chip{display:inline-flex;align-items:center;gap:6px;max-width:260px;padding:5px 8px 5px 10px;border:1px solid var(--border);border-radius:10px;background:#f8fafc;font-size:12px;color:#1e293b}
+.file-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:var(--text-muted);white-space:nowrap}
+.file-chip.is-failed{border-color:#f0c4a4;background:var(--warm)}
+.file-chip button{border:0;background:none;padding:0 2px;font-size:16px;line-height:1;color:var(--text-muted);cursor:pointer}
+.composer-attach{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-right:auto;border:0;border-radius:50%;background:none;color:#52627f;cursor:pointer}
+.composer-attach:hover:not(:disabled){background:#f1f4f9;color:#1e293b}.composer-attach:disabled{opacity:.4;cursor:not-allowed}
