@@ -39,5 +39,5 @@ stay private until packet handoff; human chat can attach only originals already
 shared with its named recipient. Text/CSV can be previewed locally; PDF and
 binary extraction remains unsupported.
 
-Implementation evidence and limitations: [REDESIGN-RESULTS.md](REDESIGN-RESULTS.md).
+Implementation evidence and limitations: [V2 verification](docs/v2-design-verification.md).
 The isolated branch is `V2-Design` (Git does not permit spaces in branch names).
