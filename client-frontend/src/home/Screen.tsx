@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { BackendWorkspace } from '../workflow/BackendWorkspace';
 import { Icon, ScreenState, useRelay } from '@relay/shared';
 import type { PacketVersion, Source, Task } from '@relay/shared';
 import { fileContentBase64 } from '../../../frontend-shared/src/intake';
@@ -32,7 +33,7 @@ function taskStatus(task: Task): string {
   return task.state;
 }
 
-export default function Screen() {
+function DemoScreen() {
   const { snapshot, busy, error, notice, run } = useRelay();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<DocumentFilter>('all');
@@ -152,4 +153,10 @@ export default function Screen() {
       <p className="founder-home-privacy">Uploads stay private until you choose what to share.</p>
     </aside>
   </div>}</ScreenState>;
+}
+
+export default function Screen() {
+  const [params] = useSearchParams();
+  if (params.get('workspace') === 'backend') return <BackendWorkspace view="documents" />;
+  return <><div className="backend-workspace-entry"><Link to="/founder/home?workspace=backend">Open backend packet workspace</Link><span>Separate development workspace · Bedrock configuration required</span></div><DemoScreen /></>;
 }

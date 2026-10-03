@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { BackendWorkspace } from '../workflow/BackendWorkspace';
 import { Badge, CitationLink, Conversation, ScreenState, useRelay } from '@relay/shared';
 import type { Task } from '@relay/shared';
 import './styles.css';
@@ -9,7 +10,7 @@ function taskTone(task: Task): 'neutral' | 'attention' | 'success' {
   return task.state === 'Done' ? 'success' : task.state === 'Blocked' ? 'attention' : 'neutral';
 }
 
-export default function Screen() {
+function DemoScreen() {
   const { snapshot } = useRelay();
   const tasks = [...(snapshot?.tasks ?? [])].sort((a, b) => a.order - b.order);
   const currentFlags = snapshot?.flags.filter((flag) => flag.packet_version_id === snapshot.current_packet_version_id && !flag.resolved) ?? [];
@@ -42,4 +43,10 @@ export default function Screen() {
       <section className="founder-chat-case" aria-labelledby="founder-chat-case-title"><h2 id="founder-chat-case-title">Case details</h2><dl><div><dt>Name</dt><dd>{snapshot.company}</dd></div><div><dt>Status</dt><dd>{snapshot.status}</dd></div><div><dt>AI state</dt><dd>{snapshot.ui_state}</dd></div><div><dt>Packet</dt><dd>{snapshot.current_packet_version_id ? <Link to={`/founder/documents?version=${encodeURIComponent(snapshot.current_packet_version_id)}`}>View current version</Link> : 'No draft yet'}</dd></div></dl></section>
     </aside>
   </div>}</ScreenState>;
+}
+
+export default function Screen() {
+  const [params] = useSearchParams();
+  if (params.get('workspace') === 'backend') return <BackendWorkspace view="chat" />;
+  return <><div className="backend-workspace-entry"><Link to="/founder/chat?workspace=backend">Open backend packet workspace</Link><span>Separate development workspace · Bedrock configuration required</span></div><DemoScreen /></>;
 }

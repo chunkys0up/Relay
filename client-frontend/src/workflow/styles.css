@@ -1,0 +1,31 @@
+.backend-workspace-entry {display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px;padding:12px 16px;background:#f0f6ff;border:1px solid #d8e5fa;border-radius:8px;font-size:13px}
+.backend-workspace-entry span {color:#526581}
+.backend-workspace {max-width:1320px;margin:auto;color:#172338}
+.backend-workspace header {display:flex;gap:20px;justify-content:space-between;align-items:start;margin-bottom:24px}
+.backend-workspace h1 {font-size:32px}.backend-workspace h2 {font-size:20px;margin-bottom:12px}
+.backend-workspace p {color:#526581}.backend-mode {padding:12px 16px;background:#f0f6ff;border:1px solid #d8e5fa;border-radius:8px;margin-bottom:20px}
+.backend-columns {display:grid;grid-template-columns:minmax(0,1.8fr) minmax(260px,1fr);gap:22px;align-items:start}
+.backend-card {background:white;border:1px solid #dce4ef;padding:22px;border-radius:10px;margin-bottom:18px;min-width:0}
+.backend-card form,.backend-card label {display:grid;gap:8px}.backend-card form {gap:16px}
+.backend-card input,.backend-card textarea,.backend-card select {width:100%;min-width:0;padding:10px;border:1px solid #becce1;border-radius:6px;font:inherit;background:white}
+.backend-card textarea {min-height:90px;resize:vertical}.backend-card input[type=checkbox] {width:auto}
+.backend-card .backend-confirm {display:flex;align-items:start;gap:10px;font-size:14px}
+.backend-actions {display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.backend-list {list-style:none;padding:0;margin:0;display:grid;gap:12px}.backend-list li {padding:12px 0;border-bottom:1px solid #e6ebf3;overflow-wrap:anywhere}
+.backend-list strong,.backend-list small {display:block}.backend-list small {color:#526581;margin-top:4px}
+.backend-task {display:flex;align-items:start;gap:10px}.backend-task span {flex-shrink:0;white-space:nowrap;font-size:12px;background:#f0f5fc;border-radius:5px;padding:4px 7px}
+.backend-message {padding:14px;background:#f7f9fc;border:1px solid #e5ebf4;border-radius:8px;margin-bottom:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+.backend-message strong {display:block;font-size:13px;margin-bottom:6px}.backend-message time {font-size:11px;color:#64748b}
+.backend-error {padding:14px;border:1px solid #d66060;border-radius:8px;background:#fff6f6;margin-bottom:16px}
+.backend-field {border-top:1px solid #e5ebf4;padding-top:14px}.backend-evidence {font-size:12px;color:#526581;margin:8px 0;overflow-wrap:anywhere}
+.backend-evidence blockquote {margin:5px 0;padding-left:10px;border-left:2px solid #a8bfdd;white-space:pre-wrap}
+.backend-preview {width:100%;height:560px;border:1px solid #ccd8e8;border-radius:8px}
+@media(max-width:850px){.backend-columns{grid-template-columns:1fr}.backend-workspace header{flex-direction:column}.backend-card{padding:16px}.backend-workspace h1{font-size:28px}}
+
+.backend-pdf-action {border-color:#8eb7ef}
+.backend-proposal-status {font-weight:600;color:#24528a}
+.backend-proposal-fields {display:grid;gap:10px;margin:16px 0;overflow-wrap:anywhere}
+.backend-proposal-fields div {padding:10px;background:#f7f9fc;border-radius:6px}
+.backend-proposal-fields dt {font-size:12px;color:#526581;margin-bottom:4px}
+.backend-proposal-fields dd {margin:0;white-space:pre-wrap}
+.backend-pdf-action .backend-confirm {margin-top:16px}
