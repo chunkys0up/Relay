@@ -9,12 +9,13 @@ async function sendPrivate(page:Page,text:string):Promise<void>{
 
 test('initial answer advances Home without advisor clarification and survives reload',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
- await page.goto('/founder/home');
+ await page.goto('/founder/chat');
  await sendPrivate(page,'2026 revenue is $240,000. My reserve target is $60,000.');
- await expect(page.getByText('Case status: Draft ready',{exact:true})).toBeVisible();
- await expect(page.getByText('0 need your input',{exact:true})).toBeVisible();
+ await expect(page.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
+ await expect(page.locator('.founder-chat-steps').getByText('Blocked',{exact:true})).toHaveCount(0);
+ await expect(page.locator('.founder-chat-steps').getByText('Done',{exact:true})).toHaveCount(4);
  await page.reload();
- await expect(page.getByText('Case status: Draft ready',{exact:true})).toBeVisible();
+ await expect(page.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
  await expect(page.locator('.message-bubble').filter({hasText:'My reserve target is $60,000.'})).toHaveCount(1);
  expect(errors).toEqual([]);
 });
@@ -32,13 +33,13 @@ test('Home file intake stores actual content and remains visible after reload',a
 });
 
 test('separate tabs receive confirmed human messages, preserve privacy, and retain state on reload',async({page,context})=>{
- await page.goto('/founder/home');
+ await page.goto('/founder/chat');
  const advisor=await context.newPage();await advisor.goto('/advisor/clients');
  await expect(advisor.getByLabel('Message Relay',{exact:true})).toBeVisible();
  await sendPrivate(page,'Private founder marker 4271');
  await expect(advisor.locator('.message-bubble').filter({hasText:'Private founder marker 4271'})).toHaveCount(0);
  await page.getByRole('combobox',{name:'Message audience'}).selectOption('human');
- await advisor.getByRole('combobox',{name:'Message audience'}).selectOption('human');
+ await advisor.goto('/advisor/documents?audience=human');
  await page.getByLabel('Message Maya Chen',{exact:true}).fill('Shared founder marker 4271');
  await page.getByRole('button',{name:'Preview message',exact:true}).click();
  await expect(advisor.locator('.message-bubble').filter({hasText:'Shared founder marker 4271'})).toHaveCount(0);
@@ -50,18 +51,18 @@ test('separate tabs receive confirmed human messages, preserve privacy, and reta
  await expect(page.locator('.message-bubble').filter({hasText:'Advisor response marker 4271'})).toHaveCount(1);
  await page.reload();await page.getByRole('combobox',{name:'Message audience'}).selectOption('human');
  await expect(page.locator('.message-bubble').filter({hasText:'Advisor response marker 4271'})).toHaveCount(1);
- await advisor.reload();await advisor.getByRole('combobox',{name:'Message audience'}).selectOption('human');
+ await advisor.reload();await advisor.goto('/advisor/documents?audience=human');
  await expect(advisor.locator('.message-bubble').filter({hasText:'Shared founder marker 4271'})).toHaveCount(1);
  await advisor.getByRole('combobox',{name:'Message audience'}).selectOption('private_ai');
  await expect(advisor.locator('.message-bubble').filter({hasText:'Private founder marker 4271'})).toHaveCount(0);
 });
 
 test('an initial private draft appears to a second founder tab but not the advisor until handoff',async({page,context})=>{
- await page.goto('/founder/home');
- const other=await context.newPage();await other.goto('/founder/home');
+ await page.goto('/founder/chat');
+ const other=await context.newPage();await other.goto('/founder/chat');
  const advisor=await context.newPage();await advisor.goto('/advisor/documents');
  await sendPrivate(page,'2026 revenue is $240,000. My reserve target is $60,000.');
- await expect(other.getByText('Case status: Draft ready',{exact:true})).toBeVisible();
+ await expect(other.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
  await expect(advisor.getByRole('region',{name:/Packet version 2 preview/})).toHaveCount(0);
  await page.goto('/founder/documents');
  await page.getByRole('button',{name:'Preview handoff of v2',exact:true}).click();

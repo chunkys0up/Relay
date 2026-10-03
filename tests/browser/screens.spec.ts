@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 const routes = [
- ['founder-home','/founder/home'],['founder-sources','/founder/sources'],
+ ['founder-home','/founder/home'],['founder-chat','/founder/chat'],['advisor-home','/advisor/home'],['founder-sources','/founder/sources'],
  ['founder-documents','/founder/documents'],['founder-call','/founder/call'],
  ['founder-clarification','/founder/home/clarification'],
  ['advisor-clients','/advisor/clients'],['advisor-reviews','/advisor/reviews'],
@@ -40,7 +40,9 @@ for(const [name,route] of routes){
   await page.screenshot({path:test.info().outputPath(`${name}-mobile.png`),fullPage:true});
   await page.getByText('Test states',{exact:true}).click();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('empty');
-  await expect(page.getByRole('heading').filter({hasText:/No |Your workspace is ready|Home conversation|Call/}).first()).toBeVisible();
+  if(name==='founder-home')await expect(page.getByText('No documents in this view yet.',{exact:true})).toBeVisible();
+  else if(name==='founder-chat')await expect(page.getByText('Tasks will appear as your packet work begins.',{exact:true})).toBeVisible();
+  else await expect(page.getByRole('heading').filter({hasText:/No |Your workspace is ready|Home conversation|Call/}).first()).toBeVisible();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('error');
   await expect(page.getByRole('heading',{name:'Workspace unavailable'})).toBeVisible();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('disconnected');
@@ -68,13 +70,13 @@ test('returned questions create an unapproved version and require renewed handof
  await page.getByRole('button',{name:'Create simulated draft v2',exact:true}).click();
  await expect.poll(()=>page.evaluate(()=>(window as Window & { relayWorkingSeen?:boolean }).relayWorkingSeen)).toBe(true);
  await expect(page.getByRole('link',{name:'Review packet v2',exact:true})).toBeVisible();
- await page.getByRole('navigation').filter({has:page.getByRole('link',{name:'Documents',exact:true})}).getByRole('link',{name:'Documents',exact:true}).click();
+ await page.goto('/founder/documents');
  await expect(page.getByRole('button',{name:'Preview handoff of v2',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Preview handoff of v2',exact:true}).click();
  await page.getByRole('button',{name:'Confirm simulated handoff',exact:true}).click();
  await expect(page.getByRole('button',{name:'Confirm simulated handoff',exact:true})).toHaveCount(0);
  await page.getByRole('combobox',{name:'Demo role'}).selectOption('advisor');
- await page.getByRole('link',{name:'Reviews',exact:true}).click();
+ await page.getByRole('link',{name:'Clients',exact:true}).click();
  await page.getByRole('button',{name:'Review approval of v2',exact:true}).click();
  await page.getByRole('button',{name:'Confirm simulated approval of v2',exact:true}).click();
  await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
@@ -89,6 +91,7 @@ test('local attachment intake succeeds and slow sends can be cancelled',async({p
  await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
  await page.getByRole('button',{name:'Cancel attachment'}).click();
  await page.getByText('Test states',{exact:true}).click();
+ await page.getByRole('link',{name:'AI Chat',exact:true}).click();
  await page.getByRole('combobox',{name:'Test scenario'}).selectOption('slow');
  await page.getByLabel('Message Relay',{exact:true}).fill('Cancelled message');
  await page.getByRole('button',{name:'Send to simulated AI'}).click();
@@ -97,25 +100,26 @@ test('local attachment intake succeeds and slow sends can be cancelled',async({p
  await expect(page.locator('.message-bubble').filter({hasText:'Cancelled message'})).toHaveCount(0);
 });
 
-test('call capture consent belongs to each participant and never creates live media',async({page})=>{
+test('call invitation requires recipient acceptance and never creates capture or live media',async({page})=>{
  await page.goto('/founder/call');
- await page.getByRole('button',{name:'Simulate invitation to Maya Chen'}).click();
- const consent=page.getByRole('checkbox',{name:'I consent to capture for after-call AI notes (simulated)'});
- await consent.click();await expect(consent).toBeChecked();
- await expect(page.getByText('not given',{exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Ready to call?'})).toBeVisible();
+ await expect(page.getByRole('checkbox')).toHaveCount(0);
+ await page.getByRole('button',{name:'Call Maya Chen',exact:true}).click();
+ await expect(page.getByText('Invitation pending',{exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Cancel invite',exact:true})).toBeVisible();
  await page.getByRole('combobox',{name:'Demo role'}).selectOption('advisor');
  await page.getByRole('link',{name:'Call',exact:true}).click();
- await expect(consent).not.toBeChecked();
- await page.getByRole('button',{name:'Accept simulated invitation'}).click();
- await consent.click();await expect(consent).toBeChecked();
- await expect(page.getByText('Capture: awaiting_consent · Processing: not_started')).toBeVisible();
- await consent.click();await expect(consent).not.toBeChecked();
- await expect(page.getByText('Capture: off · Processing: not_started')).toBeVisible();
- await expect(page.getByText('Simulated call · No live media')).toBeVisible();
+ await page.getByRole('button',{name:'Accept invitation',exact:true}).click();
+ await expect(page.getByText('Connecting',{exact:true})).toBeVisible();
+ await expect(page.getByText('Simulated call state. No audio or video connection is available.')).toBeVisible();
+ await expect(page.locator('video,audio')).toHaveCount(0);
+ await expect(page.getByRole('checkbox')).toHaveCount(0);
+ await page.getByRole('button',{name:'End call',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Ready to call?'})).toBeVisible();
 });
 
 test('unsent drafts survive reconnect and stay scoped to role and audience',async({page})=>{
- await page.goto('/founder/home');
+ await page.goto('/founder/chat');
  await page.getByLabel('Message Relay',{exact:true}).fill('Private unsent founder draft');
  await page.getByText('Test states',{exact:true}).click();
  await page.getByRole('combobox',{name:'Test scenario'}).selectOption('disconnected');
@@ -125,5 +129,6 @@ test('unsent drafts survive reconnect and stay scoped to role and audience',asyn
  await page.getByRole('combobox',{name:'Message audience'}).selectOption('human');
  await expect(page.getByLabel('Message Maya Chen',{exact:true})).toHaveValue('');
  await page.getByRole('combobox',{name:'Demo role'}).selectOption('advisor');
+ await page.getByRole('link',{name:'Clients',exact:true}).click();
  await expect(page.getByLabel('Message Relay',{exact:true})).toHaveValue('');
 });

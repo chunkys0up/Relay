@@ -1,0 +1,80 @@
+.relay-call-side-panel{display:grid;gap:17px;min-width:0;padding:24px;background:#fff;border:1px solid #dce4ef;border-radius:8px}
+.relay-call-side-panel h2{font-size:23px;line-height:1.25;color:#101827}
+.relay-call-side-panel h3{font-size:16px;color:#101827}
+.relay-call-recipient{display:flex;align-items:center;gap:18px;padding:20px;border:1px solid #d8e2ee;border-radius:6px}
+.relay-call-recipient>div{display:grid;gap:3px}
+.relay-call-recipient strong,.relay-call-person strong{font-size:15px}
+.relay-call-recipient span:not(.relay-call-avatar),.relay-call-person>span:last-child,.relay-call-self-preview>span:last-child{color:#64779a;font-size:13px}
+.relay-call-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;width:58px;height:58px;border-radius:50%;font-size:22px;font-weight:600}
+.relay-call-avatar.founder{color:#fff;background:#29384d}
+.relay-call-avatar.advisor{color:#0760df;background:#d9e8ff}
+.relay-call-avatar.large{width:80px;height:80px;font-size:28px}
+.relay-call-preview-heading,.relay-call-side-title{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.relay-call-preview-heading>span{font-size:12px;color:#64779a}
+.relay-call-self-preview{min-height:218px;padding:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;border:1px solid #dce5ef;border-radius:6px;background:linear-gradient(125deg,#f2f5f9,#e8edf4)}
+.relay-call-self-preview strong{font-size:15px}
+.relay-call-disclaimer{font-size:12px;color:#607391}
+.relay-call-device-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.relay-call-device-grid>.button{width:100%;white-space:normal}
+.relay-call-device-grid label{font-size:12px;color:#52627f}
+.relay-call-device-grid select{width:100%;font-size:12px;padding:9px}
+.relay-call-side-panel .button:disabled,.relay-call-test-speaker:disabled{opacity:.72}
+.relay-call-test-speaker{justify-self:start;border:0;background:none;color:#52627f;padding:0;font-size:12px}
+.relay-call-invite{border-top:1px solid #dce4ef;padding-top:22px;display:grid;gap:10px;text-align:center}
+.relay-call-invite>.button{width:100%;background:#0862eb;border-color:#0862eb}
+.relay-call-invite p,.relay-call-invite span{font-size:12px;color:#64779a}
+.relay-call-people{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.relay-call-person{min-height:164px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;text-align:center;padding:12px 8px;border:1px solid #dce5ef;border-radius:6px;background:#f8fafc}
+.relay-call-person .relay-call-avatar{width:67px;height:67px;font-size:23px}
+.relay-call-invitation{padding:12px;background:#eef5ff;border-radius:6px}
+.relay-call-invitation p,.relay-call-status{font-size:13px;color:#52627f}
+.relay-call-action-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.relay-call-round-actions{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;padding:5px 0 12px}
+.relay-call-round-actions .button{min-width:96px;min-height:70px;flex-direction:column;gap:3px}
+.relay-call-round-actions .button span{display:grid;font-size:12px}
+.relay-call-round-actions .button small{font-size:10px}
+.relay-call-round-actions .relay-call-end{background:#e9363d;border-color:#e9363d;color:white}
+@media(max-width:520px){.relay-call-side-panel{padding:16px}.relay-call-device-grid{grid-template-columns:1fr}.relay-call-people{grid-template-columns:1fr 1fr}.relay-call-person{min-height:140px}.relay-call-person .relay-call-avatar{width:52px;height:52px;font-size:19px}}
+
+.relay-call-screen{max-width:1650px;margin:0 auto}
+.relay-call-header{padding:0 0 20px;margin-bottom:20px;border-bottom:1px solid #dce4ef}
+.relay-call-header h1{font-size:34px;line-height:1.2;letter-spacing:-.6px}
+.relay-call-header p{font-size:15px;color:#607391;margin-top:4px}
+.relay-call-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(340px,.95fr);gap:22px;align-items:start}
+.relay-call-document-column,.relay-call-right-column{min-width:0;display:grid;gap:14px}
+.relay-call-document-heading{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.relay-call-document-heading h2{font-size:18px;margin-right:auto}
+.relay-call-document-heading .badge{white-space:nowrap}
+.relay-call-packet-picker{display:flex;align-items:center;gap:8px;font-size:12px}
+.relay-call-packet-picker select{max-width:250px}
+.relay-call-document-column .packet-preview{min-height:620px;border:1px solid #dce4ef;border-radius:6px;overflow:hidden}
+.relay-call-document-column .document-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.relay-call-document-column .paper{min-height:520px;margin:15px auto;max-width:780px}
+.relay-call-document-note{color:#607391;font-size:13px}
+.relay-call-messages{display:grid;gap:0;min-height:360px;border:1px solid #dce4ef;border-radius:8px;background:#fff}
+.relay-call-messages>h2{font-size:15px;color:#075eee;padding:16px 20px;border-bottom:1px solid #dce4ef}
+.relay-call-messages .conversation{border:0;border-radius:0;min-height:320px;padding:16px}
+.relay-call-messages .agent-status{display:none}
+.relay-call-messages .message-list{max-height:260px}
+.relay-call-messages .audience-control{display:none}
+.relay-call-messages .composer textarea{min-height:48px}
+.relay-call-messages .conversation-footnote{font-size:11px}
+.relay-call-pre-message{display:grid;gap:7px;border-top:1px solid #dce4ef;padding:16px 4px;color:#607391;font-size:13px}
+.relay-call-pre-message a{color:#0862eb;text-decoration:none}
+.relay-call-review-actions{border:1px solid #dce4ef;border-radius:6px;background:#fff}
+.relay-call-review-actions>summary{cursor:pointer;color:#0862eb;padding:13px 16px}
+.relay-call-review-actions .review-controls{border:0;border-top:1px solid #dce4ef}
+@media(max-width:1080px){.relay-call-layout{grid-template-columns:minmax(0,1fr) minmax(320px,.9fr)}}
+@media(max-width:900px){.relay-call-layout{grid-template-columns:1fr}.relay-call-right-column{grid-row:1}.relay-call-document-column .packet-preview{min-height:0}}
+@media(max-width:600px){.relay-call-header h1{font-size:28px}.relay-call-document-column .paper{margin:8px;padding:20px}.relay-call-document-heading{align-items:flex-start}.relay-call-packet-picker{width:100%;align-items:flex-start;flex-direction:column}.relay-call-packet-picker select{max-width:100%;width:100%}}
+
+.relay-call-pre-message>summary{cursor:pointer;color:#0862eb;list-style:none}
+.relay-call-pre-message>summary::before{content:"✉";margin-right:8px}
+.relay-call-pre-message>.conversation{margin-top:10px}
+
+.relay-call-screen .chat-attachments,.relay-call-screen .conversation-footnote{display:none}
+
+
+.relay-call-mode { display: grid; gap: 6px; padding: 12px 20px; font-size: 13px; color: var(--muted); border-bottom: 1px solid #e5eaf1; }
+.relay-call-mode select { width: 100%; min-height: 38px; }
+.relay-call-person video { width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; }

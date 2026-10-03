@@ -46,14 +46,14 @@ export default function Screen() {
       {snapshot && (
         <div className="founder-sources">
           <PageTitle title="Sources" subtitle="View the original files and extraction details behind your packet.">
-            <Link className="button button-outline" to="/founder/home">Add sources in Home chat <span aria-hidden="true">↗</span></Link>
+            <Link className="button button-outline" to="/founder/home">Upload documents on Home <span aria-hidden="true">↗</span></Link>
           </PageTitle>
           <p className="founder-sources-guidance">View fixture sources and files added locally from Home. Actual file bytes stay in this browser; only UTF-8 text and CSV have local extraction.</p>
 
           <div className="founder-sources-workspace">
             <div className="founder-sources-primary">
           {snapshot.sources.length === 0 ? (
-            <Panel><EmptyState title="No original sources yet"><p>Choose files from the attachment control in Home chat. Add their actual bytes to this browser; no backend upload occurs.</p><Link className="button button-primary" to="/founder/home">Go to Home chat</Link></EmptyState></Panel>
+            <Panel><EmptyState title="No original sources yet"><p>Choose files from the upload area on Home. Add their actual bytes to this browser; no backend upload occurs.</p><Link className="button button-primary" to="/founder/home">Go to Home</Link></EmptyState></Panel>
           ) : (
             <>
               <div className="founder-sources-summary" aria-label="Source totals">
@@ -105,7 +105,7 @@ export default function Screen() {
                       ) : snapshot.flags.filter((flag) => flag.packet_version_id === snapshot.current_packet_version_id && !flag.resolved && flag.citations.some((citation) => citation.source_id === selectedSource.id)).map((flag) => (
                         <div className="founder-sources-flag" key={flag.id}><Badge tone="attention">{flag.kind === 'missing' ? 'Missing detail' : flag.kind === 'conflict' ? 'Source conflict' : 'Needs review'}</Badge><p>{flag.text}</p></div>
                       ))}
-                      <Link className="founder-sources-home-link" to="/founder/home">Return to Home conversation <span aria-hidden="true">↗</span></Link>
+                      <Link className="founder-sources-home-link" to="/founder/chat">Open AI Chat <span aria-hidden="true">↗</span></Link>
                     </Panel>
                   </aside>
                 </div>

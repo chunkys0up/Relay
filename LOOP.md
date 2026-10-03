@@ -1,13 +1,42 @@
-# Workflow regression loop
+# Approved Relay redesign loop
 
-Scope: local frontend intake, initial founder answer, durable same-origin multi-tab demo workflow. No remote backend, installs, credentials, deploys, or commits.
+Scope: frontend UI in this isolated worktree only. Preserve adapter authorization,
+immutable versions, explicit handoff/send confirmation and unrelated changes.
+Latest eight user-attached mockups override older navigation and capture UI.
 
-Success: locked workflow-regressions unit and browser tests pass; existing tests (obsolete unavailable-upload assertions migrated), lint, typecheck, build, and complete browser suite pass. Privacy and current-version confirmation stay intact.
+Acceptance units (fixed):
+1. Client Home profile/documents/upload/search/progress and dedicated AI Chat.
+2. Advisor Home derived progress/counts; Clients list/inline expandable reviews/private AI.
+3. Both roles pre-call and active-call compositions with truthful simulated state.
+4. Existing upload, citations, sharing, version reviews and message privacy preserved.
+5. Responsive desktop/narrow/mobile, keyboard labels/focus, no runtime errors.
 
-Verifier owner: coordinator. Implementation worker must never edit tests or this file. Freeze new regression files after baseline red run; record SHA-256. Test changes require documenting a test defect or explicitly changed contract; never weaken behavior to accept an implementation.
+Verifier: npm run lint; npm run typecheck; npm test; npm run build;
+npm run test:browser. Existing assertions are locked for implementation workers.
+Coordinator may map only intentionally superseded UI selectors/locations to new
+behavior; record mappings and submit them to independent review. Never remove
+behavioral assertions to make a failure pass. Add regression tests for new views.
 
-Iteration budget: 8 implementation verification cycles. Stop on success or same unchanged failure twice, or external dependency needing user authorization. Continue independent authorized work if only one branch is blocked.
+Workflow: implement -> run checks -> inspect actual screenshots of eight target
+views -> independent read-only review -> focused corrections -> affected checks.
+Stop upon acceptance or at 8 substantive correction cycles. Same failure twice
+without meaningful progress triggers diagnosis and a blocker report. No installs,
+secrets, cloud calls, push, deploy or destructive commands. No new agent subteams.
 
-Commands: npm test; npm run lint; npm run typecheck; npm run build; npm run test:browser. Use existing installed dependency symlink. Browser server must serve this worktree, using port 5178 for isolated verification.
+The adapter currently exposes one assigned case; do not fabricate additional
+clients, percentages, documents or real integrations to fill the mockup.
 
-Append evidence to LOOP-RESULTS.md each cycle. Handoff names changes, actual checks, unresolved limits, iteration count.
+Append evidence/correction counts to REDESIGN-RESULTS.md. Final handoff must name
+checks actually run, inspected screenshots, unresolved limits and worktree.
+
+## Chime integration continuation
+
+User authorized integrating main's Chime implementation, declared dependency
+installation, and updating/merging PR #4 after verification. Keep all prior
+acceptance units and add: a single V2 call panel with explicit demo/live modes,
+shared packet pinned while connecting/active, SDK-event-driven readiness,
+cancellation/unmount cleanup, camera off until requested, and truthful API errors.
+Live AWS/media testing and secrets remain unauthorized. New lifecycle tests use
+mocks; report that limit. Existing banner assertion is mapped from "All actions
+simulated" to "Demo workspace · Chime supports live media" because Chime is now
+available; keep the assertion. Up to 8 focused corrections and independent review.

@@ -5,7 +5,8 @@ FastAPI provides Strands-backed chat and S3 document uploads. The repository als
 ## Current architecture
 
 ```text
-React founder/advisor UI → in-memory mock (not connected to FastAPI)
+React founder/advisor UI → local mock for documents/chat/reviews
+Call page (Amazon Chime mode) → FastAPI call endpoints → Chime SDK media
 
 FastAPI
 ├── /api/chat          → cached Strands harness per session_id → configured model
@@ -61,8 +62,37 @@ See [.env.example](.env.example) for all variables and [core/config.py](app/core
 
 ## Frontend integration and remaining work
 
-The frontend currently creates a [MockRelayAdapter](../frontend-shared/src/context.tsx), so uploads, messages, reviews and calls do not reach these endpoints. Replace it with a transport adapter once the [proposed API contract](../docs/api-contract.md) is agreed. Current chat/upload responses differ from that proposal; there are no case-scoped routes or WebSockets yet.
+The frontend currently creates a [MockRelayAdapter](../frontend-shared/src/context.tsx), so uploads, messages and reviews do not reach these endpoints. The redesigned Call page separately connects to the Chime routes below when Amazon Chime mode is selected. Replace it with a transport adapter once the [proposed API contract](../docs/api-contract.md) is agreed. Current chat/upload responses differ from that proposal; there are no case-scoped routes or WebSockets yet.
 
-The intended backend flow is upload → extract/source-link facts → clarify missing/conflicting values → generate a versioned draft → advisor review → founder revision. Database persistence, extraction/retrieval tools, task orchestration, sharing/version-bound reviews and server-side role/case authorization remain unimplemented. Chime calls and consented after-call processing are also not connected.
+The intended backend flow is upload → extract/source-link facts → clarify missing/conflicting values → generate a versioned draft → advisor review → founder revision. Database persistence, extraction/retrieval tools, task orchestration, sharing/version-bound reviews and server-side role/case authorization remain unimplemented. Chime media is connected through a separate frontend transport; consented after-call processing is not implemented.
 
 See [specs.md](../specs.md) and [implementation.md](../implementation.md) for the full intended workflow. PostgreSQL on Amazon RDS is the selected record store. The schema and settings are present, but application persistence remains unimplemented.
+
+## Chime in the V2 call design
+
+The Call connection selector defaults to the local demo. Select **Amazon Chime ·
+live media** to use `frontend-shared/src/liveCall.tsx` and `callsApi.ts`. Set
+`VITE_API_URL` in the frontend process environment to the backend origin (default
+`http://127.0.0.1:8000`); permit that frontend origin through `CORS_ORIGINS`.
+Chime uses `CHIME_REGION` (default `us-east-1`) and the backend AWS credential
+chain/profile. No credentials belong in the frontend.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| POST | `/api/cases/{case_id}/calls` | Create or reuse this case's meeting |
+| GET | `/api/cases/{case_id}/calls/{call_id}` | Read safe call metadata |
+| POST | `/api/cases/{case_id}/calls/{call_id}/join` | Obtain ephemeral SDK join configuration |
+| POST | `/api/cases/{case_id}/calls/{call_id}/end` | End the meeting for all participants |
+
+Both participants must independently choose Start or join for the same case;
+there is no remote invitation delivery. SDK connection events establish client
+readiness. Leaving closes this browser's media; ending for everyone invokes the
+backend. Recording and transcription remain off. Shared document selection is
+pinned locally while joining/active; it is not synchronized through Chime.
+Messages, documents and review actions alongside the call remain local simulations.
+
+This inherited backend is a development prototype: actor identity is supplied by
+the caller and call records are in memory. Production authentication, server-side
+case authorization and persistent meeting lifecycle management remain required.
+The frontend shared-document gate is not server authorization. Use only a trusted
+development environment until those backend requirements are implemented.
