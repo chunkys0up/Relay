@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.workflow.actions import resolve_edit
+from app.workflow.answers import confirm_answer, discard_answer, preview_answer
 from app.workflow.packet_stages import import_packet, transition_packet
 from app.workflow.cloud_sync import CloudSync
 from app.workflow.example_packets import create_example_cases
@@ -55,6 +56,20 @@ class ReviewInput(BaseModel):
     packet_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
     decision: str = Field(pattern="^(approved|questions_returned)$")
     note: str = Field(default="", max_length=4000)
+
+
+class AnswerPreviewInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=0)
+    packet_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
+    review_id: str = Field(min_length=1, max_length=128)
+    answer: str = Field(min_length=1, max_length=4000)
+
+
+class AnswerConfirmInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=0)
+    preview_hash: str = Field(pattern=r"^[a-f0-9]{64}$")
 
 
 def _local_host(host: str) -> bool:
@@ -358,6 +373,50 @@ def workflow_router(
                                    body.expected_revision, body.packet_hash, body.target_stage, key)
         schedule_sync(background, sid, case_id)
         return result
+
+    @router.post("/cases/{case_id}/packets/{packet_id}/answer-preview", status_code=201)
+    def create_answer_preview(case_id: str, packet_id: str, body: AnswerPreviewInput,
+                              sid: str = Depends(founder_session),
+                              key: str = Depends(idem)) -> dict[str, Any]:
+        return preview_answer(repository, sid, case_id, packet_id, body.packet_hash,
+                              body.review_id, body.answer, body.expected_revision, key)
+
+    @router.get("/cases/{case_id}/answer-previews/{preview_id}/pdf")
+    def download_answer_preview(case_id: str, preview_id: str,
+                                sid: str = Depends(session_id)) -> StreamingResponse:
+        if session_role(repository, sid) != "founder":
+            raise WorkflowError("FOUNDER_REQUIRED", 403)
+        state = service.snapshot(sid, case_id)
+        preview = next((item for item in state.get("answer_previews", [])
+                        if item["id"] == preview_id), None)
+        if preview is None or preview["status"] != "pending":
+            raise WorkflowError("NOT_FOUND", 404)
+        body = repository.blob(sid, case_id, preview_id, "answer_preview")
+        import hashlib
+        if hashlib.sha256(body).hexdigest() != preview["hash"]:
+            raise WorkflowError("ANSWER_PREVIEW_INTEGRITY_ERROR")
+        return StreamingResponse(iter([body]), media_type="application/pdf",
+            headers={"Content-Disposition": "inline; filename=relay-answer-preview.pdf",
+                     "X-Content-SHA256": preview["hash"], "X-Content-Type-Options": "nosniff",
+                     "Content-Security-Policy": "sandbox"})
+
+    @router.post("/cases/{case_id}/answer-previews/{preview_id}/confirm")
+    def apply_answer_preview(case_id: str, preview_id: str, body: AnswerConfirmInput,
+                             background: BackgroundTasks,
+                             sid: str = Depends(founder_session),
+                             key: str = Depends(idem)) -> dict[str, Any]:
+        result = confirm_answer(repository, sid, case_id, preview_id,
+                                body.preview_hash, body.expected_revision, key)
+        invalidate_calls(case_id)
+        schedule_sync(background, sid, case_id)
+        return result
+
+    @router.post("/cases/{case_id}/answer-previews/{preview_id}/discard")
+    def dismiss_answer_preview(case_id: str, preview_id: str, body: AnswerConfirmInput,
+                               sid: str = Depends(founder_session),
+                               key: str = Depends(idem)) -> dict[str, Any]:
+        return discard_answer(repository, sid, case_id, preview_id,
+                              body.preview_hash, body.expected_revision, key)
 
     @router.get("/cases/{case_id}/packets/{packet_id}/preview-text")
     def packet_preview_text(case_id: str, packet_id: str,
