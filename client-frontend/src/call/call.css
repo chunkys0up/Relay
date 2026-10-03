@@ -1,5 +1,5 @@
-.founder-call-screen .relay-call-header{border-bottom-color:#dce4ef}
-.founder-call-screen .relay-tabs{margin-top:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-header{border-bottom-color:#dce4ef}
+:is(.founder-call-screen,.advisor-call-screen) .relay-tabs{margin-top:0}
 .relay-pdf-viewer{display:grid;grid-template-rows:auto 1fr;min-height:620px;border:1px solid #dce4ef;border-radius:6px;overflow:hidden;background:#fff}
 .relay-pdf-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #dce4ef}
 .relay-pdf-toolbar select{min-width:0;max-width:340px;font-size:13px}
@@ -9,47 +9,62 @@
 .relay-pdf-stage p{max-width:420px;padding:24px;text-align:center;font-size:14px;color:#607391}
 @media(max-width:520px){.relay-pdf-viewer{min-height:480px}.relay-pdf-stage,.relay-pdf-stage iframe{min-height:420px}.relay-pdf-actions{margin-left:0}}
 /* One-screen call page: main never scrolls; the PDF fills the remaining height and the side column scrolls internally if it must. */
-main:has(.founder-call-screen){display:flex;flex-direction:column;overflow:hidden}
-main:has(.founder-call-screen)>:not(.founder-call-screen){flex:0 0 auto}
-main:has(.founder-call-screen) .app-footer{display:none}
-.founder-call-screen{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column}
-.founder-call-screen .relay-call-header{flex:none;padding-bottom:10px;margin-bottom:12px}
-.founder-call-screen .relay-call-header h1{font-size:24px;letter-spacing:-.3px}
-.founder-call-screen .relay-call-header p{font-size:13px;margin-top:2px}
-.founder-call-screen .relay-call-layout{flex:1 1 auto;min-height:0;grid-template-rows:minmax(0,1fr);align-items:stretch}
-.founder-call-screen .relay-call-document-column{display:flex;flex-direction:column;gap:10px;min-height:0}
-.founder-call-screen .relay-call-document-column>[role=tabpanel]{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
-.founder-call-screen .relay-call-document-column>[role=tabpanel]>*{flex:1 1 auto;min-height:0}
-.founder-call-screen .relay-call-document-column .packet-preview{min-height:0;overflow-y:auto}
-.founder-call-screen .relay-call-document-note{flex:none}
-.founder-call-screen .relay-pdf-viewer{min-height:0}
-.founder-call-screen .relay-pdf-stage,.founder-call-screen .relay-pdf-stage iframe{min-height:0}
-.founder-call-screen .relay-call-right-column{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
-.founder-call-screen .relay-call-right-column>*{flex:none}
-.founder-call-screen .relay-call-side-panel{padding:14px 16px;gap:10px}
-.founder-call-screen .relay-call-side-panel h2{font-size:19px}
-.founder-call-screen .relay-call-recipient{padding:10px 12px}
-.founder-call-screen .relay-call-recipient .relay-call-avatar{width:44px;height:44px;font-size:17px}
-.founder-call-screen .relay-call-mode{display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;gap:10px;padding:0 0 8px;white-space:nowrap;text-align:left}
-.founder-call-screen .relay-call-mode select{flex:1 1 auto;width:auto;min-width:0;min-height:34px}
-.founder-call-screen .relay-call-self-preview{min-height:0;padding:10px 14px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;row-gap:0;align-items:center;justify-items:start}
-.founder-call-screen .relay-call-self-preview .relay-call-avatar{grid-row:span 2}
-.founder-call-screen .relay-call-self-preview .relay-call-avatar{width:48px;height:48px;font-size:18px}
-.founder-call-screen .relay-call-person{min-height:0;padding:8px 10px;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;align-items:center;justify-items:start;text-align:left}
-.founder-call-screen .relay-call-person>.relay-call-avatar{grid-row:span 2}
-.founder-call-screen .relay-call-person video{grid-column:1/-1}
-.founder-call-screen .relay-call-person .relay-call-avatar{width:40px;height:40px;font-size:15px}
-.founder-call-screen .relay-call-round-actions{padding:0}
-.founder-call-screen .relay-call-round-actions .button{min-height:44px;flex-direction:row;gap:6px}
-.founder-call-screen .relay-call-invite{padding-top:10px;gap:6px}
+main:has(:is(.founder-call-screen,.advisor-call-screen)){display:flex;flex-direction:column;overflow:hidden}
+main:has(:is(.founder-call-screen,.advisor-call-screen))>:not(:is(.founder-call-screen,.advisor-call-screen)){flex:0 0 auto}
+main:has(:is(.founder-call-screen,.advisor-call-screen)) .app-footer{display:none}
+:is(.founder-call-screen,.advisor-call-screen){flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-header{flex:none;padding-bottom:10px;margin-bottom:12px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-header h1{font-size:24px;letter-spacing:-.3px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-header p{font-size:13px;margin-top:2px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-layout{flex:1 1 auto;min-height:0;grid-template-rows:minmax(0,1fr);align-items:stretch}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-document-column{display:flex;flex-direction:column;gap:10px;min-height:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-document-column>[role=tabpanel]{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-document-column>[role=tabpanel]>*{flex:1 1 auto;min-height:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-document-column .packet-preview{min-height:0;overflow-y:auto}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-document-note{flex:none}
+:is(.founder-call-screen,.advisor-call-screen) .relay-pdf-viewer{min-height:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-pdf-stage,:is(.founder-call-screen,.advisor-call-screen) .relay-pdf-stage iframe{min-height:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column>*{flex:none}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-side-panel{padding:14px 16px;gap:10px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-side-panel h2{font-size:19px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-recipient{padding:10px 12px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-recipient .relay-call-avatar{width:44px;height:44px;font-size:17px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-mode{display:flex;flex-flow:row nowrap;align-items:center;justify-content:flex-start;gap:10px;padding:0 0 8px;white-space:nowrap;text-align:left}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-mode select{flex:1 1 auto;width:auto;min-width:0;min-height:34px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-self-preview{min-height:0;padding:10px 14px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;row-gap:0;align-items:center;justify-items:start}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-self-preview .relay-call-avatar{grid-row:span 2}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-self-preview .relay-call-avatar{width:48px;height:48px;font-size:18px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-person{min-height:0;padding:8px 10px;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;align-items:center;justify-items:start;text-align:left}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-person>.relay-call-avatar{grid-row:span 2}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-person video{grid-column:1/-1}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-person .relay-call-avatar{width:40px;height:40px;font-size:15px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-round-actions{padding:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-round-actions .button{min-height:44px;flex-direction:row;gap:6px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-invite{padding-top:10px;gap:6px}
 /* In a call, Messages takes the leftover height: its list scrolls and the composer stays visible. */
-.founder-call-screen .relay-call-right-column>.relay-call-messages{flex:1 1 auto;min-height:190px;display:flex;flex-direction:column}
-.founder-call-screen .relay-call-messages>h2{padding:10px 16px}
-.founder-call-screen .relay-call-messages .conversation{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:10px 12px}
-.founder-call-screen .relay-call-messages .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto}
-.founder-call-screen .relay-call-messages .composer{padding:6px 8px;display:flex;align-items:flex-end;gap:8px}
-.founder-call-screen .relay-call-messages .composer textarea{flex:1;min-width:0}
-.founder-call-screen .relay-call-messages .composer textarea{min-height:36px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column>.relay-call-messages{flex:1 1 auto;min-height:190px;display:flex;flex-direction:column}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages>h2{padding:10px 16px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages .conversation{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:10px 12px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages .composer{padding:6px 8px;display:flex;align-items:flex-end;gap:8px}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages .composer textarea{flex:1;min-width:0}
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages .composer textarea{min-height:36px}
 /* Short screens: drop the demo-only device pickers and disclaimers so the call controls still fit. */
-@media(max-height:800px){.founder-call-screen .relay-call-device-grid>label,.founder-call-screen .relay-call-test-speaker,.founder-call-screen .relay-call-side-panel>.relay-call-disclaimer,.founder-call-screen .relay-call-invite>span,.founder-call-screen .relay-call-document-note{display:none}.founder-call-screen .relay-call-right-column>.relay-call-messages{min-height:150px}main:has(.founder-call-screen)>.feedback{padding-block:6px;margin-bottom:10px}.founder-call-screen .relay-call-header p{display:none}.founder-call-screen .relay-call-header{padding-bottom:8px;margin-bottom:10px}.founder-call-screen .relay-call-person{padding:6px 8px;line-height:1.3}.founder-call-screen .relay-call-person .relay-call-avatar{width:32px;height:32px;font-size:13px}.founder-call-screen .relay-call-round-actions .button{min-height:38px;padding-block:4px}}
-@media(max-width:900px){main:has(.founder-call-screen){overflow-y:auto}.founder-call-screen{flex:none}.founder-call-screen .relay-call-layout{grid-template-rows:none}.founder-call-screen .relay-call-right-column{overflow:visible}.founder-call-screen .relay-call-messages .message-list{max-height:260px}.founder-call-screen .relay-pdf-viewer{min-height:480px}}
+@media(max-height:800px){:is(.founder-call-screen,.advisor-call-screen) .relay-call-device-grid>label,:is(.founder-call-screen,.advisor-call-screen) .relay-call-test-speaker,:is(.founder-call-screen,.advisor-call-screen) .relay-call-side-panel>.relay-call-disclaimer,:is(.founder-call-screen,.advisor-call-screen) .relay-call-invite>span,:is(.founder-call-screen,.advisor-call-screen) .relay-call-document-note{display:none}:is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column>.relay-call-messages{min-height:150px}main:has(:is(.founder-call-screen,.advisor-call-screen))>.feedback{padding-block:6px;margin-bottom:10px}:is(.founder-call-screen,.advisor-call-screen) .relay-call-header p{display:none}:is(.founder-call-screen,.advisor-call-screen) .relay-call-header{padding-bottom:8px;margin-bottom:10px}:is(.founder-call-screen,.advisor-call-screen) .relay-call-person{padding:6px 8px;line-height:1.3}:is(.founder-call-screen,.advisor-call-screen) .relay-call-person .relay-call-avatar{width:32px;height:32px;font-size:13px}:is(.founder-call-screen,.advisor-call-screen) .relay-call-round-actions .button{min-height:38px;padding-block:4px}}
+@media(max-width:900px){main:has(:is(.founder-call-screen,.advisor-call-screen)){overflow-y:auto}:is(.founder-call-screen,.advisor-call-screen){flex:none}:is(.founder-call-screen,.advisor-call-screen) .relay-call-layout{grid-template-rows:none}:is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column{overflow:visible}:is(.founder-call-screen,.advisor-call-screen) .relay-call-messages .message-list{max-height:260px}:is(.founder-call-screen,.advisor-call-screen) .relay-pdf-viewer{min-height:480px}}
+/* Give the right column's scrollbar its own gutter so it doesn't draw over the cards' right borders;
+   the negative margin keeps the cards aligned with the page edge. */
+:is(.founder-call-screen,.advisor-call-screen) .relay-call-right-column{padding-right:12px;margin-right:-12px}
+/* Pre-call message to the other person: size to its content instead of the full chat page's height. */
+.relay-call-pre-message>.conversation{min-height:0;padding:0;gap:10px;border:0;border-radius:0;background:none;box-shadow:none}
+.relay-call-pre-message .message-list{flex:none;max-height:240px;gap:12px}
+.relay-call-pre-message .message-list>p.muted{margin:0}
+.relay-call-pre-message .composer textarea{min-height:44px}
+.relay-call-pre-message .conversation-footnote{font-size:11px;margin:0}
+/* Founder Documents page: the document fills the left, the shared case sidebar runs edge to edge on the right. */
+.founder-call-screen{max-width:none;width:auto}
+.founder-call-screen .relay-call-layout{grid-template-columns:minmax(0,1fr) auto;gap:0}
+.founder-call-screen .relay-call-document-column{padding:22px 26px 18px 30px}
+@media(max-width:900px){.founder-call-screen .relay-call-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.founder-call-screen .relay-call-document-column{padding:20px 14px}}

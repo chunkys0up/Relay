@@ -48,12 +48,12 @@ export async function documentUrl(documentId: string, signal?: AbortSignal): Pro
 }
 
 /** Streams the assistant reply, calling onChunk per text delta; resolves with the full reply. */
-export async function streamChat(sessionId: string, message: string, onChunk: (text: string) => void, options: { signal?: AbortSignal; documentIds?: string[]; caseId?: string } = {}): Promise<string> {
-  const { signal, documentIds = [], caseId } = options;
+export async function streamChat(sessionId: string, message: string, onChunk: (text: string) => void, options: { signal?: AbortSignal; documentIds?: string[]; caseId?: string; conversationId?: string } = {}): Promise<string> {
+  const { signal, documentIds = [], caseId, conversationId } = options;
   const response = await request('/api/chat/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, session_id: sessionId, document_ids: documentIds, case_id: caseId }),
+    body: JSON.stringify({ message, session_id: sessionId, document_ids: documentIds, case_id: caseId, conversation_id: conversationId }),
     signal,
   });
   if (!response.body) throw new RelayApiError(0, 'The backend returned no reply stream.');
@@ -98,3 +98,34 @@ export async function listActivity(caseId: string, limit = 20, signal?: AbortSig
 /** Fired after anything that can change the case's checklist, activity or documents (AI replies, uploads, ticks). */
 export const CASE_UPDATED_EVENT = 'relay:case-updated';
 export function announceCaseUpdate(): void { window.dispatchEvent(new Event(CASE_UPDATED_EVENT)); }
+
+export type ChatKind = 'ai' | 'human';
+export type ChatRole = 'founder' | 'advisor';
+export interface ChatFile { id: string; name: string }
+export interface ChatSummary { id: string; case_id: string; kind: ChatKind; owner_role: ChatRole | null; title: string; created_at: string; updated_at: string; last_sender: ChatRole | 'ai' | null; last_content: string | null; last_at: string | null }
+export interface ChatMessage { id: string; conversation_id: string; case_id: string; sender_type: ChatRole | 'ai'; content: string; files: ChatFile[]; created_at: string }
+
+const casePath = (caseId: string): string => `/api/cases/${encodeURIComponent(caseId)}`;
+const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+export async function listChats(caseId: string, kind: ChatKind, role: ChatRole, signal?: AbortSignal): Promise<ChatSummary[]> {
+  return (await request(`${casePath(caseId)}/conversations?kind=${kind}&role=${role}`, { signal })).json() as Promise<ChatSummary[]>;
+}
+
+/** Start a conversation, optionally with its first (human) message. */
+export async function createChat(caseId: string, kind: ChatKind, role: ChatRole, first?: { content: string; files: ChatFile[] }): Promise<ChatSummary> {
+  return (await request(`${casePath(caseId)}/conversations`, json({ kind, role, message: first ? { role, ...first } : undefined }))).json() as Promise<ChatSummary>;
+}
+
+export async function listChatMessages(caseId: string, conversationId: string, role: ChatRole, signal?: AbortSignal): Promise<ChatMessage[]> {
+  return (await request(`${casePath(caseId)}/conversations/${encodeURIComponent(conversationId)}/messages?role=${role}`, { signal })).json() as Promise<ChatMessage[]>;
+}
+
+/** Send a message to the other person in a human conversation. */
+export async function sendChatMessage(caseId: string, conversationId: string, role: ChatRole, content: string, files: ChatFile[]): Promise<ChatMessage> {
+  return (await request(`${casePath(caseId)}/conversations/${encodeURIComponent(conversationId)}/messages`, json({ role, content, files }))).json() as Promise<ChatMessage>;
+}
+
+export async function recentChatMessages(caseId: string, role: ChatRole, limit = 3, signal?: AbortSignal): Promise<ChatMessage[]> {
+  return (await request(`${casePath(caseId)}/messages/recent?role=${role}&limit=${limit}`, { signal })).json() as Promise<ChatMessage[]>;
+}

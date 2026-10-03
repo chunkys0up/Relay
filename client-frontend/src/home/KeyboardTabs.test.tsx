@@ -17,25 +17,29 @@ describe('Founder Home detail tabs', () => {
     renderHome();
     const tabs = within(await screen.findByRole('tablist', { name: 'Workspace details' }));
     const progress = tabs.getByRole('tab', { name: 'Progress' });
+    const call = tabs.getByRole('tab', { name: 'Call' });
     const activity = tabs.getByRole('tab', { name: 'Activity' });
 
     progress.focus();
     await user.keyboard('{ArrowRight}');
+    expect(call).toHaveFocus();
+    expect(call).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{ArrowRight}');
     expect(activity).toHaveFocus();
     expect(activity).toHaveAttribute('aria-selected', 'true');
-    expect(activity).toHaveAttribute('aria-controls', 'founder-home-aside-activity-panel');
-    expect(screen.getByRole('tabpanel', { name: 'Activity' })).toHaveAttribute('id', 'founder-home-aside-activity-panel');
+    expect(activity).toHaveAttribute('aria-controls', 'case-sidebar-activity-panel');
+    expect(screen.getByRole('tabpanel', { name: 'Activity' })).toHaveAttribute('id', 'case-sidebar-activity-panel');
 
     await user.keyboard('{Home}');
     expect(progress).toHaveFocus();
     expect(progress).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tabpanel', { name: 'Progress' })).toHaveAttribute('id', 'founder-home-aside-progress-panel');
+    expect(screen.getByRole('tabpanel', { name: 'Progress' })).toHaveAttribute('id', 'case-sidebar-progress-panel');
 
     await user.keyboard('{End}');
     expect(activity).toHaveFocus();
     expect(activity).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{ArrowLeft}');
-    expect(progress).toHaveFocus();
+    expect(call).toHaveFocus();
   });
 
   it('discloses only the known advisor identity and role', async () => {

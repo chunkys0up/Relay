@@ -41,13 +41,28 @@ CREATE TABLE drafts (
   UNIQUE (case_id, version)
 );
 
+CREATE TABLE conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL CHECK (kind IN ('ai', 'human')),
+  owner_role TEXT CHECK (owner_role IN ('founder', 'advisor')),
+  title TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK ((kind = 'ai') = (owner_role IS NOT NULL))
+);
+CREATE INDEX conversations_case_idx ON conversations (case_id, kind, updated_at DESC);
+
 CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
   sender_type TEXT NOT NULL,
   content TEXT NOT NULL,
+  files JSONB NOT NULL DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE INDEX messages_conversation_idx ON messages (conversation_id, created_at);
 
 CREATE TABLE advisor_actions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

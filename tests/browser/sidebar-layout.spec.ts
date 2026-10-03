@@ -30,7 +30,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 1254, height: 600
     await page.getByRole('combobox', { name: 'Demo role' }).selectOption('founder');
     await page.getByRole('link', { name: 'AI Chat', exact: true }).click();
     await expect(page.locator('.founder-chat-header h1')).toBeInViewport();
-    await expect(page.locator('.founder-chat .composer textarea')).toBeInViewport();
+    await expect(page.locator('.founder-chat-conversation .composer textarea')).toBeInViewport();
     expect(await page.locator('main').evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     expect(errors).toEqual([]);
   });

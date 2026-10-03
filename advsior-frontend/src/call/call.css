@@ -1,1 +1,16 @@
 .advisor-call-screen .relay-call-header{border-bottom-color:#dce4ef}
+/* Review actions as a side card in the call's right column. The card header already names the version,
+   so hide ReviewControls' own panel title and version badge. */
+.relay-call-review{border:1px solid #dce4ef;border-radius:8px;background:#fff;padding:14px 16px}
+.relay-call-review .collapsible-heading{font-size:17px}
+.relay-call-review .collapsible-heading button>span{display:inline-flex;align-items:center;gap:10px}
+.relay-call-review .collapsible-heading .badge{font-size:11px;font-weight:500}
+.relay-call-review .collapsible-body{margin-top:10px}
+.relay-call-review .review-controls{border:0;padding:0;background:none}
+.relay-call-review .review-controls>h2,.relay-call-review .review-controls>.badge{display:none}
+.relay-call-review .flag-list{margin:0 0 12px;gap:8px}
+.relay-call-review .flag{padding:10px 12px;font-size:13px}
+.relay-call-review .review-controls>label{margin:4px 0 8px;font-size:13px}
+.relay-call-review .review-controls textarea{min-height:72px;font-size:13px}
+.relay-call-review .review-controls hr{margin:14px 0}
+.relay-call-review .review-controls .button{width:100%}

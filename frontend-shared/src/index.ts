@@ -9,3 +9,4 @@ export * from './live';
 export * from './advisorApi';
 export * from './advisorChat';
 export * from './collapsible';
+export * from './caseSidebar';

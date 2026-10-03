@@ -7,7 +7,7 @@ import './clarification.css';
 function ConversationPanel(): ReactNode {
   return (
     <aside className="clarification-thread">
-      <div className="clarification-thread-heading"><Icon name="agent" size={38}/><div><h2>Relay assistant</h2><small>Same Home conversation</small></div></div>
+      <div className="clarification-thread-heading"><Icon name="agent" size={38}/><div><h2>Relay assistant</h2><small>Case messages</small></div></div>
       <Conversation humanOnly />
     </aside>
   );
@@ -34,6 +34,8 @@ export default function Screen(): ReactNode {
       ? snapshot.packets.find((item) => item.previous_version_id === answered.packet_version_id)
       : undefined;
 
+    const savedAnswer = newPacket?.citations.filter((citation) => citation.source_kind === 'message').map((citation) => snapshot.messages.find((message) => message.id === citation.source_id)).find((message) => message?.author.id === snapshot.founder.id);
+
     return (
       <section className="clarification-screen">
         <PageTitle title="Home conversation" subtitle="Packet questions and answers stay with your conversation." />
@@ -43,7 +45,8 @@ export default function Screen(): ReactNode {
               <div className="clarification-outcome">
                 <Badge tone="success">Draft v{newPacket.version} created · simulated</Badge>
                 <h2>Your answer is in a proposed packet revision.</h2>
-                <p>The advisor’s question and your answer remain in this Home conversation. Source conflicts stay visible for review.</p>
+                <p>Your answer is saved in this local packet draft. Source conflicts stay visible for review. Case messages are stored separately.</p>
+                {savedAnswer && <blockquote>{savedAnswer.text}</blockquote>}
                 <div className="row wrap">
                   <Link className="button button-primary" to={`/founder/documents?version=${encodeURIComponent(newPacket.id)}`}>Review packet v{newPacket.version}</Link>
                   <Link className="button button-outline" to="/founder/home">Return to Home</Link>

@@ -25,12 +25,12 @@
 .advisor-chat-citations a, .advisor-citation-unavailable { font-size: 11px; border: 1px solid var(--border); border-radius: 5px; padding: 4px 6px; }
 .advisor-citation-unavailable { color: #9b2432; }
 .advisor-draft-question { display: grid; gap: 4px; margin-top: 8px; font-weight: 600; }
-.advisor-draft-question textarea { min-height: 65px; width: 100%; resize: vertical; font: inherit; }
+.advisor-draft-question textarea { min-height: 65px; width: 100%; resize: none; font: inherit; }
 .advisor-draft-question small { font-weight: 400; color: var(--text-muted); }
 .advisor-chat-retry { border: 1px solid #e3ba78; padding: 9px; border-radius: 6px; background: #fffbf1; }
 .advisor-chat-retry p { margin: 0 0 7px; }
 .advisor-chat-retry button { margin-right: 6px; }
 .advisor-chat-composer { display: grid; gap: 7px; border-top: 1px solid var(--border); padding-top: 10px; }
-.advisor-chat-composer textarea { min-height: 70px; width: 100%; resize: vertical; font: inherit; }
+.advisor-chat-composer textarea { min-height: 70px; width: 100%; resize: none; font: inherit; }
 .advisor-chat-composer button { justify-self: end; }
 .advisor-chat-note { color: var(--text-muted); font-size: 11px; margin: 0; }

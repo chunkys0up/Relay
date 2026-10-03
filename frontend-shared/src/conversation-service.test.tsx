@@ -3,82 +3,117 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { Conversation } from './conversation';
 import { RelayProvider, adapter } from './context';
+import { LIVE_CASE_ID } from './relayApi';
+import type { ChatMessage } from './relayApi';
 
-beforeEach(() => adapter.reset());
+const conversationId = '00000000-0000-4000-8000-000000000099';
+const json = (data: unknown, status = 200): Response => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
+let messageSequence = 0;
+const saved = (sender_type: ChatMessage['sender_type'], content: string): ChatMessage => ({
+  id: `00000000-0000-4000-8000-${String(++messageSequence).padStart(12, '0')}`,
+  conversation_id: conversationId, case_id: LIVE_CASE_ID, sender_type, content, files: [], created_at: '2026-10-03T12:00:00Z',
+});
+
+beforeEach(() => { adapter.reset(); messageSequence = 0; });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-function mount(): void {
-  render(<MemoryRouter initialEntries={['/founder/chat']}><RelayProvider role="founder"><Conversation/></RelayProvider></MemoryRouter>);
+function mount(role: 'founder' | 'advisor' = 'founder', route = '/founder/chat'): void {
+  render(<MemoryRouter initialEntries={[route]}><RelayProvider role={role}><Conversation/></RelayProvider></MemoryRouter>);
 }
 
-async function send(prompt: string): Promise<void> {
-  fireEvent.change(await screen.findByRole('textbox', { name: 'Message Relay' }), { target: { value: prompt } });
-  fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+async function compose(text: string, label = 'Message Relay'): Promise<void> {
+  fireEvent.change(await screen.findByRole('textbox', { name: label }), { target: { value: text } });
 }
 
-function stream(parts: string[]): Response {
-  const encoder = new TextEncoder();
-  return new Response(new ReadableStream<Uint8Array>({ start(controller) {
-    for (const part of parts) controller.enqueue(encoder.encode(part));
-    controller.close();
-  } }));
-}
-
-async function savedAiReplies(): Promise<string[]> {
-  return (await adapter.snapshot('founder')).data.messages.filter(message => message.author.kind === 'ai').map(message => message.text);
-}
-
-describe('founder legacy assistant request', () => {
-  it('saves a complete streamed reply and reports a completed request', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(stream(['First ', 'second.']));
+describe('persisted conversation sends', () => {
+  it('streams a founder AI reply and displays the saved service messages', async () => {
+    const messages: ChatMessage[] = [];
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes('/conversations?')) return json([]);
+      if (url.endsWith('/conversations') && init?.method === 'POST') return json({ id: conversationId }, 201);
+      if (url.endsWith('/chat/stream')) {
+        const body = JSON.parse(String(init?.body)) as { message: string; conversation_id: string };
+        expect(body.conversation_id).toBe(conversationId);
+        messages.push(saved('founder', body.message), saved('ai', 'First second.'));
+        return new Response('First second.');
+      }
+      if (url.endsWith(`/conversations/${conversationId}/messages?role=founder`)) return json(messages);
+      throw new Error(`Unexpected request: ${url}`);
+    });
     vi.stubGlobal('fetch', fetchMock);
     mount();
-    expect(screen.queryByText('Live AI')).not.toBeInTheDocument();
-    await send('What is next?');
-    await waitFor(async () => expect(await savedAiReplies()).toEqual(['First second.']));
-    expect(screen.getByText('First second.')).toBeVisible();
-    expect(screen.getByText('The last reply completed through the legacy case assistant.')).toBeVisible();
+    await compose('What is next?');
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('First second.')).toBeVisible();
+    expect(await screen.findByText('Connected')).toBeVisible();
+    expect(await screen.findByText('What is next?')).toBeVisible();
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/chat/stream'), expect.objectContaining({ method: 'POST' }));
+    expect((await adapter.snapshot('founder')).data.messages.some(message => message.text === 'What is next?')).toBe(false);
   });
 
-  it('reports an empty reply as a failure and never saves it as an AI answer', async () => {
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(stream(['   '])));
-    mount();
-    await send('What is next?');
-    expect(await screen.findByRole('alert')).toHaveTextContent('empty reply');
-    expect(screen.getByText('The assistant request failed. Check the error above.')).toBeVisible();
-    expect(await savedAiReplies()).toEqual([]);
-  });
-
-  it('discards partial text when streaming fails', async () => {
-    const encoder = new TextEncoder();
-    let reads = 0;
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(new Response(new ReadableStream<Uint8Array>({ pull(controller) {
-      if (reads++ === 0) controller.enqueue(encoder.encode('Incomplete'));
-      else controller.error(new Error('Connection dropped'));
-    } }))));
-    mount();
-    await send('What is next?');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Connection dropped');
-    expect(await savedAiReplies()).toEqual([]);
-  });
-
-  it('stops a partial stream without saving an answer', async () => {
-    const encoder = new TextEncoder();
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (_input, init) => {
-      const response = new Response(new ReadableStream<Uint8Array>({ start(controller) {
-        controller.enqueue(encoder.encode('Incomplete'));
-        init?.signal?.addEventListener('abort', () => controller.error(new DOMException('Stopped', 'AbortError')));
-      } }));
-      return response;
+  it('reconciles a failed AI stream with the prompt already saved by the service', async () => {
+    const messages: ChatMessage[] = [];
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes('/conversations?')) return json([]);
+      if (url.endsWith('/conversations') && init?.method === 'POST') return json({ id: conversationId }, 201);
+      if (url.endsWith('/chat/stream')) {
+        const body = JSON.parse(String(init?.body)) as { message: string };
+        messages.push(saved('founder', body.message));
+        return new Response('   ');
+      }
+      if (url.includes(`/conversations/${conversationId}/messages?`)) return json(messages);
+      throw new Error(`Unexpected request: ${url}`);
     }));
     mount();
-    await send('What is next?');
-    expect(await screen.findByText('Incomplete')).toBeVisible();
-    expect(screen.getByText('Receiving a reply from the legacy case assistant…')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Stop' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('No partial answer was saved');
-    expect(screen.getByText('The reply was stopped; no partial answer was saved.')).toBeVisible();
-    expect(await savedAiReplies()).toEqual([]);
+    await compose('What is next?');
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('empty reply');
+    expect(await screen.findByText('What is next?')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'Message Relay' })).toHaveValue('');
+    expect(screen.queryByText('Relay assistant', { selector: '.message-author strong' })).not.toBeInTheDocument();
+  });
+
+  it('keeps an unsent draft visible when a newly created AI chat rejects the prompt', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes('/conversations?')) return json([]);
+      if (url.endsWith('/conversations') && init?.method === 'POST') return json({ id: conversationId }, 201);
+      if (url.endsWith('/chat/stream')) return json({ detail: 'Assistant unavailable before save' }, 503);
+      if (url.includes(`/conversations/${conversationId}/messages?`)) return json([]);
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    mount();
+    await compose('Keep this draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Assistant unavailable before save');
+    expect(screen.getByRole('textbox', { name: 'Message Relay' })).toHaveValue('Keep this draft');
+  });
+
+  it('previews a human message before the service saves it', async () => {
+    const messages: ChatMessage[] = [];
+    const fetchMock = vi.fn<typeof fetch>().mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes('/conversations?')) return json([]);
+      if (url.endsWith('/conversations') && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { kind: string; message: { content: string } };
+        expect(body.kind).toBe('human');
+        messages.push(saved('founder', body.message.content));
+        return json({ id: conversationId }, 201);
+      }
+      if (url.includes(`/conversations/${conversationId}/messages?`)) return json(messages);
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    mount('founder', '/founder/chat?audience=human');
+    await compose('Please review this.', 'Message Maya Chen');
+    fireEvent.click(screen.getByRole('button', { name: 'Preview message' }));
+    expect(await screen.findByRole('heading', { name: 'Preview message to Maya Chen' })).toBeVisible();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm send' }));
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message Maya Chen' })).toHaveValue(''));
+    expect(await screen.findByText('Please review this.')).toBeVisible();
+    expect((await adapter.snapshot('advisor')).data.messages.some(message => message.text === 'Please review this.')).toBe(false);
   });
 });

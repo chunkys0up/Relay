@@ -5,19 +5,18 @@ import threading
 from strands.agent.agent import Agent
 from strands_harness import create_harness
 
-from app.agents.case_tools import CASE_TOOLS, INSTRUCTIONS
+from app.agents.case_tools import ADVISOR_INSTRUCTIONS, CASE_TOOLS, INSTRUCTIONS
 from app.core.config import settings
 
 _agents: dict[str, Agent] = {}
 _lock = threading.Lock()
 
 
-def get_agent(session_id: str) -> Agent:
+def get_agent(session_id: str, role: str = "founder") -> Agent:
     """Return the cached harness agent for a session, creating one on first use.
 
-    No builtin tools are enabled yet (shell/file/web access) — add them via
-    `builtin_tools=[...]` or `tools=[...]` below once there's an actual
-    feature that needs them.
+    The agent only gets the case tools (checklist, activity, case files); the harness's
+    shell/file/web built-ins stay off.
     """
     with _lock:
         agent = _agents.get(session_id)
@@ -25,7 +24,7 @@ def get_agent(session_id: str) -> Agent:
             agent = create_harness(
                 model=settings.strands_model,
                 effort=settings.strands_effort,
-                instructions=INSTRUCTIONS,
+                instructions=ADVISOR_INSTRUCTIONS if role == "advisor" else INSTRUCTIONS,
                 builtin_tools=[],
                 # The harness's own todo plugin would compete with the case checklist tools.
                 builtin_plugins=[],

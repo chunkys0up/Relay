@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button, EmptyState, Panel } from './ui';
-import { announceCaseUpdate, CASE_UPDATED_EVENT, documentUrl, LIVE_CASE_ID, listActivity, listChecklist, listDocuments, setChecklistState, uploadDocument } from './relayApi';
-import type { ActivityEntry, ChecklistItem, ChecklistState, LiveDocument } from './relayApi';
+import { announceCaseUpdate, CASE_UPDATED_EVENT, documentUrl, LIVE_CASE_ID, listActivity, listChats, listChecklist, listDocuments, recentChatMessages, setChecklistState, uploadDocument } from './relayApi';
+import type { ActivityEntry, ChatKind, ChatMessage, ChatRole, ChatSummary, ChecklistItem, ChecklistState, LiveDocument } from './relayApi';
 
 const errorText = (error: unknown): string => error instanceof Error ? error.message : 'Request failed';
 
-/** Re-run a fetch whenever the case changes (AI reply, upload, checklist tick). */
-function useCaseReload(): number {
+/** Re-run a fetch whenever the case changes (AI reply, message, upload, checklist tick). */
+export function useCaseReload(): number {
   const [reload, setReload] = useState(0);
   useEffect(() => {
     const bump = (): void => setReload(n => n + 1);
@@ -36,6 +36,40 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** Saved conversations of one kind visible to this role, most recently active first. */
+export function useChats(kind: ChatKind, role: ChatRole, caseId: string = LIVE_CASE_ID, enabled = true): { chats: ChatSummary[] | null; error: string | null } {
+  const [snapshot, setSnapshot] = useState<{ key: string; chats: ChatSummary[]; error: string | null } | null>(null);
+  const key = `${caseId}:${kind}:${role}`;
+  const reload = useCaseReload();
+  useEffect(() => {
+    if (!enabled) return;
+    const c = new AbortController();
+    listChats(caseId, kind, role, c.signal).then(next => {
+      if (!c.signal.aborted) setSnapshot({ key, chats: next, error: null });
+    }).catch((e: unknown) => {
+      if (!c.signal.aborted) setSnapshot({ key, chats: [], error: errorText(e) });
+    });
+    return () => c.abort();
+  }, [caseId, kind, role, reload, enabled, key]);
+  if (!enabled) return { chats: [], error: null };
+  return snapshot?.key === key ? { chats: snapshot.chats, error: snapshot.error } : { chats: null, error: null };
+}
+
+/** The latest messages across this role's conversations, for previews. */
+export function useRecentMessages(role: ChatRole, limit = 3, caseId: string = LIVE_CASE_ID): ChatMessage[] | null {
+  const [snapshot, setSnapshot] = useState<{ key: string; messages: ChatMessage[] } | null>(null);
+  const key = `${caseId}:${role}:${limit}`;
+  const reload = useCaseReload();
+  useEffect(() => {
+    const c = new AbortController();
+    recentChatMessages(caseId, role, limit, c.signal).then(messages => {
+      if (!c.signal.aborted) setSnapshot({ key, messages });
+    }).catch(() => { if (!c.signal.aborted) setSnapshot({ key, messages: [] }); });
+    return () => c.abort();
+  }, [caseId, role, limit, reload, key]);
+  return snapshot?.key === key ? snapshot.messages : null;
 }
 
 export interface CaseChecklist { items: ChecklistItem[] | null; error: string | null; setState: (itemId: string, state: ChecklistState) => Promise<void> }
