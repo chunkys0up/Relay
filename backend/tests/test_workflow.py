@@ -103,7 +103,12 @@ def test_task_first_missing_conflict_confirm_packet_and_isolation(
 
     def check_persisted() -> None:
         current = client.get(f"/api/workflow/cases/{state['id']}").json()
-        assert len(current["tasks"]) == 3
+        tasks = {task["key"]: task for task in current["tasks"]}
+        assert {"analysis", "fact:annual_revenue", "fact:cash_reserve", "packet"} <= tasks.keys()
+        assert tasks["analysis"]["state"] == "In progress"
+        assert tasks["fact:cash_reserve"]["state"] != "Done"
+        assert len({task["id"] for task in current["tasks"]}) == len(current["tasks"])
+        assert all(task["completion_rule"] for task in current["tasks"])
         assert current["jobs"][0]["status"] == "working"
         assert current["messages"][0]["text"] == "Prepare this packet"
 
@@ -112,7 +117,13 @@ def test_task_first_missing_conflict_confirm_packet_and_isolation(
     assert state["facts"]["annual_revenue"]["state"] == "conflicting"
     assert state["facts"]["cash_reserve"]["state"] == "unknown"
     assert {f["kind"] for f in state["flags"]} == {"missing", "conflict"}
-    assert all(task["state"] == "Done" for task in state["tasks"])
+    tasks = {task["key"]: task for task in state["tasks"]}
+    assert tasks["analysis"]["state"] == "Done"
+    assert tasks["fact:annual_revenue"]["state"] == "Blocked"
+    assert tasks["fact:cash_reserve"]["state"] == "Blocked"
+    assert tasks["packet"]["state"] == "Blocked"
+    assert tasks["fact:annual_revenue"]["responsible_party"] == "founder"
+    assert tasks["fact:cash_reserve"]["blocking_reason"]
     source_id = state["sources"][0]["id"]
     assert "excerpts" not in state["sources"][0]
     values = {"company_name": "Example Studio", "founder_name": "Ava",

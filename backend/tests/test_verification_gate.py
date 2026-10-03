@@ -36,7 +36,10 @@ def test_failed_verification_never_stages_or_saves(tmp_path: Path, monkeypatch: 
     assert state['packets'] == []
     assert all(f['state'] == 'unknown' for f in state['facts'].values())
     assert state['tasks'][-1]['state'] == 'Blocked'
-    assert state['messages'][-1]['author'] == 'founder'
+    assert state['messages'][-2]['author'] == 'founder'
+    assert state['messages'][-1]['author'] == 'Relay'
+    assert 'PDF_VERIFICATION_FAILED' in state['messages'][-1]['text']
+    assert 'could not finish' in state['messages'][-1]['text'].lower()
 
 
 def test_manual_draft_cannot_bypass_verifier(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -67,3 +67,10 @@ class ConfirmInput(BaseModel):
 class PacketInput(BaseModel):
     expected_revision: int = Field(ge=0)
     template_id: str | None = None
+
+
+class RelationshipInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=0)
+    related_source_id: str = Field(min_length=1)
+    decision: Literal["revision", "separate"]
