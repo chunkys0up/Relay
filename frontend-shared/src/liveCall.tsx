@@ -5,6 +5,20 @@ import { useRelay } from './context';
 import { Badge, Button } from './ui';
 
 type Phase = 'idle' | 'starting' | 'live' | 'ended';
+const DEVICE_WAIT_MS = 5000;
+
+class DeviceWaitTimeout extends Error {}
+
+function boundedDeviceWait<T>(operation: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new DeviceWaitTimeout()), DEVICE_WAIT_MS);
+    operation.then(
+      value => { window.clearTimeout(timer); resolve(value); },
+      error => { window.clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 interface SessionHandle {
   meeting: DefaultMeetingSession;
   observer: AudioVideoObserver;
@@ -22,6 +36,15 @@ function publicError(error: unknown): string {
     return error.message;
   }
   return 'Could not connect to Chime. Check device permissions and try again.';
+}
+
+function publicCameraError(error: unknown): string {
+  if (error instanceof DeviceWaitTimeout) return 'Camera permission is still pending. Allow camera access, then try again.';
+  const name = error && typeof error === 'object' && 'name' in error ? error.name : null;
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Camera access was denied. Allow it in your browser settings, then try again.';
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No usable camera was found. Connect a camera and try again.';
+  if (name === 'NotReadableError' || name === 'AbortError') return 'The camera could not be opened. Close other apps using it, then try again.';
+  return 'Could not use the camera. Check camera permission and try again.';
 }
 
 async function dispose(handle: SessionHandle): Promise<void> {
@@ -59,8 +82,10 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
   const generation = useRef(0);
   const request = useRef<AbortController | null>(null);
   const callId = useRef<string | null>(null);
+  const joinId = useRef<string | null>(null);
   const session = useRef<SessionHandle | null>(null);
   const cameraChanging = useRef(false);
+  const localTileId = useRef<number | null>(null);
   const onActiveChangeRef = useRef(onActiveChange);
   const audioEl = useRef<HTMLAudioElement>(null);
   const localEl = useRef<HTMLVideoElement>(null);
@@ -76,16 +101,24 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
     onActiveChangeRef.current?.(phase === 'starting' || phase === 'live');
   }, [phase]);
 
-  const closeLocal = useCallback((next: Phase, message: string | null): void => {
+  const closeLocal = useCallback((next: Phase, message: string | null, releaseRemote = true): void => {
     generation.current += 1;
+    phaseRef.current = next;
     request.current?.abort();
     request.current = null;
+    const leavingCall = callId.current;
+    const leavingJoin = joinId.current;
+    callId.current = null;
+    joinId.current = null;
+    if (releaseRemote && caseId && leavingCall && leavingJoin) {
+      void callsApi.leave(caseId, leavingCall, leavingJoin).catch(() => undefined);
+    }
     const current = session.current;
     session.current = null;
     if (current) void dispose(current);
     cameraChanging.current = false;
+    localTileId.current = null;
     if (mounted.current) {
-      phaseRef.current = next;
       setPhaseState(next);
       setCameraOn(false);
       setCameraBusy(false);
@@ -96,7 +129,7 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
       setEnding(false);
       setNotice(message);
     }
-  }, []);
+  }, [caseId]);
 
   useEffect(() => {
     mounted.current = true;
@@ -106,6 +139,18 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
       onActiveChangeRef.current?.(false);
     };
   }, [closeLocal]);
+
+  // The Chime SDK requires a video tile to be rebound after its element is
+  // shown. Both elements start hidden behind avatars until media is ready.
+  useEffect(() => {
+    if (phase !== 'live' || !cameraOn || localTileId.current === null || !localEl.current) return;
+    session.current?.meeting.audioVideo.bindVideoElement(localTileId.current, localEl.current);
+  }, [phase, cameraOn]);
+
+  useEffect(() => {
+    if (phase !== 'live' || remoteTile === null || !remoteEl.current) return;
+    session.current?.meeting.audioVideo.bindVideoElement(remoteTile, remoteEl.current);
+  }, [phase, remoteTile]);
 
   const start = async (): Promise<void> => {
     if (!actor || !caseId || phaseRef.current === 'starting' || phaseRef.current === 'live') return;
@@ -118,18 +163,20 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
     request.current = controller;
     const current = (): boolean => mounted.current && generation.current === id;
     try {
-      const created = await callsApi.create(caseId, actor, controller.signal);
+      const created = await callsApi.create(caseId, controller.signal);
       if (!current()) return;
       callId.current = created.id;
-      const joined = await callsApi.join(caseId, created.id, actor, controller.signal);
+      const attemptId = crypto.randomUUID();
+      joinId.current = attemptId;
+      const joined = await callsApi.join(caseId, created.id, attemptId, controller.signal);
       if (!current()) return;
       const sdk = await import('amazon-chime-sdk-js');
       if (!current()) return;
       const logger = new sdk.NoOpLogger();
       const devices = new sdk.DefaultDeviceController(logger);
-      // The SDK default asks for audio and video just to reveal device labels.
-      // Joining must never request camera permission before the camera button.
-      devices.setDeviceLabelTrigger(() => navigator.mediaDevices.getUserMedia({ audio: true, video: false }));
+      // Device labels are optional. The SDK default would request microphone and
+      // camera permission while merely enumerating devices, which can hang join.
+      devices.setDeviceLabelTrigger(() => Promise.reject(new Error('Device labels unavailable')));
       const meeting = new sdk.DefaultMeetingSession(
         new sdk.MeetingSessionConfiguration(joined.meeting, joined.attendee),
         logger,
@@ -152,6 +199,7 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
         videoTileDidUpdate: tile => {
           if (!current() || tile.tileId === null || tile.tileId === undefined || tile.isContent) return;
           const element = tile.localTile ? localEl.current : remoteEl.current;
+          if (tile.localTile) localTileId.current = tile.tileId;
           if (element) av.bindVideoElement(tile.tileId, element);
           if (!tile.localTile) setRemoteTile(tile.active ? tile.tileId : null);
         },
@@ -162,27 +210,32 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
       av.addObserver(handle.observer);
 
       try {
-        const microphones = await av.listAudioInputDevices();
+        const microphones = await boundedDeviceWait(av.listAudioInputDevices());
         if (!current()) return;
         if (microphones[0]) {
-          await av.startAudioInput(microphones[0].deviceId);
-          if (!current()) {
-            try { await av.stopAudioInput(); } catch { /* already stopped */ }
-            return;
+          let timedOut = false;
+          const acquiring = av.startAudioInput(microphones[0].deviceId);
+          void acquiring.then(() => {
+            if (!current() || timedOut) void av.stopAudioInput().catch(() => undefined);
+          }).catch(() => undefined);
+          try {
+            await boundedDeviceWait(acquiring);
+          } catch (cause) {
+            if (cause instanceof DeviceWaitTimeout) timedOut = true;
+            throw cause;
           }
+          if (!current()) return; // The late acquisition handler releases this input.
           setMicrophoneReady(true);
         } else {
           setMicrophoneNotice('No microphone is available. You can join and listen.');
         }
       } catch {
-        if (!current()) {
-          try { await av.stopAudioInput(); } catch { /* already stopped */ }
-          return;
-        }
-        setMicrophoneNotice('Microphone access was denied or unavailable. You can join and listen.');
+        if (!current()) return;
+        try { av.realtimeMuteLocalAudio(); } catch { /* no input was selected */ }
+        setMicrophoneNotice('Microphone access is pending or unavailable. You can join and listen. Leave and rejoin after allowing access to use it.');
       }
       if (!current()) return;
-      if (audioEl.current) await av.bindAudioElement(audioEl.current);
+      if (audioEl.current) await boundedDeviceWait(Promise.resolve(av.bindAudioElement(audioEl.current)));
       if (!current()) return;
       handle.connectionTimer = window.setTimeout(() => {
         if (!current() || phaseRef.current !== 'starting') return;
@@ -226,26 +279,55 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
         setCameraOn(false);
         await av.stopVideoInput();
       } else {
-        const cameras = await av.listVideoInputDevices();
-        if (!current()) return;
-        if (!cameras[0]) {
-          setError('No camera is available.');
-          return;
-        }
-        await av.startVideoInput(cameras[0].deviceId);
+        // A device enumerated before permission may have an empty ID. Chime
+        // silently ignores that ID, so acquire the browser's default camera
+        // directly and hand its live stream to the SDK.
+        let expired = false;
+        const acquiring = navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        void acquiring.then(stream => {
+          if (!current() || expired) stream.getTracks().forEach(track => track.stop());
+        }).catch(() => undefined);
+        const cameraStream = await boundedDeviceWait(acquiring).catch(cause => {
+          if (cause instanceof DeviceWaitTimeout) expired = true;
+          throw cause;
+        });
         if (!current()) {
-          await av.stopVideoInput();
+          cameraStream.getTracks().forEach(track => track.stop());
           return;
         }
-        av.startLocalVideoTile();
-        setCameraOn(true);
+        try {
+          const videoStream = await boundedDeviceWait(av.startVideoInput(cameraStream));
+          if (!current()) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            await av.stopVideoInput();
+            return;
+          }
+          if (!videoStream?.getVideoTracks().some(track => track.readyState === 'live')) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            await av.stopVideoInput();
+            setError('The camera did not provide a live video track. Check its privacy settings and try again.');
+            return;
+          }
+          const tileId = av.startLocalVideoTile();
+          if (tileId < 0) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            await av.stopVideoInput();
+            setError('This call could not start a video tile.');
+            return;
+          }
+          localTileId.current = tileId;
+          setCameraOn(true);
+        } catch (cause) {
+          cameraStream.getTracks().forEach(track => track.stop());
+          throw cause;
+        }
       }
-    } catch {
+    } catch (cause) {
       if (current()) {
         setCameraOn(false);
         try { av.stopLocalVideoTile(); } catch { /* already stopped */ }
         try { await av.stopVideoInput(); } catch { /* already stopped */ }
-        setError('Could not use the camera. Check camera permission and try again.');
+        setError(publicCameraError(cause));
       }
     } finally {
       if (current()) {
@@ -264,10 +346,10 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
       // The meeting ID stays server-side. Only a successful server response confirms it ended.
       const createdCallId = callId.current;
       if (!createdCallId) throw new Error('Call ID unavailable');
-      const result = await callsApi.end(caseId, createdCallId, actor);
+      const result = await callsApi.end(caseId, createdCallId);
       if (!mounted.current || generation.current !== id) return;
       if (result.state !== 'ended') throw new Error('End was not confirmed');
-      closeLocal('ended', 'The call ended for everyone.');
+      closeLocal('ended', 'The call ended for everyone.', false);
     } catch {
       if (mounted.current && generation.current === id) {
         setError('Could not confirm the call ended for everyone. You can retry or leave this device.');
@@ -288,13 +370,17 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
     {active ? <>
       <div className="relay-call-people">
         <div className="relay-call-person">
-          <video ref={localEl} muted playsInline autoPlay style={{ display: live && cameraOn ? 'block' : 'none' }} />
-          {!(live && cameraOn) && <span className={'relay-call-avatar ' + actor.role}>{initials(actor.name)}</span>}
+          <div className="relay-call-media">
+            <video ref={localEl} muted playsInline autoPlay style={{ visibility: live && cameraOn ? 'visible' : 'hidden' }} />
+            {!(live && cameraOn) && <span className={'relay-call-avatar ' + actor.role}>{initials(actor.name)}</span>}
+          </div>
           <strong>{actor.name} (You)</strong><span>{cameraOn ? 'Camera on' : 'Camera off'} · {microphoneReady ? muted ? 'Microphone muted' : 'Microphone on' : 'Microphone unavailable'}</span>
         </div>
         <div className="relay-call-person">
-          <video ref={remoteEl} playsInline autoPlay style={{ display: live && remoteTile !== null ? 'block' : 'none' }} />
-          {!(live && remoteTile !== null) && <span className={'relay-call-avatar ' + other.role}>{initials(other.name)}</span>}
+          <div className="relay-call-media">
+            <video ref={remoteEl} playsInline autoPlay style={{ visibility: live && remoteTile !== null ? 'visible' : 'hidden' }} />
+            {!(live && remoteTile !== null) && <span className={'relay-call-avatar ' + other.role}>{initials(other.name)}</span>}
+          </div>
           <strong>{other.name}</strong><span>{live ? remoteTile !== null ? 'Live video' : 'Waiting for video' : 'Connecting to Chime'}</span>
         </div>
       </div>

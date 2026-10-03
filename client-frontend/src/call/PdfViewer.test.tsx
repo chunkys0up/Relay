@@ -51,4 +51,27 @@ describe('Call PDF viewer', () => {
     fireEvent.change(screen.getByLabelText('Open a PDF from this computer'), { target: { files: [file] } });
     expect(await screen.findByTitle('PDF: term-sheet.pdf · this computer')).toHaveAttribute('src', 'blob:relay-pdf');
   });
+
+  it('shows only the current shared case packet in a live call', async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/session')) return Promise.resolve(json({ csrf_token: 't', mode: 'simulated', provider: 'test' }));
+      if (url.endsWith('/cases/harbor')) return Promise.resolve(json({
+        id: 'harbor', company: 'Harbor Analytics',
+        packets: [{ id: 'old', version: 1, hash: 'a', created_at: '' },
+                  { id: 'current', version: 2, hash: 'b', created_at: '' }],
+        sources: [{ id: 'source', name: 'other.pdf', mime_type: 'application/pdf' }],
+      }));
+      if (url.includes('/packets/current/download')) return Promise.resolve(pdf());
+      throw new Error(`Unexpected PDF request: ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<PdfViewer caseId="harbor" packetId="current"/>);
+    expect(await screen.findByTitle('PDF: Harbor Analytics · packet v2')).toHaveAttribute('src', 'blob:relay-pdf');
+    expect(screen.getAllByRole('option').map(option => option.textContent)).toEqual(['Harbor Analytics · packet v2']);
+    expect(screen.queryByRole('button', { name: 'Open PDF…' })).not.toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/workflow/cases', expect.anything());
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/workflow/cases/harbor/packets/old/download?inline=true', expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith('/api/workflow/cases/harbor/packets/current/download?inline=true', expect.anything());
+  });
 });
