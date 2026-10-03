@@ -41,3 +41,13 @@ binary extraction remains unsupported.
 
 Implementation evidence and limitations: [V2 verification](docs/v2-design-verification.md).
 The isolated branch is `V2-Design` (Git does not permit spaces in branch names).
+## Bedrock packet workflow baseline
+
+The founder Home/AI Chat screens also offer an explicit backend workspace using
+Strands, configured Sonnet 5 access, WebSocket task/message updates and confirmed
+PDF generation/filling. See [setup, boundaries and tests](docs/bedrock-workflow.md).
+This local workflow uses SQLite development persistence; existing local demo and
+Chime behavior remain available. Live AWS invocation is not verified by local tests.
+
+The backend packet workspace uses one orchestrator with separate document reader,
+writer and PDF verifier agents. See [multi-agent architecture](docs/multiagent-workflow.md).

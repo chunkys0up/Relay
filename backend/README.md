@@ -96,3 +96,12 @@ the caller and call records are in memory. Production authentication, server-sid
 case authorization and persistent meeting lifecycle management remain required.
 The frontend shared-document gate is not server authorization. Use only a trusted
 development environment until those backend requirements are implemented.
+
+## Strands / Bedrock workflow baseline
+
+The separate `app.workflow_app:app` service on loopback port 8001 now connects the
+founder backend workspace to the installed Strands SDK and a configured Bedrock
+model/profile. It adds owner-scoped WebSocket snapshots, source extraction,
+confirmed fields and immutable PDF output. The legacy `/api/chat` harness above
+is preserved. See [workflow setup](../docs/bedrock-workflow.md) for current support
+and the SQLite development/RDS boundary.
