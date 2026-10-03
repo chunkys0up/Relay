@@ -51,3 +51,11 @@ Chime behavior remain available. Live AWS invocation is not verified by local te
 
 The backend packet workspace uses one orchestrator with separate document reader,
 writer and PDF verifier agents. See [multi-agent architecture](docs/multiagent-workflow.md).
+
+## Private advisor Bedrock chat
+
+Advisor Clients now has an explicit server synthetic workspace with version-bound
+private chat, authorized citations, comparison and editable follow-up drafts.
+Its SQLite grants and conversations are separate from browser demo state and the
+legacy generic chat/document APIs. See [advisor setup and boundaries](docs/advisor-bedrock.md)
+and [bounded-loop results](ADVISOR-RESULTS.md) for verification status.

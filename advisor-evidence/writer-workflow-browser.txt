@@ -1,0 +1,50 @@
+[WebServer] INFO:     Started server process [202506]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8029 (Press CTRL+C to quit)
+
+Running 6 tests using 1 worker
+
+[WebServer] [BABEL] Note: The code generator has deoptimised the styling of /tmp/relay-advisor-workflow-vite/deps/react-dom_client.js?v=08c2a2b4 as it exceeds the max of 500KB.
+[WebServer] INFO:     127.0.0.1:50106 - "WebSocket /api/workflow/cases/b4514fad-dbb5-4180-9310-90e9a0586efe/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:50130 - "WebSocket /api/workflow/cases/b4514fad-dbb5-4180-9310-90e9a0586efe/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:50308 - "WebSocket /api/workflow/cases/b4514fad-dbb5-4180-9310-90e9a0586efe/events" [accepted]
+[WebServer] INFO:     connection open
+  ✓  1 tests/workflow-browser/agent-actions.spec.ts:3:1 › real Strands tool loop proposes a PDF and saves only after review (5.3s)
+[WebServer] INFO:     127.0.0.1:50324 - "WebSocket /api/workflow/cases/087f7adb-1ca7-4188-a2fc-07760dc0586a/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:50420 - "WebSocket /api/workflow/cases/087f7adb-1ca7-4188-a2fc-07760dc0586a/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:58316 - "WebSocket /api/workflow/cases/087f7adb-1ca7-4188-a2fc-07760dc0586a/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:58358 - "WebSocket /api/workflow/cases/087f7adb-1ca7-4188-a2fc-07760dc0586a/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:58432 - "WebSocket /api/workflow/cases/087f7adb-1ca7-4188-a2fc-07760dc0586a/events" [accepted]
+[WebServer] INFO:     connection open
+  ✓  2 tests/workflow-browser/packet.spec.ts:5:1 › input-driven packet through WebSocket, conflict confirmation, immutable PDF and template (7.2s)
+[WebServer] INFO:     127.0.0.1:58502 - "WebSocket /api/workflow/cases/003d972e-8af3-406e-a139-3269e654e1ac/events" [accepted]
+[WebServer] INFO:     connection open
+  ✓  3 tests/workflow-browser/packet.spec.ts:69:1 › separate browser session cannot see another founder case (3.6s)
+[WebServer] INFO:     127.0.0.1:58564 - "WebSocket /api/workflow/cases/fccd4c40-517e-4316-aa55-a9ea3b4047e8/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:55218 - "WebSocket /api/workflow/cases/fccd4c40-517e-4316-aa55-a9ea3b4047e8/events" [accepted]
+[WebServer] INFO:     connection open
+  ✓  4 tests/workflow-browser/source-aware.spec.ts:29:1 › source interpretation, deduplication, attributed answers and confirmed revision remain in one chat (6.0s)
+[WebServer] INFO:     127.0.0.1:55276 - "WebSocket /api/workflow/cases/462be9c2-001b-4d93-abe5-8ef5d37a4237/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:55364 - "WebSocket /api/workflow/cases/462be9c2-001b-4d93-abe5-8ef5d37a4237/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:55398 - "WebSocket /api/workflow/cases/462be9c2-001b-4d93-abe5-8ef5d37a4237/events" [accepted]
+[WebServer] INFO:     connection open
+  ✓  5 tests/workflow-browser/source-aware.spec.ts:99:1 › WebSocket reconnect recovers committed source state without replaying work (4.7s)
+[WebServer] INFO:     127.0.0.1:55426 - "WebSocket /api/workflow/cases/330dac4f-57f3-4f5f-873a-e2ba1ccdc5b9/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:55460 - "WebSocket /api/workflow/cases/330dac4f-57f3-4f5f-873a-e2ba1ccdc5b9/events" [accepted]
+[WebServer] INFO:     connection open
+[WebServer] INFO:     127.0.0.1:59390 - "WebSocket /api/workflow/cases/330dac4f-57f3-4f5f-873a-e2ba1ccdc5b9/events" [accepted]
+[WebServer] INFO:     connection open
+  ✓  6 tests/workflow-browser/team.spec.ts:3:1 › orchestrator delegates to specialists and verifies the actual PDF before review (5.0s)
+
+  6 passed (36.3s)

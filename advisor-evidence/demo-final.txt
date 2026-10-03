@@ -1,0 +1,114 @@
+
+Running 69 tests using 1 worker
+
+[WebServer] [BABEL] Note: The code generator has deoptimised the styling of /tmp/relay-advisor-demo-vite/deps/react-dom_client.js?v=08c2a2b4 as it exceeds the max of 500KB.
+  ✓   1 tests/browser/advisor-chat.spec.ts:46:1 › advisor server packet, grounded chat, private draft and reload remain in one exact context (3.6s)
+  ✓   2 tests/browser/advisor-chat.spec.ts:71:1 › advisor failed answer retries with same idempotency key and no duplicate rendered answer (2.0s)
+  ✓   3 tests/browser/advisor-chat.spec.ts:85:1 › advisor Home and Documents never request the unscoped live document catalog (4.2s)
+  ✓   4 tests/browser/chime-design.spec.ts:4:3 › founder: Chime fits V2 pre-call and makes no request before joining (1.9s)
+  ✓   5 tests/browser/chime-design.spec.ts:4:3 › advisor: Chime fits V2 pre-call and makes no request before joining (1.9s)
+  ✓   6 tests/browser/chime-design.spec.ts:34:3 › founder: mocked Chime lifecycle stays in the shared review layout (2.4s)
+  ✓   7 tests/browser/chime-design.spec.ts:34:3 › advisor: mocked Chime lifecycle stays in the shared review layout (2.3s)
+  ✓   8 tests/browser/control-transitions.spec.ts:62:2 › founder: every shell destination, brand, role switch and skip link (2.4s)
+  ✓   9 tests/browser/control-transitions.spec.ts:79:2 › founder: global search finds drafts and originals with working filters (2.0s)
+  ✓  10 tests/browser/control-transitions.spec.ts:95:2 › founder: Settings tabs expose distinct content and destinations (1.7s)
+  ✓  11 tests/browser/control-transitions.spec.ts:62:2 › advisor: every shell destination, brand, role switch and skip link (2.2s)
+  ✓  12 tests/browser/control-transitions.spec.ts:79:2 › advisor: global search finds drafts and originals with working filters (2.2s)
+  ✓  13 tests/browser/control-transitions.spec.ts:95:2 › advisor: Settings tabs expose distinct content and destinations (1.7s)
+  ✓  14 tests/browser/control-transitions.spec.ts:114:2 › /founder/chat: audience, message preview/edit and confirmed send change thread (2.1s)
+  ✓  15 tests/browser/control-transitions.spec.ts:114:2 › /founder/sources: audience, message preview/edit and confirmed send change thread (2.3s)
+  ✓  16 tests/browser/control-transitions.spec.ts:114:2 › /founder/documents: audience, message preview/edit and confirmed send change thread (2.1s)
+  ✓  17 tests/browser/control-transitions.spec.ts:114:2 › /founder/call: audience, message preview/edit and confirmed send change thread (1.9s)
+[WebServer] 11:12:03 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  18 tests/browser/control-transitions.spec.ts:114:2 › /advisor/clients: audience, message preview/edit and confirmed send change thread (2.5s)
+  ✓  19 tests/browser/control-transitions.spec.ts:114:2 › /advisor/reviews: audience, message preview/edit and confirmed send change thread (2.0s)
+  ✓  20 tests/browser/control-transitions.spec.ts:114:2 › /advisor/documents: audience, message preview/edit and confirmed send change thread (2.1s)
+  ✓  21 tests/browser/control-transitions.spec.ts:114:2 › /advisor/call: audience, message preview/edit and confirmed send change thread (1.9s)
+  ✓  22 tests/browser/control-transitions.spec.ts:143:1 › Home: chat entry, recent links and every source selection (4.1s)
+  ✓  23 tests/browser/control-transitions.spec.ts:159:1 › Sources: every file button, source citation, search clearing and Home links (2.2s)
+  ✓  24 tests/browser/control-transitions.spec.ts:178:1 › Documents: real tabs, history selection, citations and ancillary destinations (2.4s)
+[WebServer] 11:12:20 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  25 tests/browser/control-transitions.spec.ts:195:1 › Advisor Clients: card, every shared row, search clearing, citations and call (1.9s)
+  ✓  26 tests/browser/control-transitions.spec.ts:217:1 › Advisor Reviews: selection, search clear, open specific document and call (2.0s)
+[WebServer] 11:12:26 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  27 tests/browser/control-transitions.spec.ts:231:1 › Advisor Documents: each original, return to packet, version select and Back to clients (2.3s)
+  ✓  28 tests/browser/control-transitions.spec.ts:252:2 › /advisor/reviews: every question/approval control has correct confirmation transition (3.5s)
+  ✓  29 tests/browser/control-transitions.spec.ts:252:2 › /advisor/documents: every question/approval control has correct confirmation transition (3.7s)
+  ✓  30 tests/browser/control-transitions.spec.ts:252:2 › /advisor/call: every question/approval control has correct confirmation transition (3.5s)
+  ✓  31 tests/browser/control-transitions.spec.ts:281:1 › V2: comparison toggle/selector, historical controls, handoff choices and approval (5.8s)
+  ✓  32 tests/browser/control-transitions.spec.ts:314:1 › Clarification: preview/edit, answer, exact message citation and success destinations (4.5s)
+  ✓  33 tests/browser/control-transitions.spec.ts:336:2 › founder: invite, cancel, recipient decline/accept, mute and end without capture (4.9s)
+  ✓  34 tests/browser/control-transitions.spec.ts:336:2 › advisor: invite, cancel, recipient decline/accept, mute and end without capture (4.5s)
+  ✓  35 tests/browser/control-transitions.spec.ts:363:1 › Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation (2.2s)
+  ✓  36 tests/browser/control-transitions.spec.ts:393:2 › founder: mobile Search entry, empty search reset and every result link (2.0s)
+  ✓  37 tests/browser/control-transitions.spec.ts:413:2 › founder: Settings keyboard arrows/Home/End select and focus correct panel (1.9s)
+[WebServer] 11:13:03 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+[WebServer] 11:13:04 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+[WebServer] 11:13:04 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+[WebServer] 11:13:04 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  38 tests/browser/control-transitions.spec.ts:393:2 › advisor: mobile Search entry, empty search reset and every result link (2.0s)
+  ✓  39 tests/browser/control-transitions.spec.ts:413:2 › advisor: Settings keyboard arrows/Home/End select and focus correct panel (1.5s)
+  ✓  40 tests/browser/control-transitions.spec.ts:433:1 › Founder Documents tabs support keyboard selection with correct timeline/preview (1.4s)
+  ✓  41 tests/browser/control-transitions.spec.ts:454:2 › /founder/sources: empty-state Go to Home destination works (1.3s)
+  ✓  42 tests/browser/control-transitions.spec.ts:454:2 › /founder/documents: empty-state Browse sources destination works (1.3s)
+  ✓  43 tests/browser/control-transitions.spec.ts:454:2 › /founder/call: empty-state View Documents destination works (1.3s)
+[WebServer] 11:13:13 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  44 tests/browser/control-transitions.spec.ts:454:2 › /advisor/call: empty-state View Clients destination works (1.7s)
+  ✓  45 tests/browser/control-transitions.spec.ts:454:2 › /founder/home/clarification: empty-state Return to Home destination works (1.5s)
+  ✓  46 tests/browser/control-transitions.spec.ts:463:1 › Clarification conversation: human-only audience, preview/edit/send and breadcrumb (3.4s)
+  ✓  47 tests/browser/control-transitions.spec.ts:480:1 › Search preserves role isolation for an unshared new packet version (5.2s)
+  ✓  48 tests/browser/control-transitions.spec.ts:491:1 › Founder Documents no-match Clear search returns selected current packet (1.3s)
+  ✓  49 tests/browser/screens.spec.ts:23:2 › founder-home: desktop, keyboard, responsive, empty and reconnect (1.6s)
+  ✓  50 tests/browser/screens.spec.ts:23:2 › founder-chat: desktop, keyboard, responsive, empty and reconnect (2.0s)
+  ✓  51 tests/browser/screens.spec.ts:23:2 › advisor-home: desktop, keyboard, responsive, empty and reconnect (1.9s)
+  ✓  52 tests/browser/screens.spec.ts:23:2 › founder-sources: desktop, keyboard, responsive, empty and reconnect (1.9s)
+  ✓  53 tests/browser/screens.spec.ts:23:2 › founder-documents: desktop, keyboard, responsive, empty and reconnect (1.8s)
+  ✓  54 tests/browser/screens.spec.ts:23:2 › founder-call: desktop, keyboard, responsive, empty and reconnect (1.9s)
+  ✓  55 tests/browser/screens.spec.ts:23:2 › founder-clarification: desktop, keyboard, responsive, empty and reconnect (3.6s)
+[WebServer] 11:13:40 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+[WebServer] 11:13:41 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  56 tests/browser/screens.spec.ts:23:2 › advisor-clients: desktop, keyboard, responsive, empty and reconnect (2.1s)
+  ✓  57 tests/browser/screens.spec.ts:23:2 › advisor-reviews: desktop, keyboard, responsive, empty and reconnect (2.2s)
+  ✓  58 tests/browser/screens.spec.ts:23:2 › advisor-documents: desktop, keyboard, responsive, empty and reconnect (2.3s)
+  ✓  59 tests/browser/screens.spec.ts:23:2 › advisor-call: desktop, keyboard, responsive, empty and reconnect (2.0s)
+[WebServer] 11:13:54 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  60 tests/browser/screens.spec.ts:56:1 › returned questions create an unapproved version and require renewed handoff (6.6s)
+  ✓  61 tests/browser/screens.spec.ts:85:1 › local attachment intake succeeds and slow sends can be cancelled (2.5s)
+  ✓  62 tests/browser/screens.spec.ts:103:1 › call invitation requires recipient acceptance and never creates capture or live media (3.6s)
+[WebServer] 11:14:04 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  63 tests/browser/screens.spec.ts:121:1 › unsent drafts survive reconnect and stay scoped to role and audience (3.0s)
+  ✓  64 tests/browser/workflow-durability.spec.ts:4:1 › durable adapter rejects competing stale writes and remembers retry keys after reload (3.8s)
+  ✓  65 tests/browser/workflow-durability.spec.ts:26:1 › reloading during draft preparation recovers exactly one completed draft (5.1s)
+  ✓  66 tests/browser/workflow-regressions.spec.ts:10:1 › initial answer advances Home without advisor clarification and survives reload (4.1s)
+  ✓  67 tests/browser/workflow-regressions.spec.ts:23:1 › Home file intake stores actual content and remains visible after reload (3.5s)
+[WebServer] 11:14:24 PM [vite] http proxy error: /api/advisor/session
+[WebServer] Error: connect ECONNREFUSED 127.0.0.1:8029
+[WebServer]     at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16)
+  ✓  68 tests/browser/workflow-regressions.spec.ts:35:1 › separate tabs receive confirmed human messages, preserve privacy, and retain state on reload (7.3s)
+  ✓  69 tests/browser/workflow-regressions.spec.ts:60:1 › an initial private draft appears to a second founder tab but not the advisor until handoff (3.9s)
+
+  69 passed (3.2m)

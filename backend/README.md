@@ -169,3 +169,10 @@ model/profile. It adds owner-scoped WebSocket snapshots, source extraction,
 confirmed fields and immutable PDF output. The legacy `/api/chat` harness above
 is preserved. See [workflow setup](../docs/bedrock-workflow.md) for current support
 and the SQLite development/RDS boundary.
+
+## Private advisor workflow
+
+The separate loopback `app.workflow_app` also serves `/api/advisor`: server-issued
+synthetic advisor sessions, exact packet/source grants, private persisted chat
+and authorized evidence previews. It never uses the legacy caller-ID chat or
+unscoped document endpoints as authorization. See [advisor setup](../docs/advisor-bedrock.md).

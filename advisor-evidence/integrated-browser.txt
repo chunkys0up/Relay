@@ -1,0 +1,12 @@
+[WebServer] INFO:     Started server process [188579]
+[WebServer] INFO:     Waiting for application startup.
+[WebServer] INFO:     Application startup complete.
+[WebServer] INFO:     Uvicorn running on http://127.0.0.1:8030 (Press CTRL+C to quit)
+
+Running 2 tests using 1 worker
+
+[WebServer] [BABEL] Note: The code generator has deoptimised the styling of /tmp/relay-advisor-integration-vite/deps/react-dom_client.js?v=cb50e7d9 as it exceeds the max of 500KB.
+  ✓  1 tests/advisor-integration/advisor.spec.ts:7:1 › actual advisor API and Strands: cold bootstrap, evidence, drafts, comparison, persistence and private browser isolation (8.8s)
+  ✓  2 tests/advisor-integration/advisor.spec.ts:60:1 › actual advisor server rejects unassigned cases, unshared versions and missing CSRF (74ms)
+
+  2 passed (14.5s)

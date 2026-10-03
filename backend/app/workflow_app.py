@@ -12,6 +12,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routes.workflow import workflow_router
+from app.advisor.api import advisor_router
+from app.advisor.model import AdvisorProvider
+from app.advisor.store import AdvisorError, AdvisorStore
 from app.workflow.model import ProposalProvider
 from app.workflow.team import MultiAgentProvider
 from app.workflow.repository import Repository, WorkflowError
@@ -29,7 +32,7 @@ _ROLE_MODEL_ENV = {
 
 def create_workflow_app(
     *, database_path: str | None = None, provider: ProposalProvider | None = None,
-    test_mode: bool = False,
+    advisor_provider: AdvisorProvider | None = None, test_mode: bool = False,
 ) -> FastAPI:
     if database_path is None:
         database_path = str(Path.cwd() / ".relay" / "workflow.sqlite3")
@@ -45,11 +48,21 @@ def create_workflow_app(
                 profile=os.environ.get("AWS_PROFILE") or None,
                 role_model_ids=role_model_ids,
             )
+    if advisor_provider is None and not test_mode:
+        advisor_model = os.environ.get("BEDROCK_ORCHESTRATOR_MODEL_ID", "")
+        if advisor_model:
+            advisor_provider = AdvisorProvider(
+                advisor_model, os.environ.get("AWS_REGION", "us-east-1"),
+                os.environ.get("AWS_PROFILE") or None,
+            )
     repository = Repository(database_path)
+    advisor_store = AdvisorStore(database_path)
     repository.recover_interrupted_jobs()
     service = WorkflowService(repository, provider)
     app = FastAPI(title="Relay founder packet workflow (local demo)")
     app.state.workflow_service = service
+    app.state.advisor_store = advisor_store
+    app.state.advisor_provider = advisor_provider
 
     @app.middleware("http")
     async def loopback_only(
@@ -77,6 +90,12 @@ def create_workflow_app(
                             content={"error": {"code": exc.code, "message": exc.code,
                                                "retryable": exc.status >= 500}})
 
+    @app.exception_handler(AdvisorError)
+    async def advisor_error(_request: Request, exc: AdvisorError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status,
+                            content={"error": {"code": exc.code, "message": exc.code,
+                                               "retryable": exc.retryable}})
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173",
@@ -86,6 +105,7 @@ def create_workflow_app(
         allow_headers=["Content-Type", "X-CSRF-Token", "Idempotency-Key"],
     )
     app.include_router(workflow_router(repository, service, test_mode=test_mode))
+    app.include_router(advisor_router(advisor_store, advisor_provider, test_mode=test_mode))
     return app
 
 

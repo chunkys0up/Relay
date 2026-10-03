@@ -1,0 +1,56 @@
+
+> relay@0.1.0 build
+> npm run build --workspace relay-frontend --
+
+
+> relay-frontend@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v6.4.3 building for production...
+transforming...
+✓ 1174 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                0.41 kB │ gzip:   0.29 kB
+dist/assets/Screen-DdGUfNOg.css                0.07 kB │ gzip:   0.08 kB
+dist/assets/Screen-DcKUyKkA.css                0.07 kB │ gzip:   0.09 kB
+dist/assets/Screen-DuEdgC6m.css                3.66 kB │ gzip:   0.99 kB
+dist/assets/BackendWorkspace-CK0SziEd.css      3.81 kB │ gzip:   1.11 kB
+dist/assets/Screen-Je1MaYpL.css                4.49 kB │ gzip:   1.24 kB
+dist/assets/Screen-DlxrKNzj.css                5.24 kB │ gzip:   1.31 kB
+dist/assets/Screen-D3c_o0Ux.css                5.36 kB │ gzip:   1.30 kB
+dist/assets/Screen-BuZcYezF.css                5.68 kB │ gzip:   1.33 kB
+dist/assets/Screen-BWvc8PpE.css                5.83 kB │ gzip:   1.53 kB
+dist/assets/Screen-DnkkO6AQ.css                6.05 kB │ gzip:   1.37 kB
+dist/assets/Screen-T1O39nr6.css                7.79 kB │ gzip:   1.84 kB
+dist/assets/Screen--cRcEzUJ.css                9.46 kB │ gzip:   2.46 kB
+dist/assets/advisorChat-BCS5QoO2.css           9.46 kB │ gzip:   2.29 kB
+dist/assets/index-dlt4kV09.css                21.97 kB │ gzip:   5.13 kB
+dist/assets/tabs-pwH_om_g.js                   0.67 kB │ gzip:   0.44 kB
+dist/assets/callsApi-Db9Sb8Xw.js               0.80 kB │ gzip:   0.51 kB
+dist/assets/Screen-C6wmYm9f.js                 2.79 kB │ gzip:   1.09 kB
+dist/assets/Screen-HWvYKcpc.js                 2.87 kB │ gzip:   1.09 kB
+dist/assets/search-DS-TST1v.js                 3.18 kB │ gzip:   1.33 kB
+dist/assets/settings-exYjrE-b.js               3.51 kB │ gzip:   1.43 kB
+dist/assets/review-UPM3ZHgS.js                 4.77 kB │ gzip:   1.64 kB
+dist/assets/Screen-CAXVNckM.js                 4.96 kB │ gzip:   1.66 kB
+dist/assets/Screen-UBzdAeBN.js                 6.33 kB │ gzip:   2.24 kB
+dist/assets/conversation-psEfT5WO.js           6.36 kB │ gzip:   2.61 kB
+dist/assets/Screen-jGaPc6LN.js                 6.50 kB │ gzip:   2.10 kB
+dist/assets/Screen-QpKnHrTL.js                 6.61 kB │ gzip:   2.20 kB
+dist/assets/Screen-DEJq9OlD.js                 6.96 kB │ gzip:   2.23 kB
+dist/assets/Screen-B82cJ35M.js                 7.08 kB │ gzip:   2.30 kB
+dist/assets/Screen-z3z5UhyM.js                 9.12 kB │ gzip:   2.94 kB
+dist/assets/Screen-aYhUW97x.js                12.03 kB │ gzip:   3.68 kB
+dist/assets/index.browser-DYTi2py6.js         14.64 kB │ gzip:   5.12 kB
+dist/assets/call-pwIFxaaR.js                  15.21 kB │ gzip:   4.57 kB
+dist/assets/Screen-CZsHUbe9.js                23.28 kB │ gzip:   7.16 kB
+dist/assets/BackendWorkspace-CEFvEMFl.js      27.56 kB │ gzip:   8.99 kB
+dist/assets/index-AZ5l0KG5.js                303.84 kB │ gzip:  96.51 kB
+dist/assets/index-Dyx8ZXPR.js              1,356.58 kB │ gzip: 311.29 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 10.85s
