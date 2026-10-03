@@ -135,7 +135,7 @@ export default function Screen() {
                           {flag.citations.map((citation, index) => <CitationLink key={`${citation.source_id}-${index}`} citation={citation}/>)}
                         </div>
                       ))}
-                      <Link className="button button-outline" to={sentQuestion ? '/founder/home/clarification' : '/founder/home#message-main'}>{sentQuestion ? 'Answer clarification in chat' : 'Discuss in Home chat'}</Link>
+                      <Link className="button button-outline" to={sentQuestion ? '/founder/home/clarification' : '/founder/chat#message-main'}>{sentQuestion ? 'Answer clarification in chat' : 'Discuss in AI Chat'}</Link>
                     </Panel>
                   )}
 

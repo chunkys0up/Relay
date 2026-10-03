@@ -1,51 +1,53 @@
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, CallControls, Conversation, EmptyState, PageTitle, PacketPreview, Panel, useRelay } from '@relay/shared';
+import { Badge, CallControls, Conversation, EmptyState, PacketPreview, Panel, useRelay } from '@relay/shared';
 import './call.css';
 
 export default function Screen(): ReactNode {
   const { snapshot } = useRelay();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   if (!snapshot) return null;
 
-  const activeCall = snapshot.call && (snapshot.call.state === 'ringing' || snapshot.call.state === 'connecting' || snapshot.call.state === 'connected');
-  const packetId = activeCall ? snapshot.call?.packet_version_id : snapshot.current_packet_version_id;
-  const packet = snapshot.packets.find((item) => item.id === packetId);
+  const available = snapshot.packets.filter(packet => snapshot.grants.some(grant =>
+    grant.advisor_id === snapshot.advisors[0].id &&
+    grant.packet_version_id === packet.id &&
+    grant.packet_hash === packet.hash
+  ));
+  const call = snapshot.call;
+  const ongoing = Boolean(call && !['ended', 'failed'].includes(call.state));
+  const selected = ongoing
+    ? available.find(packet => packet.id === call?.packet_version_id)
+    : available.find(packet => packet.id === selectedId) ??
+      available.find(packet => packet.id === snapshot.current_packet_version_id) ??
+      available.at(-1);
 
-  if (!packet) {
-    return (
-      <section className="founder-call-screen">
-        <PageTitle title="Call" subtitle="Founder and advisor conversation" />
-        <Panel className="founder-call-empty">
-          <EmptyState title="No packet is ready for a call">
-            <p>A shared packet will appear here when one is available for review.</p>
-            <Link className="button button-outline" to="/founder/documents">View Documents</Link>
-          </EmptyState>
-        </Panel>
-      </section>
-    );
-  }
+  if (!selected) return <section className="relay-call-screen founder-call-screen">
+    <header className="relay-call-header"><h1>Call</h1><p>Get ready before you connect.</p></header>
+    <Panel><EmptyState title="No shared document is ready for a call"><p>Share the exact packet version with Maya before inviting her.</p><Link className="button button-outline" to="/founder/documents">View Documents</Link></EmptyState></Panel>
+  </section>;
 
-  return (
-    <section className="founder-call-screen">
-      <div className="founder-call-breadcrumb"><span>Call</span><span aria-hidden="true">/</span><span>{packet.title} · v{packet.version}</span></div>
-      <PageTitle title="Founder call" subtitle="Review the shared packet with Maya." />
-      <div className="call-grid founder-call-layout">
-        <section className="founder-call-packet">
-          <div className="founder-call-section-heading"><h2>Packet under review</h2><Badge>v{packet.version} · Synthetic</Badge></div>
-          <PacketPreview packet={packet} />
-        </section>
-        <div className="founder-call-side">
-          <CallControls />
-          <Panel title="AI support" className="founder-call-ai-note">
-            <Badge>Live suggestions off</Badge>
-            <p>Relay does not make suggestions during this simulated call. Source-linked details remain available in the packet.</p>
-          </Panel>
-          <section className="founder-call-messages" aria-label="Human messages">
-            <div className="founder-call-section-heading"><h2>Messages</h2><Badge>Human participants</Badge></div>
-            <Conversation humanOnly />
-          </section>
+  return <section className="relay-call-screen founder-call-screen">
+    <header className="relay-call-header">{ongoing
+      ? <><h1>Review with {snapshot.advisors[0].name}</h1><p>Shared document · simulated call</p></>
+      : <><h1>Call</h1><p>Get ready before you connect.</p></>}
+    </header>
+    <div className="relay-call-layout">
+      <div className="relay-call-document-column">
+        <div className="relay-call-document-heading">
+          <h2>Document for this call</h2>
+          {!ongoing && available.length > 1 && <label className="relay-call-packet-picker">Shared document<select aria-label="Document for this call" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{available.map(packet => <option value={packet.id} key={packet.id}>{packet.title} · v{packet.version}</option>)}</select></label>}
+          <Badge tone="success">Already shared</Badge>
         </div>
+        <PacketPreview packet={selected} />
+        {!ongoing && <p className="relay-call-document-note">Ready to review together when the invitation is accepted.</p>}
       </div>
-    </section>
-  );
+      <div className="relay-call-right-column">
+        <CallControls packet={selected} />
+        {ongoing ? <section className="relay-call-messages" aria-label="Human messages"><h2>Messages</h2><Conversation humanOnly /></section>
+          : <details className="relay-call-pre-message"><summary>Send a message to {snapshot.advisors[0].name}</summary><Conversation humanOnly /></details>}
+      </div>
+    </div>
+  </section>;
+
 }

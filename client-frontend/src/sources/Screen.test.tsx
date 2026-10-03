@@ -28,7 +28,7 @@ describe('Founder Sources', () => {
     expect(screen.getByRole('searchbox', { name: 'Search original sources' })).toBeVisible();
     expect(screen.queryByLabelText('Attach a source')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Conversation' })).toBeVisible();
-    expect(screen.getByRole('link', { name: /Add sources in Home chat/ })).toHaveAttribute('href', '/founder/home');
+    expect(screen.getByRole('link', { name: /Upload documents on Home/ })).toHaveAttribute('href', '/founder/home');
   });
 
   it('labels page locators accurately and identifies fixture originals', async () => {
