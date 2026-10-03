@@ -28,3 +28,15 @@ clients, percentages, documents or real integrations to fill the mockup.
 
 Append evidence/correction counts to REDESIGN-RESULTS.md. Final handoff must name
 checks actually run, inspected screenshots, unresolved limits and worktree.
+
+## Chime integration continuation
+
+User authorized integrating main's Chime implementation, declared dependency
+installation, and updating/merging PR #4 after verification. Keep all prior
+acceptance units and add: a single V2 call panel with explicit demo/live modes,
+shared packet pinned while connecting/active, SDK-event-driven readiness,
+cancellation/unmount cleanup, camera off until requested, and truthful API errors.
+Live AWS/media testing and secrets remain unauthorized. New lifecycle tests use
+mocks; report that limit. Existing banner assertion is mapped from "All actions
+simulated" to "Demo workspace · Chime supports live media" because Chime is now
+available; keep the assertion. Up to 8 focused corrections and independent review.

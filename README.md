@@ -7,11 +7,11 @@ Relay is a synthetic founder/advisor demo for turning source documents and found
 - `client-frontend/` — client Home (profile, documents, uploads, progress), AI Chat and Call.
 - `advsior-frontend/` — advisor Home, Clients with inline review and private AI, and Call (existing folder spelling).
 - `frontend-shared/` — runnable Vite app: package, HTML entrypoint, build config, public assets, routing and shared UI/state.
-- `backend/` — FastAPI chat and S3 uploads, plus a Postgres schema awaiting application integration.
+- `backend/` — FastAPI chat, S3 uploads and Chime call endpoints, plus a Postgres schema awaiting application integration.
 
 ## Run locally
 
-For the frontend, run `npm ci` once, then `npm run dev` from this directory. Root scripts delegate to the `frontend-shared` npm workspace; `cd frontend-shared && npm run dev` also works. Both roles share this app. Frontend actions use a synthetic local adapter; starting the backend does not connect it automatically.
+For the frontend, run `npm ci` once, then `npm run dev` from this directory. Root scripts delegate to the `frontend-shared` npm workspace; `cd frontend-shared && npm run dev` also works. Both roles share this app. Documents, chat, sharing and reviews use a synthetic local adapter. The Call page also offers Amazon Chime live media through FastAPI; select the live connection explicitly. Starting the backend does not connect the other workflows automatically.
 
 See the [backend README](backend/README.md) for architecture, endpoints, configuration and backend startup.
 
@@ -28,7 +28,7 @@ The intended flow is upload → extract facts and resolve missing/conflicting va
 The approved October 2 mockups supersede older navigation requirements in the
 planning documents. Sources, Documents, Reviews and clarification URLs remain
 available as contextual tools; primary navigation uses the destinations above.
-Both roles have pre-call preparation and an active simulated review layout.
+Both roles have pre-call preparation and an active review layout with an explicit Demo / Amazon Chime connection selector. Chime uses the same document and review composition; document access still follows the local exact-version grant.
 There are no recording or transcript controls.
 
 This adapter contains one assigned client. Progress and shared document counts

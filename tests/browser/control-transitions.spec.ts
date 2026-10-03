@@ -55,7 +55,7 @@ const pageErrors=new WeakMap<Page,string[]>();
 test.beforeEach(async({page})=>{const errors:string[]=[];pageErrors.set(page,errors);page.on('pageerror',error=>errors.push(error.message));});
 test.afterEach(async({page})=>{
   expect(pageErrors.get(page)).toEqual([]);
-  await expect(page.getByText('Synthetic demo · All actions simulated',{exact:true})).toBeVisible();
+  await expect(page.getByText('Demo workspace · Chime supports live media',{exact:true})).toBeVisible();
 });
 
 for(const role of ['founder','advisor'] as const){

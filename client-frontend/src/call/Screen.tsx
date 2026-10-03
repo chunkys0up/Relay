@@ -7,6 +7,7 @@ import './call.css';
 export default function Screen(): ReactNode {
   const { snapshot } = useRelay();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [livePacketId, setLivePacketId] = useState<string | null>(null);
   if (!snapshot) return null;
 
   const available = snapshot.packets.filter(packet => snapshot.grants.some(grant =>
@@ -15,9 +16,10 @@ export default function Screen(): ReactNode {
     grant.packet_hash === packet.hash
   ));
   const call = snapshot.call;
-  const ongoing = Boolean(call && !['ended', 'failed'].includes(call.state));
+  const demoOngoing = Boolean(call && !['ended', 'failed'].includes(call.state));
+  const ongoing = demoOngoing || livePacketId !== null;
   const selected = ongoing
-    ? available.find(packet => packet.id === call?.packet_version_id)
+    ? available.find(packet => packet.id === (livePacketId ?? call?.packet_version_id))
     : available.find(packet => packet.id === selectedId) ??
       available.find(packet => packet.id === snapshot.current_packet_version_id) ??
       available.at(-1);
@@ -29,7 +31,7 @@ export default function Screen(): ReactNode {
 
   return <section className="relay-call-screen founder-call-screen">
     <header className="relay-call-header">{ongoing
-      ? <><h1>Review with {snapshot.advisors[0].name}</h1><p>Shared document · simulated call</p></>
+      ? <><h1>Review with {snapshot.advisors[0].name}</h1><p>Shared document · {livePacketId ? 'Amazon Chime' : 'simulated call'}</p></>
       : <><h1>Call</h1><p>Get ready before you connect.</p></>}
     </header>
     <div className="relay-call-layout">
@@ -40,10 +42,10 @@ export default function Screen(): ReactNode {
           <Badge tone="success">Already shared</Badge>
         </div>
         <PacketPreview packet={selected} />
-        {!ongoing && <p className="relay-call-document-note">Ready to review together when the invitation is accepted.</p>}
+        {!ongoing && <p className="relay-call-document-note">Choose a connection to review this shared version together.</p>}
       </div>
       <div className="relay-call-right-column">
-        <CallControls packet={selected} />
+        <CallControls packet={selected} onLiveActiveChange={active => setLivePacketId(active ? selected.id : null)} />
         {ongoing ? <section className="relay-call-messages" aria-label="Human messages"><h2>Messages</h2><Conversation humanOnly /></section>
           : <details className="relay-call-pre-message"><summary>Send a message to {snapshot.advisors[0].name}</summary><Conversation humanOnly /></details>}
       </div>

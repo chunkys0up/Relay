@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { LiveCall } from './liveCall';
 import { useRelay } from './context';
 import type { Actor, PacketVersion } from './types';
 import { Badge, Button } from './ui';
@@ -16,7 +17,24 @@ function PersonTile({ person, self, muted }: { person: Actor; self: boolean; mut
   </div>;
 }
 
-export function CallControls({ packet }: { packet: PacketVersion }): ReactNode {
+export function CallControls({ packet, onLiveActiveChange }: { packet: PacketVersion; onLiveActiveChange?: (active: boolean) => void }): ReactNode {
+  const [mode, setMode] = useState<'demo' | 'live'>('demo');
+  const [liveActive, setLiveActive] = useState(false);
+  const { snapshot } = useRelay();
+  const demoActive = Boolean(snapshot?.call && !['ended', 'failed'].includes(snapshot.call.state));
+  return <>
+    <label className="relay-call-mode">Call connection
+      <select aria-label="Call connection" value={mode} disabled={liveActive || demoActive} onChange={event => setMode(event.target.value as 'demo' | 'live')}>
+        <option value="demo">Demo preview · simulated</option>
+        <option value="live">Amazon Chime · live media</option>
+      </select>
+    </label>
+    {mode === 'live' && <p className="relay-call-disclaimer">Chime carries live audio and video. Documents, messages and reviews remain local demo data.</p>}
+    {mode === 'live' ? <LiveCall onActiveChange={active => { setLiveActive(active); onLiveActiveChange?.(active); }} /> : <DemoCallControls packet={packet} />}
+  </>;
+}
+
+function DemoCallControls({ packet }: { packet: PacketVersion }): ReactNode {
   const { snapshot, role, busy, run } = useRelay();
   if (!snapshot) return null;
   const actor = role === 'founder' ? snapshot.founder : snapshot.advisors[0];
