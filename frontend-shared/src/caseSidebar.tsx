@@ -7,8 +7,9 @@ import { Collapsible } from './collapsible';
 import { Conversation } from './conversation';
 import type { ChatThread } from './conversation';
 import { useRelay } from './context';
-import { packetStatus, useCasePackets } from './packets';
+import { packetStatus, useCasePackets, useReviewNotice } from './packets';
 import { Tabs } from './tabs';
+import { toast } from './toast';
 import { Icon } from './ui';
 import { plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages } from './live';
 import type { CaseChecklist } from './live';
@@ -128,7 +129,7 @@ export function ChecklistSection({ id, checklist }: { id: string; checklist: Cas
       : items.length ? <ul className="case-sidebar-checklist">{items.map((item) => {
         const done = item.state === 'done';
         return <li key={item.id}>
-          <button type="button" role="checkbox" aria-checked={done} aria-label={`${item.title}: mark ${done ? 'not done' : 'done'}`} className={`case-sidebar-check ${done ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, done ? 'todo' : 'done'); }}>{done ? '✓' : ''}</button>
+          <button type="button" role="checkbox" aria-checked={done} aria-label={`${item.title}: mark ${done ? 'not done' : 'done'}`} className={`case-sidebar-check ${done ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, done ? 'todo' : 'done').then(saved => { if (saved) toast(done ? `Reopened “${item.title}”` : `Done: ${item.title}`); }); }}>{done ? '✓' : ''}</button>
           <span>{item.title}</span><small>{checklistLabels[item.state]}</small>
         </li>;
       })}</ul>
@@ -141,11 +142,13 @@ export function NextStepsSection({ id, checklist }: { id: string; checklist: Cas
   const { snapshot } = useRelay();
   const items = checklist.items ?? [];
   const nextItem = items.find((item) => item.state !== 'done');
-  const currentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
+  const latestPacket = useCasePackets().packets?.[0];
+  const review = useReviewNotice(latestPacket);
+  const openQuestions = review.visible && latestPacket?.review_decision === 'questions_returned';
   return <SidebarSection id={id} title="Next steps">
     {nextItem ? <div className="case-sidebar-next-step"><span className="case-sidebar-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
       : <p className="case-sidebar-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
-    {currentQuestion && <Link className="case-sidebar-action" to="/founder/home/clarification">Answer {snapshot?.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
+    {openQuestions && <Link className="case-sidebar-action" to="/founder/call">See {snapshot?.advisors[0]?.name ?? 'your advisor'}&apos;s questions</Link>}
     <Link className="case-sidebar-link" to="/founder/call">Review packet versions →</Link>
   </SidebarSection>;
 }

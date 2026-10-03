@@ -37,6 +37,8 @@ CREATE TABLE drafts (
   version INT NOT NULL,
   s3_key TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'draft',
+  change_note TEXT,
+  created_by TEXT,
   created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE (case_id, version)
 );
@@ -71,7 +73,8 @@ CREATE TABLE advisor_actions (
   draft_id UUID NOT NULL REFERENCES drafts(id) ON DELETE CASCADE,
   decision TEXT NOT NULL,
   notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now(),
+  resolved_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS checklist_items (

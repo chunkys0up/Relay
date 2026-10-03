@@ -84,12 +84,38 @@ export async function setChecklistState(caseId: string, itemId: string, state: C
   return response.json() as Promise<ChecklistItem>;
 }
 
+// Editing files. Each change saves a new version in S3; earlier versions are kept.
+export type EditorRole = 'founder' | 'advisor';
+
+/** Files that can be read and edited as text. */
+export const isTextFile = (filename: string): boolean => /\.(md|txt|csv|json|html?)$/i.test(filename);
+
+export async function documentText(documentId: string, signal?: AbortSignal): Promise<string> {
+  return ((await (await request(`/api/documents/${encodeURIComponent(documentId)}/text`, { signal })).json()) as { content: string }).content;
+}
+
+export async function saveDocumentText(documentId: string, content: string, role: EditorRole): Promise<LiveDocument> {
+  const response = await request(`/api/documents/${encodeURIComponent(documentId)}/text`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content, role }),
+  });
+  return response.json() as Promise<LiveDocument>;
+}
+
+export async function uploadDocumentVersion(documentId: string, file: File, role: EditorRole): Promise<LiveDocument> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('role', role);
+  return (await request(`/api/documents/${encodeURIComponent(documentId)}/versions`, { method: 'POST', body: form })).json() as Promise<LiveDocument>;
+}
+
 // Packet versions (the `drafts` table) and the advisor's review decisions.
 export type PacketStatus = 'draft' | 'in_review' | 'approved' | 'questions_returned';
 export type ReviewDecision = 'approved' | 'questions_returned';
 export interface LivePacket {
   id: string; case_id: string; version: number; status: PacketStatus; created_at: string;
+  change_note: string | null; created_by: string | null;
   review_decision: ReviewDecision | null; review_notes: string | null; reviewed_at: string | null;
+  review_resolved_at: string | null;
 }
 
 const packetPath = (caseId: string, packetId?: string): string =>
@@ -111,16 +137,41 @@ export async function packetSummary(caseId: string, packetId: string, signal?: A
   return (await request(`${packetPath(caseId, packetId)}/summary`, { signal })).json() as Promise<PacketSummaryView>;
 }
 
-export async function editPacketSummary(caseId: string, packetId: string, summary: string, editor: string): Promise<PacketSummaryView> {
+export async function editPacketSummary(caseId: string, packetId: string, summary: string, editor: string, role: EditorRole = 'advisor'): Promise<PacketSummaryView> {
   const response = await request(`${packetPath(caseId, packetId)}/summary`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary, editor }),
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ summary, editor, role }),
   });
   return response.json() as Promise<PacketSummaryView>;
 }
 
 /** Drop the advisor's edit and go back to Relay's summary. */
-export async function revertPacketSummary(caseId: string, packetId: string): Promise<PacketSummaryView> {
-  return (await request(`${packetPath(caseId, packetId)}/summary/edit`, { method: 'DELETE' })).json() as Promise<PacketSummaryView>;
+export async function revertPacketSummary(caseId: string, packetId: string, role: EditorRole = 'advisor'): Promise<PacketSummaryView> {
+  return (await request(`${packetPath(caseId, packetId)}/summary/edit?role=${role}`, { method: 'DELETE' })).json() as Promise<PacketSummaryView>;
+}
+
+/** What changed in a packet version: its saved note, and Relay's comparison with the previous version. */
+export interface PacketChanges { previous_version: number | null; change_note: string | null; created_by: string | null; changes: string | null }
+
+export async function packetChanges(caseId: string, packetId: string, signal?: AbortSignal): Promise<PacketChanges> {
+  return (await request(`${packetPath(caseId, packetId)}/changes`, { signal })).json() as Promise<PacketChanges>;
+}
+
+/** When anything in the case last changed; polled so other people's changes show up live. */
+export async function caseVersion(caseId: string, signal?: AbortSignal): Promise<string | null> {
+  return ((await (await request(`/api/cases/${encodeURIComponent(caseId)}/version`, { signal })).json()) as { version: string | null }).version;
+}
+
+/** The founder marks the advisor's latest decision as resolved, so it stops being shown. */
+export async function resolvePacketReview(caseId: string, packetId: string): Promise<LivePacket> {
+  return (await request(`${packetPath(caseId, packetId)}/review/resolve`, { method: 'POST' })).json() as Promise<LivePacket>;
+}
+
+/** Save an uploaded PDF as the next packet version. */
+export async function uploadPacketVersion(caseId: string, file: File, role: EditorRole): Promise<LivePacket> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('role', role);
+  return (await request(packetPath(caseId), { method: 'POST', body: form })).json() as Promise<LivePacket>;
 }
 
 export async function reviewPacket(caseId: string, packetId: string, decision: ReviewDecision, notes: string): Promise<LivePacket> {

@@ -1,0 +1,11 @@
+/* Toasts (toast.tsx): stacked at the bottom right, dark like the incoming-call notice. */
+.toaster{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom, 0px));z-index:70;display:grid;gap:8px;justify-items:end;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;max-width:min(380px,calc(100vw - 32px));padding:10px 12px 10px 14px;border-radius:10px;background:#1f2430;color:#f5f7fb;font-size:13px;box-shadow:0 10px 30px rgba(10,16,28,.28),0 0 0 1px rgba(255,255,255,.06);animation:toast-in .2s ease-out}
+.toast-icon{display:grid;place-items:center;width:20px;height:20px;flex:none;border-radius:50%;font-size:12px;font-weight:700}
+.toast.is-success .toast-icon{background:#22a35a;color:#fff}
+.toast.is-error .toast-icon{background:#e5383b;color:#fff}
+.toast button{margin-left:4px;border:0;background:none;color:#aeb7c7;font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+.toast button:hover{color:#fff}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.toast{animation:none}}
+@media(max-width:700px){.toaster{right:16px;bottom:calc(76px + env(safe-area-inset-bottom, 0px))}}

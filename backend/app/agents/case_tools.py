@@ -1,4 +1,4 @@
-"""Tools that let the chat agent maintain the founder's case checklist and activity feed.
+"""Tools that let the chat agent maintain the founder's case checklist and activity feed, and read and edit the case's files.
 
 The case comes from the request's invocation_state, so one cached agent never writes to another case.
 """
@@ -8,12 +8,15 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from starlette.concurrency import run_in_threadpool
 from strands import tool
 from strands.types.tools import ToolContext
 
 from app.agents.attachments import UnreadableFile, load_file_block
 from app.db import case_records
+from app.db import packets as packet_store
 from app.db.case_records import CHECKLIST_STATES
+from app.services import case_files
 
 NO_CASE = "No case is linked to this conversation, so the checklist can't be changed."
 
@@ -128,7 +131,106 @@ async def read_case_document(document_id: str, tool_context: ToolContext) -> dic
     return {"status": "success", "content": [{"text": f"Contents of {doc['filename']}:"}, block]}
 
 
-CASE_TOOLS = [list_checklist, add_checklist_item, update_checklist_item, log_activity, list_case_documents, read_case_document]
+def _file_id(document_id: str) -> UUID | None:
+    try:
+        return UUID(document_id)
+    except ValueError:
+        return None
+
+
+@tool(context=True)
+async def read_packet(tool_context: ToolContext) -> str:
+    """Read the case's latest planning packet: its version, review status, the advisor's notes, its current summary,
+    and the full text of the packet PDF. Read it before changing the packet or its summary."""
+    case_id = _case_id(tool_context)
+    if case_id is None:
+        return NO_CASE
+    packets = await packet_store.list_packets(case_id)
+    if not packets:
+        return "This case has no planning packet yet."
+    latest = packets[0]
+    summary = await run_in_threadpool(case_files.packet_summary, latest["s3_key"])
+    pages = await run_in_threadpool(case_files.packet_pages, latest["s3_key"])
+    review = f"Advisor decision: {latest['review_decision']}" + (f" — {latest['review_notes']}" if latest["review_notes"] else "") if latest["review_decision"] else "No advisor decision yet."
+    return (
+        f"Packet v{latest['version']} (status: {latest['status']}). {review}\n\n"
+        f"Current summary ({'edited by ' + summary['edited_by'] if summary['edited_by'] else 'written by Relay'}):\n{summary['summary']}\n\n"
+        "Packet text:\n" + "\n\n".join(f"[Page {i + 1}]\n{page}" for i, page in enumerate(pages))
+    )
+
+
+@tool(context=True)
+async def update_text_document(document_id: str, new_content: str, change_note: str, tool_context: ToolContext) -> str:
+    """Replace the full contents of one of the case's text files (Markdown, plain text, CSV, JSON or HTML).
+    The previous version is kept. Only use this when the user asks you to change the file.
+
+    Args:
+        document_id: The file id from list_case_documents.
+        new_content: The complete new contents of the file, not just the changed part.
+        change_note: A short past-tense note on what changed, e.g. "Corrected the 2026 revenue forecast".
+    """
+    case_id = _case_id(tool_context)
+    if case_id is None:
+        return NO_CASE
+    parsed_id = _file_id(document_id)
+    if parsed_id is None:
+        return f"{document_id!r} is not a file id. Call list_case_documents to get ids."
+    try:
+        doc = await case_files.write_document_text(parsed_id, new_content, "agent", case_id, change_note.strip()[:160] or None)
+    except case_files.FileChangeError as exc:
+        return str(exc)
+    return f"Saved a new version of {doc['filename']}."
+
+
+@tool(context=True)
+async def update_packet_summary(new_summary: str, tool_context: ToolContext) -> str:
+    """Replace the summary shown with the latest planning packet. Relay's original summary is kept so people can revert.
+    Write Markdown with **Overview**, **Key numbers** and **Open items** sections, under 200 words.
+
+    Args:
+        new_summary: The complete new summary in Markdown.
+    """
+    case_id = _case_id(tool_context)
+    if case_id is None:
+        return NO_CASE
+    packets = await packet_store.list_packets(case_id)
+    if not packets:
+        return "This case has no planning packet yet."
+    await case_files.edit_packet_summary(case_id, packets[0], new_summary, "Relay assistant", "agent")
+    return f"Updated the summary of packet v{packets[0]['version']}."
+
+
+@tool(context=True)
+async def revise_packet(content_markdown: str, change_note: str, tool_context: ToolContext) -> str:
+    """Create the next version of the planning packet PDF from complete revised content. Earlier versions are kept,
+    and the new version goes to the advisor for review. Call read_packet first and keep everything that isn't changing.
+
+    Args:
+        content_markdown: The whole revised packet in Markdown: a "# Company name" title, "## " section headings,
+            "- " bullets and **bold**. Write tables as bullet lists.
+        change_note: A short past-tense note on what changed, e.g. "Raised the reserve target to 12 months".
+    """
+    case_id = _case_id(tool_context)
+    if case_id is None:
+        return NO_CASE
+    try:
+        packet = await case_files.revise_packet(case_id, content_markdown, "agent", change_note.strip()[:160] or None)
+    except case_files.FileChangeError as exc:
+        return str(exc)
+    return f"Created packet v{packet['version']}. It's waiting for the advisor's review."
+
+
+CASE_TOOLS = [
+    list_checklist, add_checklist_item, update_checklist_item, log_activity, list_case_documents, read_case_document,
+    read_packet, update_text_document, update_packet_summary, revise_packet,
+]
+
+_EDITING = """
+You can also change the case's files, but only when the user asks you to:
+- Text files (Markdown, plain text, CSV, JSON, HTML): read the file first, then save the complete new contents. Other files, such as PDFs, can't be edited this way; tell the user to upload a new version instead.
+- The packet summary: read the packet first, then write the full new summary.
+- The planning packet itself: read the packet first, then create a new version with the complete revised content, keeping everything that isn't changing. The new version goes to the advisor for review.
+Earlier versions are always kept. After changing a file, say in one line what you changed."""
 
 INSTRUCTIONS = """You are Relay, helping a startup founder prepare a financial planning packet for their advisor.
 
@@ -137,8 +239,8 @@ You keep the founder's case checklist and activity feed up to date with your too
 - When the founder provides or completes something on the checklist, mark that item done.
 - Checklist changes appear in the founder's activity feed automatically. Use log_activity only for other meaningful work, such as reviewing a document.
 - You can read the files the founder has uploaded to the case. When they ask about their documents, or a question depends on a file's contents, call list_case_documents and then read_case_document. Never ask them to re-upload a file that's already in the case. When an uploaded file covers a checklist item, mark it done.
-In your reply, briefly mention checklist changes you actually made. Don't narrate checks that changed nothing, or your own process, and never name the tools. Keep replies concise."""
+In your reply, briefly mention checklist changes you actually made. Don't narrate checks that changed nothing, or your own process, and never name the tools. Keep replies concise.""" + _EDITING
 
 ADVISOR_INSTRUCTIONS = """You are Relay, helping a financial advisor review a startup founder's planning packet.
 
-You can list and read the files the founder has uploaded to the case, and see the case checklist. Use them to answer the advisor's questions accurately. Only change the checklist or log activity when the advisor asks you to. Never name the tools themselves. Keep replies concise."""
+You can list and read the files the founder has uploaded to the case, read the planning packet, and see the case checklist. Use them to answer the advisor's questions accurately. Only change the checklist or log activity when the advisor asks you to. Never name the tools themselves. Keep replies concise.""" + _EDITING

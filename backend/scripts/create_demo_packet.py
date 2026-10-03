@@ -130,7 +130,7 @@ async def main(case_id: UUID) -> None:
         data = build_pdf()
         key = build_key(case_id, uuid.uuid4(), "Founder planning packet.pdf")
         upload_bytes(data, key, "application/pdf")
-        packet = await create_packet(case_id, key)
+        packet = await create_packet(case_id, key, change_note="First version, prepared from the founder's documents", created_by="Relay")
         await log_activity(case_id, "agent", f"Prepared planning packet v{packet['version']} for advisor review")
         print(f"packet v{packet['version']} {packet['id']} -> s3://{key} ({len(data)} bytes)")
     finally:

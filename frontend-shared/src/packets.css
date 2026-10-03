@@ -33,3 +33,23 @@
 .packet-summary-editor textarea{width:100%;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;padding:12px;border:1px solid #d5dde8;border-radius:8px;resize:none;min-height:260px}
 .packet-summary-revert{margin-left:10px;border:0;background:none;padding:0;font:inherit;color:#0063e7;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .packet-summary-revert:disabled{opacity:.6;cursor:default}
+.document-preview{justify-items:stretch}
+.document-preview .packet-review-actions{justify-content:flex-start}
+.document-preview-text{margin:0;max-height:480px;overflow:auto;padding:16px 18px;border:1px solid #dce4ef;border-radius:6px;background:#fff;white-space:pre-wrap;font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#1e293b}
+.packet-summary-head{flex-wrap:wrap}
+/* Resolve / hide on the founder's review notice. */
+.packet-review-notice{display:flex;align-items:flex-start;gap:12px}
+.packet-review-notice-text{flex:1;min-width:0}
+.packet-review-notice-actions{display:flex;gap:6px;flex:none}
+.packet-review-notice-actions button{border:1px solid currentColor;background:#fff;color:inherit;border-radius:6px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.packet-review-notice-actions button.is-quiet{border-color:transparent;background:none}
+.packet-review-notice-actions button:disabled{opacity:.6;cursor:default}
+/* "What changed since vN" above the summary. */
+.packet-changes{margin:0 0 16px;padding:12px 14px;border:1px solid #cfe0fb;border-radius:8px;background:#f4f8ff;font-size:13px}
+.packet-changes-head{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.packet-changes-head strong{color:#00205b}
+.packet-changes-head small{color:#65789d}
+.packet-changes-note{margin:0 0 6px;color:#3b4a66;font-style:italic}
+.packet-changes-loading{margin:0;color:#65789d}
+.packet-changes ul{margin:4px 0 0;padding-left:18px}
+.packet-changes p{margin:0 0 4px}

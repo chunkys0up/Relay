@@ -11,11 +11,12 @@ from app.db.pool import get_pool
 Decision = Literal["approved", "questions_returned"]
 
 _PACKET_COLUMNS = (
-    "d.id, d.case_id, d.version, d.status, d.s3_key, d.created_at, "
-    "a.decision AS review_decision, a.notes AS review_notes, a.created_at AS reviewed_at"
+    "d.id, d.case_id, d.version, d.status, d.s3_key, d.created_at, d.change_note, d.created_by, "
+    "a.decision AS review_decision, a.notes AS review_notes, a.created_at AS reviewed_at, "
+    "a.resolved_at AS review_resolved_at"
 )
 _LATEST_REVIEW = (
-    "LEFT JOIN LATERAL (SELECT decision, notes, created_at FROM advisor_actions "
+    "LEFT JOIN LATERAL (SELECT decision, notes, created_at, resolved_at FROM advisor_actions "
     "WHERE draft_id = d.id ORDER BY created_at DESC LIMIT 1) a ON true"
 )
 
@@ -36,12 +37,13 @@ async def get_packet(case_id: UUID, packet_id: UUID) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-async def create_packet(case_id: UUID, s3_key: str, status: str = "in_review") -> dict[str, Any]:
+async def create_packet(case_id: UUID, s3_key: str, status: str = "in_review", change_note: str | None = None,
+                        created_by: str | None = None) -> dict[str, Any]:
     row = await get_pool().fetchrow(
-        "INSERT INTO drafts (case_id, version, s3_key, status) "
-        "VALUES ($1, COALESCE((SELECT max(version) FROM drafts WHERE case_id = $1), 0) + 1, $2, $3) "
+        "INSERT INTO drafts (case_id, version, s3_key, status, change_note, created_by) "
+        "VALUES ($1, COALESCE((SELECT max(version) FROM drafts WHERE case_id = $1), 0) + 1, $2, $3, $4, $5) "
         "RETURNING id, version",
-        case_id, s3_key, status,
+        case_id, s3_key, status, change_note, created_by,
     )
     return dict(row)
 
@@ -64,3 +66,18 @@ async def review_packet(case_id: UUID, packet_id: UUID, decision: Decision, note
     verb = "Approved" if decision == "approved" else "Returned questions on"
     await log_activity(case_id, "advisor", f"{verb} packet v{packet['version']}" + (f": {notes}" if notes else ""))
     return await get_packet(case_id, packet_id)
+
+
+async def resolve_review(case_id: UUID, packet_id: UUID) -> dict[str, Any] | None:
+    """Mark the advisor's latest decision on a packet as resolved, e.g. once the founder has answered the questions."""
+    row = await get_pool().fetchrow(
+        "UPDATE advisor_actions SET resolved_at = now() WHERE id = ("
+        "  SELECT id FROM advisor_actions WHERE case_id = $1 AND draft_id = $2 ORDER BY created_at DESC LIMIT 1"
+        ") AND resolved_at IS NULL RETURNING decision",
+        case_id, packet_id,
+    )
+    packet = await get_packet(case_id, packet_id)
+    if row is not None and packet is not None:
+        what = "the advisor's questions on" if row["decision"] == "questions_returned" else "the advisor's review of"
+        await log_activity(case_id, "founder", f"Resolved {what} packet v{packet['version']}")
+    return packet

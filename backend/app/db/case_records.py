@@ -90,3 +90,19 @@ async def get_case_document(case_id: UUID, document_id: UUID) -> dict[str, Any] 
         "SELECT id, filename, s3_key, uploaded_at FROM documents WHERE id = $1 AND case_id = $2", document_id, case_id
     )
     return dict(row) if row else None
+
+
+async def case_version(case_id: UUID) -> Any:
+    """The latest change time across the case's activity, messages, chats, checklist, files, packets and reviews.
+    Edits that don't touch a timestamp (such as a new file version) log activity, so they move this too."""
+    return await get_pool().fetchval(
+        "SELECT greatest("
+        " (SELECT max(created_at) FROM case_activity WHERE case_id = $1),"
+        " (SELECT max(created_at) FROM messages WHERE case_id = $1),"
+        " (SELECT max(updated_at) FROM conversations WHERE case_id = $1),"
+        " (SELECT max(updated_at) FROM checklist_items WHERE case_id = $1),"
+        " (SELECT max(uploaded_at) FROM documents WHERE case_id = $1),"
+        " (SELECT max(created_at) FROM drafts WHERE case_id = $1),"
+        " (SELECT max(greatest(created_at, resolved_at)) FROM advisor_actions WHERE case_id = $1))",
+        case_id,
+    )

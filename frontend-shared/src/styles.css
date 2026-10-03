@@ -90,3 +90,6 @@ main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavi
 /* Text fields: no focus outline; the field's border darkens instead. */
 input:focus,input:focus-visible,select:focus,select:focus-visible,textarea:focus,textarea:focus-visible{outline:none}
 :is(input:not([type=checkbox]):not([type=radio]),select,textarea):focus{border-color:#9fb3cf}
+/* "New" dot on a nav item (navBadges.ts). */
+.navigation a{position:relative}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:#e5383b;box-shadow:0 0 0 2px #fff;margin-left:auto;flex:none}

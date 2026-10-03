@@ -52,3 +52,10 @@ async def set_checklist_state(case_id: UUID, item_id: UUID, body: ChecklistUpdat
 @router.get("/activity", response_model=list[ActivityEntry])
 async def get_activity(case_id: UUID, limit: int = Query(default=20, ge=1, le=100)) -> list[dict]:
     return await case_records.list_activity(case_id, limit)
+
+
+@router.get("/version")
+async def case_version(case_id: UUID) -> dict[str, str | None]:
+    """When anything in the case last changed. Screens poll this and refetch only when it moves."""
+    changed = await case_records.case_version(case_id)
+    return {"version": changed.isoformat() if changed else None}

@@ -63,7 +63,7 @@ export function useRecentMessages(role: ChatRole, limit = 3, caseId: string = LI
   return messages;
 }
 
-export interface CaseChecklist { items: ChecklistItem[] | null; error: string | null; setState: (itemId: string, state: ChecklistState) => Promise<void> }
+export interface CaseChecklist { items: ChecklistItem[] | null; error: string | null; setState: (itemId: string, state: ChecklistState) => Promise<boolean> }
 
 /** The case checklist the chat agent maintains; the founder can tick items off. */
 export function useCaseChecklist(caseId: string = LIVE_CASE_ID): CaseChecklist {
@@ -75,10 +75,13 @@ export function useCaseChecklist(caseId: string = LIVE_CASE_ID): CaseChecklist {
     listChecklist(caseId, c.signal).then(next => { setItems(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
     return () => c.abort();
   }, [caseId, reload]);
-  const setState = useCallback(async (itemId: string, state: ChecklistState): Promise<void> => {
+  /** Resolves true once saved; on failure the error is shown and it resolves false. */
+  const setState = useCallback(async (itemId: string, state: ChecklistState): Promise<boolean> => {
     setItems(prev => prev?.map(item => item.id === itemId ? { ...item, state } : item) ?? prev);
-    try { await setChecklistState(caseId, itemId, state); } catch (e) { setError(errorText(e)); }
+    let saved = true;
+    try { await setChecklistState(caseId, itemId, state); } catch (e) { setError(errorText(e)); saved = false; }
     announceCaseUpdate();
+    return saved;
   }, [caseId]);
   return { items, error, setState };
 }
