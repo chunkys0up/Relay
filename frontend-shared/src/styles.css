@@ -39,13 +39,12 @@ main .founder-home,main .founder-chat,main .advisor-clients{margin:-24px}
 /* App shell: a real grid. The sidebar occupies its own column instead of floating over the page, and only
    <main> scrolls, so the window never rubber-bands when pulled. Overrides the earlier fixed-position rules. */
 html,body{height:100%;overflow:hidden;overscroll-behavior:none}
-#root{height:100vh;height:100dvh;display:grid;grid-template-columns:166px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top top" "nav sim" "nav main"}
+#root{height:100vh;height:100dvh;display:grid;grid-template-columns:166px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"top top" "nav main"}
 .topbar{grid-area:top;position:relative}
-.simulation-bar{grid-area:sim;padding-left:20px}
 .navigation{grid-area:nav;position:static;width:auto;min-height:0;overflow-y:auto}
 main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavior:none}
 @media(max-width:1100px){#root{grid-template-columns:142px minmax(0,1fr)}}
-@media(max-width:700px){#root{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"top" "sim" "main" "nav"}.simulation-bar{padding-left:14px}.navigation{height:66px;overflow:visible}main{padding-bottom:20px}}
+@media(max-width:700px){#root{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"top" "main" "nav"}.navigation{height:66px;overflow:visible}main{padding-bottom:20px}}
 .audience-control:has(.relay-tabs){border-bottom:0;padding-bottom:0}.audience-control .relay-tabs{margin-top:0}
 .message-list,.founder-chat-aside{overscroll-behavior:none}
 /* Markdown in AI replies. The global h1/h2/p/table rules are sized for pages, so reset them here. */
@@ -74,3 +73,17 @@ main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavi
 .collapsible-heading button[aria-expanded=false] svg{transform:rotate(-90deg)}
 .collapsible-heading:has(button[aria-expanded=false]){margin-bottom:0!important}
 @media(prefers-reduced-motion:reduce){.collapsible-heading button svg{transition:none}}
+/* Demo role switch, in the top header. */
+.topbar-role{flex:none;padding:6px 28px 6px 10px;border:1px solid var(--border);border-radius:6px;background-color:#fff;font-size:13px;color:var(--lpl-navy)}
+/* Header search: a soft filled field like the chat composer. The field shows focus, not the bare input. */
+.global-search{height:38px;max-width:460px;margin-left:auto;gap:10px;padding:0 10px 0 14px;background:#f3f6fa;border:1px solid transparent;border-radius:10px;transition:background-color .15s,border-color .15s,box-shadow .15s}
+.global-search:hover{background:#eef2f7}
+.global-search:focus-within{background:#fff;border-color:#c5d0df;box-shadow:0 2px 12px rgba(15,23,42,.08)}
+.global-search .icon{opacity:.55}
+.global-search input:not([type=checkbox]){height:100%;padding:0;font-size:14px;color:#0b1222}
+.global-search input::placeholder{color:#7486a3}
+.global-search input:focus,.global-search input:focus-visible{outline:none}
+.global-search kbd{font:inherit;font-size:11px;line-height:18px;color:#7486a3;background:#fff;border:1px solid #dce4ef;border-radius:5px;padding:0 6px;white-space:nowrap}
+.global-search:focus-within kbd{visibility:hidden}
+.topbar-role{height:38px;border-radius:10px}
+@media(prefers-reduced-motion:reduce){.global-search{transition:none}}
