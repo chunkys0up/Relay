@@ -18,6 +18,15 @@ from app.workflow.repository import Repository, WorkflowError
 from app.workflow.service import WorkflowService
 
 
+_ROLE_MODEL_ENV = {
+    "extractor": "BEDROCK_EXTRACTOR_MODEL_ID",
+    "orchestrator": "BEDROCK_ORCHESTRATOR_MODEL_ID",
+    "reader": "BEDROCK_READER_MODEL_ID",
+    "writer": "BEDROCK_WRITER_MODEL_ID",
+    "verifier": "BEDROCK_VERIFIER_MODEL_ID",
+}
+
+
 def create_workflow_app(
     *, database_path: str | None = None, provider: ProposalProvider | None = None,
     test_mode: bool = False,
@@ -26,10 +35,15 @@ def create_workflow_app(
         database_path = str(Path.cwd() / ".relay" / "workflow.sqlite3")
     if provider is None and not test_mode:
         model_id = os.environ.get("BEDROCK_MODEL_OR_PROFILE_ID", "")
-        if model_id:
+        role_model_ids = {
+            role: value for role, name in _ROLE_MODEL_ENV.items()
+            if (value := os.environ.get(name)) is not None
+        }
+        if model_id or role_model_ids:
             provider = MultiAgentProvider(
                 model_id=model_id, region=os.environ.get("AWS_REGION", "us-east-1"),
                 profile=os.environ.get("AWS_PROFILE") or None,
+                role_model_ids=role_model_ids,
             )
     repository = Repository(database_path)
     repository.recover_interrupted_jobs()
