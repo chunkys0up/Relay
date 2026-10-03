@@ -23,13 +23,13 @@ describe('Founder Home detail tabs', () => {
     await user.keyboard('{ArrowRight}');
     expect(activity).toHaveFocus();
     expect(activity).toHaveAttribute('aria-selected', 'true');
-    expect(activity).toHaveAttribute('aria-controls', 'founder-home-aside-activity-panel');
-    expect(screen.getByRole('tabpanel', { name: 'Activity' })).toHaveAttribute('id', 'founder-home-aside-activity-panel');
+    expect(activity).toHaveAttribute('aria-controls', 'case-sidebar-activity-panel');
+    expect(screen.getByRole('tabpanel', { name: 'Activity' })).toHaveAttribute('id', 'case-sidebar-activity-panel');
 
     await user.keyboard('{Home}');
     expect(progress).toHaveFocus();
     expect(progress).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tabpanel', { name: 'Progress' })).toHaveAttribute('id', 'founder-home-aside-progress-panel');
+    expect(screen.getByRole('tabpanel', { name: 'Progress' })).toHaveAttribute('id', 'case-sidebar-progress-panel');
 
     await user.keyboard('{End}');
     expect(activity).toHaveFocus();

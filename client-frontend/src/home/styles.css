@@ -1,4 +1,4 @@
-.founder-home{display:grid;grid-template-columns:minmax(0,1fr) 380px;min-height:calc(100vh - 170px);margin:-28px -30px;background:#fff;color:#10182b}
+.founder-home{display:grid;grid-template-columns:minmax(0,1fr) auto;min-height:calc(100vh - 170px);margin:-28px -30px;background:#fff;color:#10182b}
 .founder-home-content{min-width:0;padding:30px 30px 50px}
 .founder-home-intro{display:flex;align-items:center;gap:20px;margin-bottom:42px}
 .founder-home-avatar,.founder-home-advisor-avatar{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:50%;background:#39475e;color:#fff;font-weight:700}
@@ -27,25 +27,7 @@
 .founder-home-file-name{display:flex;align-items:center;gap:12px;color:#0063e7;text-decoration:none;min-width:0}.founder-home-file-name:hover span{text-decoration:underline}.founder-home-file-name span{overflow-wrap:anywhere}
 .founder-home-status{justify-self:start;display:inline-flex;border-radius:6px;padding:5px 10px;font-size:12px;background:#f1f4f8}.founder-home-status.is-ready{background:#e0f7eb;color:#087444}.founder-home-status.is-draft{background:#fff5dc;color:#8c5a00}.founder-home-status.is-attention{background:#ffe8e8;color:#a02328}
 .founder-home-no-documents{padding:24px;color:#65789d}
-.founder-home-aside{border-left:1px solid #e0e7f0;padding:22px 26px;display:flex;flex-direction:column;min-width:0}
-.founder-home-aside-tabs{margin-bottom:28px}.founder-home-aside-tabs .relay-tabs{display:flex;gap:0;margin:0;border-bottom:1px solid #dfe7f1}.founder-home-aside-tabs .relay-tabs button{background:none;border:0;border-bottom:3px solid transparent;color:#607398;padding:12px 20px;font-size:15px}
-.founder-home-aside-tabs .relay-tabs button[aria-selected=true]{border-bottom-color:#0566e8;color:#0063e7;font-weight:600}.founder-home-aside-panel{flex:1}.founder-home-aside h2{font-size:19px;color:#10182b;margin-bottom:10px}.founder-home-aside-panel section>p{color:#65789d;margin-bottom:14px}
-.founder-home-progress{height:10px;border-radius:99px;background:#e1e7ef;overflow:hidden;margin:15px 0 20px}.founder-home-progress span{display:block;height:100%;background:#0968e8;border-radius:inherit}
-.founder-home-checklist{list-style:none;padding:0;margin:0}.founder-home-checklist li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;align-items:center;gap:10px;min-height:48px;font-size:13px}.founder-home-checklist small{color:#65789d;text-align:right}
-.founder-home-check{display:inline-flex;width:23px;height:23px;border:2px solid #7586aa;border-radius:50%;align-items:center;justify-content:center}.founder-home-check.is-done{border-color:#0caa5b;background:#0caa5b;color:#fff;font-weight:700}
-.founder-home-next{border-top:1px solid #dfe7f1;margin-top:28px;padding-top:26px}.founder-home-next-step{display:flex;align-items:flex-start;gap:13px;margin-top:18px}.founder-home-step-number{display:flex;align-items:center;justify-content:center;border-radius:50%;width:31px;height:31px;flex:0 0 auto;background:#eaf0f7;font-weight:700}.founder-home-next-step strong{font-size:13px}.founder-home-next-step p{font-size:12px;color:#65789d;margin:4px 0 12px}.founder-home-chat-link{display:inline-flex;border:1px solid #b6d2fb;border-radius:6px;background:#eaf3ff;color:#0063e7;padding:7px 10px;text-decoration:none;font-size:12px;font-weight:600}
-.founder-home-open-flags{font-size:12px;margin-top:18px!important}.founder-home-packet-link{display:inline-block;margin-top:15px;font-size:13px;text-decoration:none}.founder-home-empty{font-size:13px;color:#65789d}
-.founder-home-privacy{border-top:1px solid #dfe7f1;color:#65789d;font-size:12px;padding-top:16px;margin-top:32px}.founder-home-privacy:before{content:'♙';margin-right:10px;color:#172746}
-.founder-home-activity-current{padding:15px;border-radius:7px;background:#f5f8fc;color:#102047!important}.founder-home-case-status{font-size:12px}.founder-home-activity-panel h3{font-size:16px;margin-top:24px}.founder-home-activity-panel ul{list-style:none;margin:12px 0 24px;padding:0}.founder-home-activity-panel li{display:grid;gap:3px;padding:12px 0;border-bottom:1px solid #e2e9f1;font-size:12px}.founder-home-activity-panel li span{color:#435577}.founder-home-activity-panel li small{font-size:11px}
-@media(max-width:1200px){.founder-home{grid-template-columns:minmax(0,1fr) 320px}.founder-home-toolbar{flex-wrap:wrap}.founder-home-filters{flex-wrap:wrap}}
-@media(max-width:900px){.founder-home{grid-template-columns:1fr}.founder-home-aside{border-left:0;border-top:1px solid #e0e7f0}.founder-home-advisor{margin-left:auto}}
-@media(max-width:600px){.founder-home{margin:-20px -14px}.founder-home-content{padding:22px 14px}.founder-home-intro{gap:10px;flex-wrap:wrap;margin-bottom:30px}.founder-home-avatar{width:48px;height:48px;font-size:15px}.founder-home-intro h1{font-size:27px}.founder-home-intro p{font-size:13px}.founder-home-advisor{width:100%;margin:8px 0 0 58px;flex-wrap:wrap;white-space:normal}.founder-home-toolbar{display:grid}.founder-home-filters button{font-size:12px;padding:8px}.founder-home-file-head,.founder-home-file-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}.founder-home-file-head span:nth-child(2),.founder-home-file-row>span:nth-child(2){display:none}.founder-home-aside{padding:18px 14px 100px}}
+@media(max-width:1200px){.founder-home-toolbar{flex-wrap:wrap}.founder-home-filters{flex-wrap:wrap}}
+@media(max-width:900px){.founder-home{grid-template-columns:1fr}.founder-home-advisor{margin-left:auto}}
+@media(max-width:600px){.founder-home{margin:-20px -14px}.founder-home-content{padding:22px 14px}.founder-home-intro{gap:10px;flex-wrap:wrap;margin-bottom:30px}.founder-home-avatar{width:48px;height:48px;font-size:15px}.founder-home-intro h1{font-size:27px}.founder-home-intro p{font-size:13px}.founder-home-advisor{width:100%;margin:8px 0 0 58px;flex-wrap:wrap;white-space:normal}.founder-home-toolbar{display:grid}.founder-home-filters button{font-size:12px;padding:8px}.founder-home-file-head,.founder-home-file-row{grid-template-columns:minmax(0,1fr) auto;gap:6px}.founder-home-file-head span:nth-child(2),.founder-home-file-row>span:nth-child(2){display:none}}
 button.founder-home-file-name{border:0;background:none;padding:0;font:inherit;text-align:left;cursor:pointer}
-/* Live checklist: the check mark is a real toggle button. */
-button.founder-home-check{padding:0;background:#fff;font:inherit;font-size:13px;cursor:pointer}
-button.founder-home-check:hover:not(.is-done){border-color:#0caa5b}
-button.founder-home-check.is-done{background:#0caa5b}
-/* Activity feed: actor, text and time on one compact row; conversation previews cut off after two lines. */
-.founder-home-activity-feed li{grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;column-gap:8px}
-.founder-home-activity-feed li strong{color:#10182b}
-.founder-home-blurb{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}

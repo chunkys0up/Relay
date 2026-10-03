@@ -1,10 +1,8 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages, useRelay } from '@relay/shared';
+import { CaseSidebar, Icon, ScreenState, useCaseDocuments, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
-import type { ActivityEntry, ChecklistState } from '../../../frontend-shared/src/relayApi';
-import { Tabs } from '../../../frontend-shared/src/tabs';
 import './styles.css';
 
 type DocumentFilter = 'all' | 'originals' | 'packets';
@@ -20,17 +18,11 @@ function packetStatus(packet: PacketVersion): string {
   return 'Draft';
 }
 
-const checklistLabels: Record<ChecklistState, string> = { todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done' };
-const actorLabels: Record<ActivityEntry['actor'], string> = { agent: 'Relay', founder: 'You', advisor: 'Advisor', system: 'System' };
-
 function DemoScreen() {
   const { snapshot, error, notice } = useRelay();
   const caseDocuments = useCaseDocuments();
-  const checklist = useCaseChecklist();
-  const activity = useCaseActivity();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<DocumentFilter>('all');
-  const [asideTab, setAsideTab] = useState<'progress' | 'activity'>('progress');
   const [dragging, setDragging] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const { uploading } = caseDocuments;
@@ -54,12 +46,6 @@ function DemoScreen() {
   const packets = snapshot?.packets.filter((packet) =>
     (filter !== 'originals') && (!normalizedQuery || `${packet.title} ${packet.status} v${packet.version}`.toLowerCase().includes(normalizedQuery)),
   ) ?? [];
-  const items = checklist.items ?? [];
-  const doneCount = items.filter((item) => item.state === 'done').length;
-  const nextItem = items.find((item) => item.state !== 'done');
-  const fileCount = caseDocuments.documents?.length ?? 0;
-  const currentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
-  const recentMessages = useRecentMessages('founder', 3);
 
   return <ScreenState>{snapshot && <div className="founder-home">
     <div className="founder-home-content">
@@ -105,38 +91,7 @@ function DemoScreen() {
       </section>
     </div>
 
-    <aside className="founder-home-aside" aria-label="Planning progress and activity">
-      <div className="founder-home-aside-tabs"><Tabs id="founder-home-aside" label="Workspace details" items={[{ id: 'progress', label: 'Progress' }, { id: 'activity', label: 'Activity' }]} value={asideTab} onChange={(value) => setAsideTab(value as 'progress' | 'activity')}/></div>
-      {asideTab === 'progress' ? <div id="founder-home-aside-progress-panel" role="tabpanel" aria-labelledby="founder-home-aside-progress-tab" tabIndex={0} className="founder-home-aside-panel">
-        <section aria-labelledby="founder-home-checklist-title">
-          <Collapsible id="home-checklist" headingId="founder-home-checklist-title" title="Checklist">
-          <p>{doneCount} of {items.length} done · {fileCount} file{fileCount === 1 ? '' : 's'} received</p>
-          <div className="founder-home-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>
-          {checklist.error ? <p className="founder-home-empty" role="alert">{checklist.error}</p>
-            : checklist.items === null ? <p className="founder-home-empty" role="status">Loading checklist…</p>
-            : items.length ? <ul className="founder-home-checklist">{items.map((item) => <li key={item.id}><button type="button" role="checkbox" aria-checked={item.state === 'done'} aria-label={`${item.title}: mark ${item.state === 'done' ? 'not done' : 'done'}`} className={`founder-home-check ${item.state === 'done' ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, item.state === 'done' ? 'todo' : 'done'); }}>{item.state === 'done' ? '✓' : ''}</button><span>{item.title}</span><small>{checklistLabels[item.state]}</small></li>)}</ul>
-            : <p className="founder-home-empty">Relay adds items here as you chat about your packet. <Link to="/founder/chat#message-main">Start in AI Chat</Link></p>}
-          </Collapsible>
-        </section>
-        <section className="founder-home-next" aria-labelledby="founder-home-next-title"><Collapsible id="home-next" headingId="founder-home-next-title" title="Next steps">
-          {nextItem ? <div className="founder-home-next-step"><span className="founder-home-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
-            : <p className="founder-home-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
-          {currentQuestion && <Link className="founder-home-chat-link" to="/founder/home/clarification">Answer {snapshot.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
-          <Link className="founder-home-packet-link" to="/founder/documents">Review packet versions →</Link>
-        </Collapsible></section>
-      </div> : <div id="founder-home-aside-activity-panel" role="tabpanel" aria-labelledby="founder-home-aside-activity-tab" tabIndex={0} className="founder-home-aside-panel founder-home-activity-panel">
-        <Collapsible id="home-activity" title="Activity">
-        {activity.error ? <p className="founder-home-empty" role="alert">{activity.error}</p>
-          : activity.entries === null ? <p className="founder-home-empty" role="status">Loading activity…</p>
-          : activity.entries.length ? <ul className="founder-home-activity-feed">{activity.entries.map((entry) => <li key={entry.id}><strong>{actorLabels[entry.actor]}</strong><span>{entry.text}</span><small>{timeAgo(entry.created_at)}</small></li>)}</ul>
-          : <p className="founder-home-empty">No activity yet. Uploads, checklist changes and Relay&apos;s work show up here.</p>}
-        </Collapsible>
-        <Collapsible id="home-conversation" as="h3" title="Recent conversation">
-        {recentMessages?.length ? <ul>{recentMessages.map((message) => <li key={message.id}><strong>{message.sender_type === 'ai' ? 'Relay assistant' : message.sender_type === 'founder' ? snapshot.founder.name : snapshot.advisors[0]?.name}</strong><span className="founder-home-blurb">{plainText(message.content)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>{recentMessages === null ? 'Loading…' : 'No conversation yet.'}</p>}
-        </Collapsible>
-      </div>}
-      <p className="founder-home-privacy">Packet versions require a separate handoff to your advisor.</p>
-    </aside>
+    <CaseSidebar footer="Packet versions require a separate handoff to your advisor."/>
   </div>}</ScreenState>;
 }
 
