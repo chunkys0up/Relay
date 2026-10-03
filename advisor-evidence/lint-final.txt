@@ -1,0 +1,7 @@
+
+> relay@0.1.0 lint
+> npm run lint --workspace relay-frontend --
+
+
+> relay-frontend@0.1.0 lint
+> cd .. && eslint --config frontend-shared/eslint.config.js .

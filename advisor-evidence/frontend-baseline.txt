@@ -1,0 +1,64 @@
+
+> relay@0.1.0 test
+> npm run test --workspace relay-frontend -- --maxWorkers=2
+
+
+> relay-frontend@0.1.0 test
+> vitest run --maxWorkers=2
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/home/tim/Relay-worktrees/advisor-bedrock-loop[39m
+
+ [32m✓[39m advsior-frontend/src/documents/Screen.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1444[2mms[22m[39m
+     [33m[2m✓[22m[39m honors the selected packet version and keeps its review controls version-bound [33m 520[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps an older packet selected when opening its granted source and hides decisions on the source preview [33m 464[2mms[22m[39m
+ [32m✓[39m client-frontend/src/clarification/Screen.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 2902[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the actual advisor question author and founder answer author [33m 970[2mms[22m[39m
+     [33m[2m✓[22m[39m previews before creating v2 and then links to the new draft [33m 1928[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/conversation-v2.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 2418[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps advisor AI private even when a human audience is requested in the URL [33m 546[2mms[22m[39m
+     [33m[2m✓[22m[39m does not offer private uploads to a human recipient before packet handoff [33m 984[2mms[22m[39m
+     [33m[2m✓[22m[39m previews explicitly selected documents before sending a human message [33m 884[2mms[22m[39m
+ [32m✓[39m client-frontend/src/sources/Screen.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1504[2mms[22m[39m
+     [33m[2m✓[22m[39m selects the source from the URL and supports source-only browsing [33m 585[2mms[22m[39m
+     [33m[2m✓[22m[39m updates the selected source and keeps the query parameter in the URL [33m 641[2mms[22m[39m
+ [32m✓[39m client-frontend/src/workflow/BackendWorkspace.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 3568[2mms[22m[39m
+     [33m[2m✓[22m[39m requires explicit preview review and submits the exact preview hash [33m 547[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the same send identity and revision when a response is lost and retried [33m 608[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers an uncertain send after reload without changing its identity [33m 698[2mms[22m[39m
+     [33m[2m✓[22m[39m starts a new send identity after a definite stale revision rejection [33m 796[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/workflow-regressions.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1054[2mms[22m[39m
+     [33m[2m✓[22m[39m initial answer creates exactly one private unapproved draft and completes input task [33m 514[2mms[22m[39m
+     [33m[2m✓[22m[39m concurrent stale initial answers cannot create competing drafts [33m 462[2mms[22m[39m
+ [32m✓[39m client-frontend/src/documents/Screen.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1471[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a URL-selected packet version with source references and exact-version handoff [33m 734[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the current matching packet selected for a global search query [33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m offers comparison only when another packet version exists [33m 390[2mms[22m[39m
+ [32m✓[39m client-frontend/src/home/KeyboardTabs.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 963[2mms[22m[39m
+     [33m[2m✓[22m[39m moves between labeled panels with arrow, Home, and End keys [33m 636[2mms[22m[39m
+     [33m[2m✓[22m[39m discloses only the known advisor identity and role [33m 324[2mms[22m[39m
+ [32m✓[39m advsior-frontend/src/clients/Screen.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 830[2mms[22m[39m
+     [33m[2m✓[22m[39m honors a source citation query and previews the shared original [33m 553[2mms[22m[39m
+ [32m✓[39m advsior-frontend/src/reviews/Screen.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 1092[2mms[22m[39m
+     [33m[2m✓[22m[39m selects the requested shared version and shows its source-linked flags and exact-version controls [33m 763[2mms[22m[39m
+     [33m[2m✓[22m[39m does not show results outside the assigned packet set [33m 325[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/liveCall.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 1071[2mms[22m[39m
+     [33m[2m✓[22m[39m requires the SDK start event before saying connected and keeps camera off on join [33m 355[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/mock.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 553[2mms[22m[39m
+     [33m[2m✓[22m[39m returns questions once, makes a new unapproved private version, rejects stale approval [33m 492[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/call-screen.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 623[2mms[22m[39m
+     [33m[2m✓[22m[39m guides the founder to documents without showing an invitation [33m 378[2mms[22m[39m
+ [32m✓[39m client-frontend/src/chat/Screen.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 737[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps AI mode, task state, and the clarification route distinct [33m 733[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/live.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 612[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/call.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 930[2mms[22m[39m
+     [33m[2m✓[22m[39m shows an honest founder pre-call preview and invites the assigned person for the shared version [33m 479[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/answer-ambiguity.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 88[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/range-and-binary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m client-frontend/src/workflow/api.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/events.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m20 passed[39m[22m[90m (20)[39m
+[2m      Tests [22m [1m[32m84 passed[39m[22m[90m (84)[39m
+[2m   Start at [22m 22:51:19
+[2m   Duration [22m 33.54s[2m (transform 1.91s, setup 6.27s, import 5.87s, tests 22.08s, environment 22.87s)[22m
