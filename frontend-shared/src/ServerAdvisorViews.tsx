@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Badge, Icon, PacketPreview, SourcePreview } from './ui';
 import { useRelay } from './context';
 import ServerPacketLibrary from './ServerPacketLibrary';
+import ServerInvitationAcceptance from './ServerInvitationAcceptance';
 import type { ServerCase } from './serverPacketApi';
 
 function stage(state: ServerCase): string {
@@ -19,6 +20,7 @@ export function ServerAdvisorHome() {
   return item.company.toLowerCase().includes(query.toLowerCase()) && (filter==='all' || (filter==='review'?packet?.stage==='in_review':packet?.stage==='in_review'||packet?.stage==='questions_returned'));
  });
  return <div className="advisor-home"><header className="advisor-home-intro"><h1>Shared packet cases</h1><p>Packets and originals accepted by this advisor session.</p><div className="advisor-home-summary">{cases?.length ?? 0} shared case{cases?.length===1?'':'s'}</div></header>
+  <ServerInvitationAcceptance/>
   <section className="advisor-home-section"><h2>Packet cases</h2><div className="advisor-home-toolbar"><label className="advisor-home-search"><span className="sr-only">Search cases</span><Icon name="search" size={18}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="Search cases..."/></label><div className="advisor-home-filters" role="group" aria-label="Filter cases">{([['all','All cases'],['attention','Needs attention'],['review','In review']] as const).map(([value,text])=><button key={value} type="button" className={filter===value?'is-active':''} aria-pressed={filter===value} onClick={()=>setFilter(value)}>{text}</button>)}</div></div>
    {visible.length===0?<p>No cases match this view.</p>:<div className="advisor-home-table-wrap"><table className="advisor-home-table"><thead><tr><th scope="col">Case</th><th scope="col">Tasks</th><th scope="col">Stage</th><th scope="col">Documents</th><th scope="col">Next step</th></tr></thead><tbody>{visible.map(item=><tr key={item.id}><td><strong>{item.company}</strong></td><td>Checklist private</td><td><Badge>{stage(item)}</Badge></td><td>{item.packets.length} packets, {item.sources.length} originals</td><td><Link className="button button-outline" to="/advisor/clients" onClick={()=>selectCase?.(item.id)}>Open shared case</Link></td></tr>)}</tbody></table></div>}
   </section>

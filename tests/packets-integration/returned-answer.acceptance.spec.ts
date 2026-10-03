@@ -92,6 +92,7 @@ test('returned question produces a private immutable answer version and requires
     await expect(advisor.getByText('Approved', { exact: true }).first()).toBeVisible();
     await founder.reload();
     expect((await readCase(founder)).packets.find(packet => packet.id === next.id)?.stage).toBe('approved');
+    await expect(founder.getByText('Approved', { exact: true }).first()).toBeVisible();
     await founder.screenshot({ path: 'test-results/returned-answer-approved.png', fullPage: true });
   } finally {
     await founderContext.close();

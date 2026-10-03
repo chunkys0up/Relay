@@ -4,6 +4,7 @@ import { Badge, Button, EmptyState, Icon, PacketPreview, PageTitle, Panel, Sourc
 import { useRelay } from './context';
 import type { PacketVersion } from './types';
 import ServerReturnedAnswer from './ServerReturnedAnswer';
+import ServerInvitationAcceptance from './ServerInvitationAcceptance';
 
 type View = 'home' | 'documents' | 'clients' | 'sources';
 function stageLabel(stage: PacketVersion['status']): string {
@@ -13,13 +14,12 @@ function date(value: string | undefined): string {
   return value ? new Date(value).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Time unavailable';
 }
 export default function ServerPacketLibrary({ view }: { view: View }) {
-  const { snapshot, cases, role, serverActorRole, inviteCode, busy, error, notice, loading, createCase, loadExamples, importPacket, stagePacket, createShare, revokeShare, redeemShare, reviewPacket, retrySync } = useRelay();
+  const { snapshot, cases, role, serverActorRole, inviteCode, busy, error, notice, loading, createCase, loadExamples, importPacket, stagePacket, createShare, revokeShare, reviewPacket, retrySync } = useRelay();
   const [params, setParams] = useSearchParams();
   const [company, setCompany] = useState('');
   const [goal, setGoal] = useState('');
   const [confirmStage, setConfirmStage] = useState(false);
   const [shareSources,setShareSources]=useState<string[]>([]);
-  const [redeemCode,setRedeemCode]=useState('');
   const [reviewNote,setReviewNote]=useState('');
   const [reviewDecision,setReviewDecision]=useState<'approved'|'questions_returned'|null>(null);
   const selected = snapshot?.packets.find(item => item.id === params.get('version'))
@@ -43,9 +43,9 @@ export default function ServerPacketLibrary({ view }: { view: View }) {
       <Button type="submit" disabled={busy || !company.trim() || !goal.trim()}>Create case</Button>
     </form></Panel>}
     {role === 'founder' && serverActorRole==='founder' && <Button variant="outline" disabled={busy} onClick={()=>{void loadExamples?.();}}>Load example packet cases</Button>}
-    {role === 'advisor' && <Panel title="Accept a packet invitation"><p>Use an invitation code from the founder in this separate browser session. A role switch in the founder session does not grant access.</p><form onSubmit={event=>{event.preventDefault();if(redeemCode.trim())void redeemShare?.(redeemCode.trim()).then(ok=>{if(ok)setRedeemCode('');});}}><label>Invitation code<input value={redeemCode} onChange={event=>setRedeemCode(event.target.value)} required autoComplete="off"/></label><Button type="submit" disabled={busy||!redeemCode.trim()}>Accept invitation</Button></form></Panel>}
+    {role === 'advisor' && <ServerInvitationAcceptance/>}
     {role === 'founder' && serverActorRole==='advisor' && <p>This browser session is an advisor session. Open the advisor view to see shared packets.</p>}
-    {error&&<p role="alert">{error}</p>}
+    {error&&role!=='advisor'&&<p role="alert">{error}</p>}
   </div>;
   if (!snapshot) return <EmptyState title="Packet backend unavailable"><p role="alert">{error ?? 'No server case loaded.'}</p></EmptyState>;
   return <div className="server-packet-library">

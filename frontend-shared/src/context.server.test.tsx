@@ -8,6 +8,7 @@ const api = vi.hoisted(() => ({
   listServerCases: vi.fn(), getServerCase: vi.fn(), createServerCase: vi.fn(),
   loadServerExamples: vi.fn(), importServerPacket: vi.fn(), changeServerPacketStage: vi.fn(),
   createServerShare:vi.fn(), reviewServerPacket:vi.fn(), revokeServerShare:vi.fn(),
+  redeemServerShare:vi.fn(),
   mapServerCase: vi.fn(),
 }));
 vi.mock('./serverPacketApi', () => api);
@@ -41,6 +42,15 @@ function SharingProbe() {
   </div>;
 }
 
+function AdditionalInvitationProbe() {
+  const {cases,selectedCaseId,snapshot,redeemShare,selectCase}=useRelay();
+  return <div>
+    <span>{selectedCaseId ?? 'none'}:{snapshot?.id ?? 'none'}:{cases?.map(item=>item.id).join(',') ?? ''}</span>
+    <button type="button" onClick={()=>{void redeemShare?.('second-code');}}>Accept second</button>
+    <button type="button" onClick={()=>selectCase?.('case-one')}>Open first</button>
+  </div>;
+}
+
 function reviewCase(revision:number,hash='a'.repeat(64)) {
   return {id:'case-one',company:'Acme',revision,current_packet_id:'packet-one',
     packets:[{id:'packet-one',version:1,hash,stage:'in_review',created_at:'2026-10-03T00:00:00Z'}],
@@ -48,6 +58,23 @@ function reviewCase(revision:number,hash='a'.repeat(64)) {
 }
 
 describe('server case selection', () => {
+  it('selects a newly redeemed second case and keeps the first accessible',async()=>{
+    session.role='advisor';
+    const first={id:'case-one',company:'Harbor',revision:1,packets:[],sources:[]};
+    const second={id:'case-two',company:'Cedar',revision:1,packets:[],sources:[]};
+    let accepted=false;
+    api.listServerCases.mockImplementation(async()=>accepted?[first,second]:[first]);
+    api.getServerCase.mockImplementation(async(id:string)=>id==='case-two'?second:first);
+    api.mapServerCase.mockImplementation((state:{id:string})=>({id:state.id,packets:[],sources:[]}));
+    api.redeemServerShare.mockImplementation(async()=>{accepted=true;return {case_id:'case-two'};});
+    render(<ServerRelayProvider role="advisor"><AdditionalInvitationProbe/></ServerRelayProvider>);
+    await screen.findByText('case-one:case-one:case-one');
+    fireEvent.click(screen.getByRole('button',{name:'Accept second'}));
+    await screen.findByText('case-two:case-two:case-one,case-two');
+    expect(localStorage.getItem('relay-selected-workflow-case')).toBe('case-two');
+    fireEvent.click(screen.getByRole('button',{name:'Open first'}));
+    await screen.findByText('case-one:case-one:case-one,case-two');
+  });
   it('keeps the current snapshot when the same case is opened repeatedly', async () => {
     const state={id:'new-case',company:'Acme',revision:2,sources:[],packets:[]};
     localStorage.setItem('relay-selected-workflow-case','new-case');
