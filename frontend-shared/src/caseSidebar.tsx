@@ -13,7 +13,7 @@ import { toast } from './toast';
 import { Icon } from './ui';
 import { plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages } from './live';
 import type { CaseChecklist } from './live';
-import type { ActivityEntry, ChecklistState } from './relayApi';
+import type { ActivityEntry, ChecklistItem, ChecklistState } from './relayApi';
 import './chatPage.css';
 import './caseSidebar.css';
 
@@ -118,22 +118,44 @@ export function SidebarSection({ id, title, as, children }: { id: string; title:
 /** The case checklist with a progress bar; each item can be ticked off. */
 export function ChecklistSection({ id, checklist }: { id: string; checklist: CaseChecklist }): ReactNode {
   const { documents } = useCaseDocuments();
+  const [showDone, setShowDone] = useState(false);
   const items = checklist.items ?? [];
-  const doneCount = items.filter((item) => item.state === 'done').length;
+  const open = items.filter((item) => item.state !== 'done');
+  const finished = items.filter((item) => item.state === 'done');
+  const doneCount = finished.length;
   const fileCount = documents?.length ?? 0;
+
+  // Ticking an item removes it from the list; the toast offers an undo, and completed items stay one click away.
+  const toggle = (item: ChecklistItem): void => {
+    const done = item.state === 'done';
+    void checklist.setState(item.id, done ? 'todo' : 'done').then(saved => {
+      if (!saved) return;
+      if (done) toast(`Reopened “${item.title}”`);
+      else toast(`Done: ${item.title}`, 'success', { label: 'Undo', run: () => { void checklist.setState(item.id, item.state); } });
+    });
+  };
+  const row = (item: ChecklistItem): ReactNode => {
+    const done = item.state === 'done';
+    return <li key={item.id} className={done ? 'is-done' : ''}>
+      <button type="button" role="checkbox" aria-checked={done} aria-label={`${item.title}: mark ${done ? 'not done' : 'done'}`} className={`case-sidebar-check ${done ? 'is-done' : ''}`} onClick={() => toggle(item)}>{done ? '✓' : ''}</button>
+      <span>{item.title}</span><small>{checklistLabels[item.state]}</small>
+    </li>;
+  };
+
   return <SidebarSection id={id} title="Checklist">
     <p className="case-sidebar-summary">{doneCount} of {items.length} done · {fileCount} file{fileCount === 1 ? '' : 's'} received</p>
     <div className="case-sidebar-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>
     {checklist.error ? <p className="case-sidebar-empty" role="alert">{checklist.error}</p>
       : checklist.items === null ? <p className="case-sidebar-empty" role="status">Loading checklist…</p>
-      : items.length ? <ul className="case-sidebar-checklist">{items.map((item) => {
-        const done = item.state === 'done';
-        return <li key={item.id}>
-          <button type="button" role="checkbox" aria-checked={done} aria-label={`${item.title}: mark ${done ? 'not done' : 'done'}`} className={`case-sidebar-check ${done ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, done ? 'todo' : 'done').then(saved => { if (saved) toast(done ? `Reopened “${item.title}”` : `Done: ${item.title}`); }); }}>{done ? '✓' : ''}</button>
-          <span>{item.title}</span><small>{checklistLabels[item.state]}</small>
-        </li>;
-      })}</ul>
-      : <p className="case-sidebar-empty">Relay adds items here as you chat about your packet. <Link to="/founder/chat#message-main">Start in AI Chat</Link></p>}
+      : !items.length ? <p className="case-sidebar-empty">Relay adds items here as you chat about your packet. <Link to="/founder/chat#message-main">Start in AI Chat</Link></p>
+      : <>
+          {open.length ? <ul className="case-sidebar-checklist">{open.map(row)}</ul>
+            : <p className="case-sidebar-empty">Everything on the checklist is done.</p>}
+          {finished.length > 0 && <>
+            <button type="button" className="case-sidebar-show-done" aria-expanded={showDone} onClick={() => setShowDone(!showDone)}>{showDone ? 'Hide' : 'Show'} completed ({finished.length})</button>
+            {showDone && <ul className="case-sidebar-checklist is-completed">{finished.map(row)}</ul>}
+          </>}
+        </>}
   </SidebarSection>;
 }
 

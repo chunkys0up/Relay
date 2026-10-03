@@ -57,4 +57,9 @@
   .advisor-home-table td:nth-child(5)::before { content: 'Next step'; width: 92px; flex: none; color: var(--text-muted); }
   .advisor-home-progress { flex: 1; }
   .advisor-home-attention-row { grid-template-columns: 1fr; gap: 10px; }
-}
+}/* Recent activity on advisor Home. */
+.advisor-home-activity { list-style: none; margin: 12px 0 16px; padding: 0; display: grid; }
+.advisor-home-activity li { display: grid; grid-template-columns: 70px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.advisor-home-activity li:last-child { border-bottom: 0; }
+.advisor-home-activity small { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+.advisor-home-links { display: flex; gap: 10px; flex-wrap: wrap; }

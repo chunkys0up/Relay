@@ -81,3 +81,6 @@ body.is-resizing-sidebar{cursor:col-resize;user-select:none}
 .assistant-sidebar-chat .other-message .message-bubble{font-size:14px}
 .assistant-sidebar-chat .message-list>p.muted{font-size:14px}
 .assistant-sidebar-chat .composer{border-radius:18px;padding:10px 10px 8px 14px}
+/* Completed checklist items are tucked away behind a toggle. */
+.case-sidebar-show-done{margin-top:8px;padding:0;border:0;background:none;font:inherit;font-size:12px;font-weight:600;color:#0063e7;cursor:pointer}
+.case-sidebar-checklist.is-completed li span{color:#8a99b3;text-decoration:line-through}
