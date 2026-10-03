@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
+import logging
 import threading
 from copy import deepcopy
 from typing import Any, Mapping
@@ -16,12 +16,6 @@ from .model import (PROPOSAL_JSON_SHAPE, BedrockProvider, ModelFailure,
                     parse_model_json, validated_proposals)
 from .schemas import FIELDS, ModelResult, PdfEditProposal
 from .tools import ScopedPdfTools, _baseline, validate_pdf_edit
-
-
-_UNSAFE_ACTION = re.compile(
-    r"\b(saved|sent|shared|approved|confirmed|finalized|submitted|updated|"
-    r"modified|changed|created)\b", re.I,
-)
 
 
 def _text_result(result: Any) -> str:
@@ -52,9 +46,14 @@ def _safe_reply(value: str | None, *, staged: bool) -> str:
             return fallback
         if not isinstance(value, str) or not value.strip() or len(value) > 1000:
             return fallback
-    if _UNSAFE_ACTION.search(value):
-        return fallback
-    return value.strip()
+    # Model-authored status prose is not evidence that an action happened.
+    # Preserve only known clarification templates; derive action status from state.
+    if staged and value.strip() == "I prepared your requested changes. Review the preview before saving.":
+        return value.strip()
+    if not staged and value.strip() in {"Please provide a source.", "I can help."}:
+        return value.strip()
+    return fallback
+
 
 
 class MultiAgentProvider(BedrockProvider):
@@ -131,10 +130,11 @@ class MultiAgentProvider(BedrockProvider):
                                  "reader_conflict": False, "reader_missing": [],
                                  "writer_error": None, "edit": None, "steps": []}
 
+        # Two delegations plus the existing eight-call cap for each specialist.
         def count() -> None:
             with guard:
                 state["calls"] += 1
-                if cancel.is_set() or state["calls"] > 12:
+                if cancel.is_set() or state["calls"] > 18:
                     state["budget_exceeded"] = True
                     raise ModelFailure("TOOL_BUDGET_EXHAUSTED")
 
@@ -143,7 +143,14 @@ class MultiAgentProvider(BedrockProvider):
 
             def bounded_count() -> None:
                 count()
-                original_count()
+                try:
+                    original_count()
+                except ModelFailure:
+                    # Strands turns tool exceptions into results. Preserve a terminal
+                    # budget failure even if the model returns a final response.
+                    with guard:
+                        state["budget_exceeded"] = True
+                    raise
 
             scope._count = bounded_count
             tools = scope.build()
@@ -275,6 +282,13 @@ class MultiAgentProvider(BedrockProvider):
             exc = outcome["error"]
             if isinstance(exc, ModelFailure):
                 raise exc
+            # Do not log exception messages: SDK errors can contain request bodies.
+            response = getattr(exc, "response", None)
+            code = response.get("Error", {}).get("Code") if isinstance(response, dict) else None
+            safe_code = code if isinstance(code, str) and code.isalnum() else "unavailable"
+            logging.getLogger(__name__).warning(
+                "Bedrock team failed: exception=%s code=%s", type(exc).__name__, safe_code,
+            )
             raise ModelFailure("BEDROCK_UNAVAILABLE") from exc
         if state["budget_exceeded"]:
             raise ModelFailure("TOOL_BUDGET_EXHAUSTED")

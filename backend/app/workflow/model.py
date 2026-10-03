@@ -234,12 +234,10 @@ class BedrockProvider:
         edit: PdfEditProposal | None = scope.proposal
         if edit is not None:
             edit = validate_pdf_edit(edit, context, excerpts)
-        # A reply cannot assert completion of an action this tool set cannot take.
-        if re.search(r"\b(saved|sent|shared|approved|confirmed|finalized|submitted|"
-                     r"updated|modified|changed|created)\b", reply, re.I):
-            reply = "A PDF edit is ready to preview and confirm." if edit else "I need more information to prepare that PDF edit."
-        if not reply:
-            reply = "A PDF edit is ready to preview and confirm." if edit else "I need more information to prepare that PDF edit."
+        # Use the same state-derived status as the multi-agent workflow.
+        from .team import _safe_reply
+
+        reply = _safe_reply(reply, staged=edit is not None)
         return ModelResult(proposals=analysis.proposals, reply=reply, pdf_edit=edit)
 
 
