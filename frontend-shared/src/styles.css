@@ -33,3 +33,6 @@ main{margin-left:166px;padding:24px;min-height:calc(100vh - 88px);background:whi
 main .founder-home,main .founder-chat,main .advisor-clients{margin:-24px}
 @media(max-width:1100px){main .founder-home,main .founder-chat,main .advisor-clients{margin:-20px}}
 @media(max-width:700px){main .founder-home,main .founder-chat,main .advisor-clients{margin:-20px -14px}}
+/* Live backend panels (live.tsx): visually separate from local demo state. */
+.live-panel{display:grid;gap:14px;border-left:3px solid #117653}.live-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.live-heading small{display:block}.live-upload{position:relative;cursor:pointer}.live-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}.live-upload.is-busy{opacity:.6}.live-upload:focus-within{outline:3px solid var(--lpl-orange);outline-offset:2px}
+.founder-home-content>.live-panel,.advisor-home>.live-panel{margin-top:24px}

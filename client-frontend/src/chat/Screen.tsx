@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Badge, CitationLink, Conversation, ScreenState, useRelay } from '@relay/shared';
+import { Badge, CitationLink, Conversation, LiveAssistant, ScreenState, useRelay } from '@relay/shared';
 import type { Task } from '@relay/shared';
 import './styles.css';
 
@@ -34,6 +34,7 @@ function DemoScreen() {
 </Conversation>
         <div className="founder-chat-upload-note"><Link to="/founder/home">Add documents on Home</Link><span> · Private uploads are available from your document workspace.</span></div>
       </div>
+      <LiveAssistant role="founder" />
     </div>
     <aside className="founder-chat-aside" aria-label="Planning steps and case details">
       <section aria-labelledby="founder-chat-steps-title"><h2 id="founder-chat-steps-title">Your next steps</h2>
