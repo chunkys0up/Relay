@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 for (const role of ['founder', 'advisor']) {
   test(`${role}: Chime fits V2 pre-call and makes no request before joining`, async ({ page }) => {

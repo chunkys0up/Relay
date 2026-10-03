@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 
 const routes = [
@@ -82,14 +82,14 @@ test('returned questions create an unapproved version and require renewed handof
  await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
 });
 
-test('local attachment intake succeeds and slow sends can be cancelled',async({page})=>{
+test('backend document intake succeeds and slow simulated sends can be cancelled',async({page,documentsApi})=>{
  await page.goto('/founder/home');
- await page.getByLabel('Attach a source').setInputFiles({name:'fictional.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic fixture')});
- await expect(page.getByText('Selected locally: fictional.pdf')).toBeVisible();
- await page.getByRole('button',{name:'Add source locally'}).click();
- await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
- await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
- await page.getByRole('button',{name:'Cancel attachment'}).click();
+ await page.getByLabel('Upload documents',{exact:true}).setInputFiles({name:'fictional.txt',mimeType:'text/plain',buffer:Buffer.from('synthetic fixture')});
+ await expect(page.getByRole('button',{name:'fictional.txt',exact:true})).toBeVisible();
+ expect(documentsApi.uploads).toHaveLength(1);
+ expect(documentsApi.uploads[0].content.toString()).toBe('synthetic fixture');
+ await page.getByLabel('Upload documents',{exact:true}).setInputFiles([]);
+ expect(documentsApi.uploads).toHaveLength(1);
  await page.getByText('Test states',{exact:true}).click();
  await page.getByRole('link',{name:'AI Chat',exact:true}).click();
  await page.getByRole('combobox',{name:'Test scenario'}).selectOption('slow');

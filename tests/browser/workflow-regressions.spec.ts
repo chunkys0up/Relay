@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 
 async function sendPrivate(page:Page,text:string):Promise<void>{
@@ -20,16 +20,23 @@ test('initial answer advances Home without advisor clarification and survives re
  expect(errors).toEqual([]);
 });
 
-test('Home file intake stores actual content and remains visible after reload',async({page})=>{
+test('Home uploads actual content to the document API and reloads its saved listing',async({page,documentsApi})=>{
  await page.goto('/founder/home');
- await page.getByLabel('Attach a source').setInputFiles({name:'local-intake.txt',mimeType:'text/plain',buffer:Buffer.from('Unique uploaded source evidence 4271')});
- await page.getByRole('button',{name:'Add source locally',exact:true}).click();
- await expect(page.getByText('Selected locally: local-intake.txt',{exact:true})).toHaveCount(0);
- await page.goto('/founder/sources?q=local-intake');
- await expect(page.getByText('local-intake.txt',{exact:true}).first()).toBeVisible();
- await expect(page.getByText(/Unique uploaded source evidence 4271/)).toBeVisible();
+ await page.getByLabel('Upload documents',{exact:true}).setInputFiles({name:'backend-intake.txt',mimeType:'text/plain',buffer:Buffer.from('Unique uploaded source evidence 4271')});
+ await expect.poll(()=>documentsApi.uploads.length).toBe(1);
+ expect(documentsApi.uploads[0].filename).toBe('backend-intake.txt');
+ expect(documentsApi.uploads[0].content.toString()).toBe('Unique uploaded source evidence 4271');
+ await expect(page.getByRole('button',{name:'backend-intake.txt',exact:true})).toBeVisible();
  await page.reload();
- await expect(page.getByText(/Unique uploaded source evidence 4271/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'backend-intake.txt',exact:true})).toBeVisible();
+ const opened=page.waitForEvent('popup');
+ await page.getByRole('button',{name:'backend-intake.txt',exact:true}).click();
+ const preview=await opened;
+ await expect(preview).toHaveURL(/\/api\/documents\/[^/]+\/preview$/);
+ await expect(preview.locator('body')).toHaveText('Unique uploaded source evidence 4271');
+ // Backend upload must not invent a source in the separate synthetic case.
+ await page.goto('/founder/sources?q=backend-intake');
+ await expect(page.getByRole('heading',{name:'No sources match this search'})).toBeVisible();
 });
 
 test('separate tabs receive confirmed human messages, preserve privacy, and retain state on reload',async({page,context})=>{

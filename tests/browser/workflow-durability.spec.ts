@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import type { RelayAdapter } from '../../frontend-shared/src/types';
 
 test('durable adapter rejects competing stale writes and remembers retry keys after reload',async({page,context})=>{
