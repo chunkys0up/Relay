@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useRelay } from './context';
+import { LiveCall } from './liveCall';
 import { Badge, Button, Panel } from './ui';
 
 export function CallControls(): ReactNode {
@@ -13,6 +14,7 @@ export function CallControls(): ReactNode {
   const packet = snapshot.packets.find(item => item.id === packetId);
   const me = call?.participants.find(person => person.actor.id === actor.id);
   return <>
+    <LiveCall />
     <Panel title="Video call" className="call-controls-video">
       <div className="row"><Badge tone="attention">Simulated call · No live media</Badge><span>{call?.state ?? 'No invitation'}</span></div>
       <div className="video-grid">{[snapshot.founder, ...snapshot.advisors].map(person =>

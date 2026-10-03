@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     s3_bucket: str = "relay-documents-576248046713"
     aws_region: str = "us-east-1"
     aws_profile: str | None = None
+    chime_region: str = "us-east-1"
 
     # RDS Postgres. Schema lives in db/schema.sql; no ORM/client is wired up
     # yet — these are just typed config for whatever reads them next.
