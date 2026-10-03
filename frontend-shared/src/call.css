@@ -78,3 +78,33 @@
 .relay-call-mode { display: grid; gap: 6px; padding: 12px 20px; font-size: 13px; color: var(--muted); border-bottom: 1px solid #e5eaf1; }
 .relay-call-mode select { width: 100%; min-height: 38px; }
 .relay-call-person video { width: 100%; max-height: 180px; object-fit: cover; border-radius: 8px; }
+/* In-call view: one 16:9 tile per person. With the camera off a tile is dark with a large avatar;
+   the name and mic state sit in a label on the tile. Controls are one row of round icon buttons. */
+.relay-call-stage{display:grid;gap:8px}
+.relay-call-tile{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#1b2537;display:grid;place-items:center;max-width:100%}
+.relay-call-tile video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;background:#000}
+.relay-call-tile.has-video video{display:block}
+.relay-call-tile.is-self video{transform:scaleX(-1)}
+.relay-call-tile-avatar{display:grid;place-items:center;width:clamp(48px,22%,76px);aspect-ratio:1;border-radius:50%;font-weight:700;font-size:clamp(16px,2.2vw,24px);background:#33415a;color:#fff}
+.relay-call-tile-avatar.advisor{background:#dbe8ff;color:#0b4fc4}
+.relay-call-tile-avatar.founder{background:#e6e9f0;color:#1b2537}
+.relay-call-tile-label{position:absolute;left:8px;bottom:8px;display:inline-flex;align-items:center;gap:6px;max-width:calc(100% - 16px);padding:3px 9px;border-radius:999px;background:rgba(10,16,28,.62);color:#fff;font-size:12px;line-height:1.4}
+.relay-call-tile-label strong{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.relay-call-tile-label small{color:#c7d0de;font-size:11px;white-space:nowrap}
+.relay-call-tile-label small::before{content:'·';margin-right:6px}
+.relay-call-tile-label svg{width:14px;height:14px;color:#ff8a8a;flex:none}
+.relay-call-controls{display:flex;justify-content:center;gap:12px;padding:4px 0}
+.relay-call-control{display:grid;place-items:center;width:46px;height:46px;border-radius:50%;border:1px solid #d5dde8;background:#fff;color:#1b2537;cursor:pointer;transition:background .15s,border-color .15s}
+.relay-call-control:hover:not(:disabled){background:#f1f4f9}
+.relay-call-control.is-off{background:#fde8e8;border-color:#f5c2c2;color:#b42318}
+.relay-call-control.is-leave{background:#e5383b;border-color:#e5383b;color:#fff}
+.relay-call-control.is-leave:hover:not(:disabled){background:#c92f32}
+.relay-call-control:disabled{opacity:.45;cursor:default}
+.relay-call-end-link{justify-self:center;align-self:center;border:0;background:none;color:#b42318;font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:2px 6px;text-decoration:underline;text-underline-offset:2px}
+.relay-call-end-link:disabled{opacity:.6;cursor:default}
+/* Speaking ring, the muted badge on a tile label, and the camera button on the pre-call preview. */
+.relay-call-tile.is-speaking{box-shadow:inset 0 0 0 3px #3ddc84}
+.relay-call-muted{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#e5383b;flex:none}
+.relay-call-muted svg{width:12px!important;height:12px!important;color:#fff!important}
+.relay-call-preview-toggle{position:absolute;right:10px;bottom:10px;width:38px;height:38px}
+.relay-call-preview-toggle svg{width:18px;height:18px}
