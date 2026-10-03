@@ -1,5 +1,6 @@
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { BackendWorkspace } from './BackendWorkspace';
@@ -12,9 +13,9 @@ vi.mock('./api', async importOriginal => ({
 }));
 const confirmedFact = (value: string): WorkflowFact => ({ value, state: 'confirmed', candidates: [], confirmed_by: 'founder' });
 let state: WorkflowCase;
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   sessionStorage.clear();
   vi.stubGlobal('WebSocket', class {
     onopen = null; onclose = null; onmessage = null; onerror = null;
@@ -38,6 +39,51 @@ beforeEach(() => {
 function show(): void {
   render(<MemoryRouter><BackendWorkspace view="chat" /></MemoryRouter>);
 }
+describe('backend workspace loading', () => {
+  it('loads the selected case when browser session storage is blocked', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage blocked'); });
+    show();
+    expect(await screen.findByRole('button', { name: 'Save reviewed PDF version' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Backend case')).toHaveValue('case-1');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('ignores an obsolete bootstrap failure while the current request is loading', async () => {
+    let rejectOld: (error: Error) => void = () => undefined;
+    let resolveCurrent: (value: Awaited<ReturnType<typeof initializeWorkflowSession>>) => void = () => undefined;
+    vi.mocked(initializeWorkflowSession)
+      .mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
+      .mockImplementationOnce(() => new Promise(resolve => { resolveCurrent = resolve; }));
+    render(<StrictMode><MemoryRouter><BackendWorkspace view="chat" /></MemoryRouter></StrictMode>);
+    await act(async () => { rejectOld(new Error('Old request failed')); });
+    expect(screen.getByRole('status')).toHaveTextContent('Loading backend workspace');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await act(async () => { resolveCurrent({ csrf_token: 'token', mode: 'simulated', provider: 'test' }); });
+    expect(await screen.findByRole('button', { name: 'Save reviewed PDF version' })).toBeInTheDocument();
+  });
+
+  it('clears a case that is no longer returned by a workspace refresh', async () => {
+    const user = userEvent.setup();
+    await act(async () => { show(); });
+    const input = await screen.findByRole('textbox', { name: 'Message Relay about this packet' });
+    await user.type(input, 'Run analysis');
+    const analyze = screen.getByRole('button', { name: 'Analyze with test AI' });
+    await waitFor(() => expect(analyze).toBeEnabled());
+    vi.mocked(workflowRequest).mockImplementation(async path => {
+      if (path === '/cases/case-1/run') throw new Error('Reload needed');
+      if (path === '/cases') return { items: [] };
+      return state;
+    });
+    await user.click(analyze);
+    await screen.findByText('Reload needed');
+    await user.click(screen.getByRole('button', { name: 'Refresh backend workspace' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save reviewed PDF version' })).not.toBeInTheDocument());
+    expect(screen.getByLabelText('Backend case')).toHaveValue('');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
 describe('AI PDF proposal confirmation', () => {
   it('requires explicit preview review and submits the exact preview hash', async () => {
     show();

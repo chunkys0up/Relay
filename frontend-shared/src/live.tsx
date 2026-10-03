@@ -94,26 +94,35 @@ export interface CaseDocuments {
 
 /** Case documents stored in S3 and recorded in Postgres: list, upload and open. */
 export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
-  const [documents, setDocuments] = useState<LiveDocument[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [documentState, setDocumentState] = useState<{ caseId: string; documents: LiveDocument[] } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [reload, setReload] = useState(0);
+  const documents = documentState?.caseId === caseId ? documentState.documents : null;
+  const error = actionError ?? loadError;
+
+  useEffect(() => {
+    setActionError(null);
+  }, [caseId]);
 
   useEffect(() => {
     const c = new AbortController();
-    setError(null);
-    listDocuments(caseId, c.signal).then(setDocuments).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    setLoadError(null);
+    listDocuments(caseId, c.signal).then(next => {
+      if (!c.signal.aborted) setDocumentState({ caseId, documents: next });
+    }).catch((e: unknown) => { if (!c.signal.aborted) setLoadError(errorText(e)); });
     return () => c.abort();
   }, [caseId, reload]);
 
   const upload = useCallback(async (files: File[]): Promise<void> => {
     if (!files.length) return;
     setUploading(true);
-    setError(null);
+    setActionError(null);
     try {
       for (const file of files) await uploadDocument(caseId, file);
     } catch (e) {
-      setError(errorText(e));
+      setActionError(errorText(e));
     } finally {
       setUploading(false);
       setReload(n => n + 1);
@@ -121,7 +130,7 @@ export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
   }, [caseId]);
 
   const open = useCallback(async (documentId: string): Promise<void> => {
-    setError(null);
+    setActionError(null);
     // Open the tab synchronously inside the click so popup blockers allow it, then point it at S3.
     const tab = window.open('', '_blank');
     if (tab) tab.opener = null;
@@ -131,11 +140,14 @@ export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
       else window.location.assign(url);
     } catch (e) {
       tab?.close();
-      setError(errorText(e));
+      setActionError(errorText(e));
     }
   }, []);
 
-  const refresh = useCallback(() => setReload(n => n + 1), []);
+  const refresh = useCallback(() => {
+    setActionError(null);
+    setReload(n => n + 1);
+  }, []);
   return { documents, error, uploading, upload, open, refresh };
 }
 

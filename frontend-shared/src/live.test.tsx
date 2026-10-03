@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LiveAssistant, LiveCaseDocuments } from './live';
 import { LIVE_CASE_ID } from './relayApi';
@@ -33,6 +33,38 @@ describe('LiveCaseDocuments', () => {
     const body = init?.body as FormData;
     expect(body.get('case_id')).toBe(LIVE_CASE_ID);
     expect((body.get('file') as File).name).toBe('cap-table.csv');
+  });
+
+  it('keeps an upload error visible after refreshing the document list', async () => {
+    fetchMock.mockResolvedValueOnce(json([]))
+      .mockResolvedValueOnce(json({ detail: 'Upload could not be saved' }, 500))
+      .mockResolvedValueOnce(json([]));
+    render(<LiveCaseDocuments canUpload />);
+    await screen.findByText('No documents yet');
+    fireEvent.change(screen.getByLabelText('Upload documents'), { target: { files: [new File(['a,b'], 'cap-table.csv')] } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Upload could not be saved');
+  });
+
+  it('does not show the previous case documents while a new case loads', async () => {
+    fetchMock.mockResolvedValueOnce(json([doc])).mockImplementationOnce(() => new Promise<Response>(() => undefined));
+    const view = render(<LiveCaseDocuments canUpload={false} caseId="first-case" />);
+    await screen.findByText('cap-table.csv');
+    view.rerender(<LiveCaseDocuments canUpload={false} caseId="second-case" />);
+    expect(screen.queryByText('cap-table.csv')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading case documents');
+  });
+
+  it('ignores a late document response for the previous case', async () => {
+    let resolveOld: (response: Response) => void = () => undefined;
+    fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => { resolveOld = resolve; }))
+      .mockResolvedValueOnce(json([{ ...doc, id: 'd2', case_id: 'second-case', filename: 'current.csv' }]));
+    const view = render(<LiveCaseDocuments canUpload={false} caseId="first-case" />);
+    view.rerender(<LiveCaseDocuments canUpload={false} caseId="second-case" />);
+    await screen.findByText('current.csv');
+    await act(async () => { resolveOld(json([doc])); });
+    expect(screen.getByText('current.csv')).toBeInTheDocument();
+    expect(screen.queryByText('cap-table.csv')).not.toBeInTheDocument();
   });
 
   it('shows the backend error detail', async () => {

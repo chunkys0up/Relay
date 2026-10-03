@@ -85,7 +85,7 @@ function DemoScreen() {
           <span>or <button type="button" className="founder-home-text-button" onClick={() => fileInput.current?.click()} disabled={uploading}>choose files</button></span>
           <button className="founder-home-upload-button" type="button" onClick={() => fileInput.current?.click()} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload documents'}</button>
           <input ref={fileInput} className="sr-only" type="file" multiple aria-label="Upload documents" onChange={onFileChange} disabled={uploading}/>
-          <small>Files are stored securely for this case and visible to your advisor.</small>
+          <small>Uploaded originals are visible to your advisor. Packet sharing is separate.</small>
         </div>
         {(caseDocuments.error || error) && <p className="founder-home-feedback is-error" role="alert">{caseDocuments.error || error}</p>}
         {notice && <p className="founder-home-feedback" role="status">{notice}</p>}
@@ -127,7 +127,7 @@ function DemoScreen() {
         {lastMessages.length ? <ul>{lastMessages.map((message) => <li key={message.id}><strong>{message.author.name}</strong><span>{message.text}</span><small>{new Date(message.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small></li>)}</ul> : <p>No conversation activity yet.</p>}
         <Link className="founder-home-chat-link" to="/founder/chat#message-main">Open AI Chat</Link>
       </div>}
-      <p className="founder-home-privacy">Uploads stay private until you choose what to share.</p>
+      <p className="founder-home-privacy">Packet versions require a separate handoff to your advisor.</p>
     </aside>
   </div>}</ScreenState>;
 }
