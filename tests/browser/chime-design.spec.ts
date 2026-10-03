@@ -52,6 +52,18 @@ for (const role of ['founder', 'advisor'] as const) {
     await page.evaluate(() => window.dispatchEvent(new Event('test-chime-connect')));
     await expect(page.getByText('Connected', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mute microphone' })).toBeDisabled();
+    for (const width of [1280, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      const cards = await page.locator('.relay-call-person').evaluateAll(elements => elements.map(element => {
+        const card = element.getBoundingClientRect();
+        const name = element.querySelector('strong')!.getBoundingClientRect();
+        const media = element.querySelector('.relay-call-media')!.getBoundingClientRect();
+        return { contained: name.left >= card.left && name.right <= card.right,
+          separateRows: name.top >= media.bottom - 1 };
+      }));
+      expect(cards).toHaveLength(2);
+      expect(cards.every(card => card.contained && card.separateRows)).toBe(true);
+    }
     await page.getByRole('button', { name: 'End for everyone' }).click();
     await expect(page.getByText('The call ended for everyone.')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Ready to call?' })).toBeVisible();
