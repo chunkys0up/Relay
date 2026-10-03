@@ -1,0 +1,11 @@
+{
+  "profile": "relay-hackathon",
+  "region": "us-east-1",
+  "models": {
+    "reader": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "writer": "us.anthropic.claude-sonnet-5",
+    "verifier": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "extractor": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    "orchestrator": "us.anthropic.claude-sonnet-5"
+  }
+}

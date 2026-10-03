@@ -28,7 +28,7 @@ APP_ORIGIN=http://localhost:<frontend-port>
 CHIME_REGION=<verified-region>
 ```
 
-The user reports a working Bedrock call called “Claude Sonnet 5”; its exact Bedrock model/inference-profile ID is **UNVERIFIED**. Copy it from the successful request or verified account configuration, then run a small permitted invocation. Never fabricate an ID.
+The exact `us.anthropic.claude-sonnet-5` inference profile was verified through AWS CLI catalog, entitlement, and successful Converse calls on 2026-10-03. Per-role model settings, Windows-login/WSL startup, and live verification are documented in [Bedrock role setup](docs/bedrock-role-setup.md).
 
 Preflight gates: AWS identity/region; S3 canonical write/read; PostgreSQL connectivity, schema migrations and transaction/revision-conflict checks; Textract extraction permission; Bedrock invoke permission and exact configured ID; Strands SDK compatibility; Chime SDK permissions; Chime media-capture and Transcribe prerequisites; and a two-person Chime audio test. New cloud resources, permission changes, credentials, or real data require team authorization.
 

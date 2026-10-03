@@ -1,42 +1,25 @@
-# Approved Relay redesign loop
+# Source-aware workflow loop
 
-Scope: frontend UI in this isolated worktree only. Preserve adapter authorization,
-immutable versions, explicit handoff/send confirmation and unrelated changes.
-Latest eight user-attached mockups override older navigation and capture UI.
+Scope: codex/source-aware-tasks, isolated /home/tim/Relay-source-aware from origin/main d54fa55. Preserve legacy local demo, Postgres/S3, navigation, originals and saved packet versions. No installs, secrets, AWS calls, pushes or deployment.
 
-Acceptance units (fixed):
-1. Client Home profile/documents/upload/search/progress and dedicated AI Chat.
-2. Advisor Home derived progress/counts; Clients list/inline expandable reviews/private AI.
-3. Both roles pre-call and active-call compositions with truthful simulated state.
-4. Existing upload, citations, sharing, version reviews and message privacy preserved.
-5. Responsive desktop/narrow/mobile, keyboard labels/focus, no runtime errors.
+## Fixed acceptance units
+1. Upload produces honest source metadata/status, cited interpretation and relevant persistent tasks; byte duplicates do not duplicate sources or work.
+2. Possible revisions require explicit inline confirmation; original sources and conflicting evidence remain retained.
+3. Missing/conflicting packet fields yield focused chat questions and stable tasks with dependencies, responsible party, blocking reason and backend completion predicates. Human answers are attributed evidence and require confirmation.
+4. Validated fact/source changes invalidate dependent pending previews, reopen only affected checks and preserve immutable packets/version reviews.
+5. Server enforces case isolation, valid citations, revision checks, idempotency, concurrent mutation safety and completion transitions. Commit precedes snapshots; reload/reconnect recovers state.
+6. Actual PDF verification and explicit preview confirmation gate AI-proposed immutable new versions; existing manual draft creation retains explicit field confirmation and the human Create action; failures stay visible without false completion. Real Strands SDK executes with simulated models for offline tests.
+7. Existing navigation/regressions, desktop/mobile, keyboard controls and browser console checks pass; screenshots inspected.
 
-Verifier: npm run lint; npm run typecheck; npm test; npm run build;
-npm run test:browser. Existing assertions are locked for implementation workers.
-Coordinator may map only intentionally superseded UI selectors/locations to new
-behavior; record mappings and submit them to independent review. Never remove
-behavioral assertions to make a failure pass. Add regression tests for new views.
+## Method and fixed verifier
+Read this file each correction cycle. Implement -> run existing backend and frontend suites plus new acceptance regressions -> inspect browser screenshots -> independent review -> fix. Existing test assertions and acceptance criteria are locked: do not weaken/remove them. New acceptance tests may be added, then retained; outdated assertions require coordinator assessment against this fixed contract, never silent weakening.
+Commands: PYTHONPATH=backend <existing-python> -m pytest backend/tests -q; npm run lint; npm run typecheck; npm test; npm run build; npm run test:browser; node_modules/.bin/playwright test --config playwright.workflow.config.ts.
+No packages may be installed. Reuse compatible installed runtimes/dependencies; report unavailable verification honestly. Browser test model is explicitly simulated; no live AWS access.
 
-Workflow: implement -> run checks -> inspect actual screenshots of eight target
-views -> independent read-only review -> focused corrections -> affected checks.
-Stop upon acceptance or at 8 substantive correction cycles. Same failure twice
-without meaningful progress triggers diagnosis and a blocker report. No installs,
-secrets, cloud calls, push, deploy or destructive commands. No new agent subteams.
+## Stop and failure protocol
+At most eight correction cycles after submitted work fails acceptance. Same failure twice: diagnose and stop blind retries; proceed only with new evidence and targeted correction. Success requires all fixed criteria plus independent review with no unresolved material findings. If blocked, retain implementation and report exact gaps; never label unverified work complete.
+Append cycle evidence to docs/source-aware-loop-results.md. Final handoff lists outcome, files/architecture, actual checks, screenshots, limitations, unimplemented work, correction count and decisions needing review.
+Measurement: start 2026-10-03T04:08Z approximately; pre-dispatch codex window 10080 minutes used 34%, reset 1791580471. Account-wide observation only, no exact task attribution. Seven attempted acceptance units.
 
-The adapter currently exposes one assigned case; do not fabricate additional
-clients, percentages, documents or real integrations to fill the mockup.
-
-Append evidence/correction counts to REDESIGN-RESULTS.md. Final handoff must name
-checks actually run, inspected screenshots, unresolved limits and worktree.
-
-## Chime integration continuation
-
-User authorized integrating main's Chime implementation, declared dependency
-installation, and updating/merging PR #4 after verification. Keep all prior
-acceptance units and add: a single V2 call panel with explicit demo/live modes,
-shared packet pinned while connecting/active, SDK-event-driven readiness,
-cancellation/unmount cleanup, camera off until requested, and truthful API errors.
-Live AWS/media testing and secrets remain unauthorized. New lifecycle tests use
-mocks; report that limit. Existing banner assertion is mapped from "All actions
-simulated" to "Demo workspace · Chime supports live media" because Chime is now
-available; keep the assertion. Up to 8 focused corrections and independent review.
+## Reviewed contract migrations
+The coordinator and independent reviewer identified obsolete baseline expectations that directly conflict with this request. The fixed-three/all-Done assertion is replaced with stricter persisted unique task identities, machine predicates, active analysis, blocked missing/conflict facts and blocked packet checks. Verification-failure tests retain the founder message and now additionally require a Relay failure message with the exact error code; all no-preview/no-packet assertions remain. The browser packet flow additionally waits for the upload control to become enabled after automatic interpretation. No assertions were dropped to conceal implementation failures. These specific migrations are reviewed against the fixed acceptance criteria; unrelated existing assertions remain locked.

@@ -1,5 +1,17 @@
 export type PacketField = 'company_name' | 'founder_name' | 'business_summary' | 'annual_revenue' | 'cash_reserve' | 'period';
 export interface Evidence { source_id: string; source_hash: string; page: number; quote: string }
+export interface WorkflowSource {
+  id: string; name: string; hash: string; excerpt_count: number;
+  extraction_status?: string; interpretation_status?: string;
+  status_detail?: string | null;
+  relationship_suggestion?: { related_source_id: string; reason: string } | null;
+  relationship?: { related_source_id: string; decision: 'revision' | 'separate' } | null;
+}
+export interface WorkflowTask {
+  id: string; key?: string; title: string; state: string; detail?: string; order?: number;
+  dependencies?: string[]; responsible_party?: string; blocking_reason?: string | null;
+  completion_condition?: string;
+}
 export interface WorkflowFact { value: string | null; state: string; candidates: { value: string; evidence: Evidence[] }[]; confirmed_by: string | null }
 export interface PdfAction {
   verification?: { passed: boolean; hash: string; mode: string; checks: string[] };
@@ -10,10 +22,10 @@ export interface PdfAction {
 }
 export interface WorkflowCase {
   id: string; company: string; goal: string; revision: number; analysis_required?: boolean; ui_state: string; status: string;
-  sources: { id: string; name: string; hash: string; excerpt_count: number }[];
+  sources: WorkflowSource[];
   facts: Record<PacketField, WorkflowFact>;
-  flags: { field: string; detail: string; kind: string }[];
-  tasks: { id: string; title: string; state: string; detail?: string }[];
+  flags: { field: string; detail: string; kind: string; question?: string }[];
+  tasks: WorkflowTask[];
   messages: { id: string; author: string; text: string; created_at: string }[];
   packets: { id: string; version: number; hash: string; created_at: string }[];
   pdf_actions?: PdfAction[];
@@ -21,6 +33,9 @@ export interface WorkflowCase {
   jobs: { id: string; status: string; error?: string }[];
 }
 export interface WorkflowSession { provider: string; mode: 'live' | 'unconfigured' | 'simulated'; csrf_token: string }
+export class WorkflowRequestError extends Error {
+  constructor(message: string, readonly status: number, readonly code?: string) { super(message); }
+}
 let csrfToken = '';
 export function setWorkflowCsrf(value: string): void { csrfToken = value; }
 
@@ -38,7 +53,7 @@ export async function workflowRequest<T>(path: string, options: { method?: strin
   if (!response.ok) {
     const data = await response.json().catch(() => null) as { detail?: unknown; error?: { code?: string } } | null;
     const code = typeof data?.detail === 'string' ? data.detail : data?.error?.code;
-    throw new Error(code ? `Request stopped: ${code.replaceAll('_', ' ').toLowerCase()}.` : `The backend could not complete this request (${response.status}).`);
+    throw new WorkflowRequestError(code ? `Request stopped: ${code.replaceAll('_', ' ').toLowerCase()}.` : `The backend could not complete this request (${response.status}).`, response.status, code);
   }
   return response.json() as Promise<T>;
 }

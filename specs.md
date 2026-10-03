@@ -72,7 +72,7 @@ Centralize them as `--lpl-navy`, `--lpl-orange`, and `--lpl-muted`. Navy serves 
 | Backend | Python FastAPI running locally | Owns auth-like demo session, authorization, REST, WebSockets, AWS calls |
 | Live updates | FastAPI WebSockets | Case-scoped chat, task progress, and case updates; authorize before subscribe |
 | Orchestration | Strands Agents SDK for Python | One visible orchestrator calls registered specialist agents as tools; specialists stay hidden |
-| AI | Amazon Bedrock via configured model/inference-profile ID | User reports a successful “Claude Sonnet 5” call; exact ID is **UNVERIFIED** and must be copied from that successful request/configuration |
+| AI | Amazon Bedrock via configured model/inference-profile ID | Verified 2026-10-03 via AWS CLI: `us.anthropic.claude-sonnet-5`; Haiku 4.5 handles bounded specialist tasks. See [role configuration and live checks](docs/bedrock-role-setup.md) |
 | Files | Private Amazon S3 | Originals, extracted text, packet drafts/versions |
 | Extraction | Amazon Textract | Validate supported types, store source/page evidence and extraction status |
 | Records | PostgreSQL on Amazon RDS | Cases, facts, document catalog/version/status, tasks, messages, call/consent state, reviews |

@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.workflow.actions import resolve_edit
 
 from app.workflow.repository import Repository, WorkflowError
-from app.workflow.schemas import ConfirmInput, CreateCase, PacketInput, RunInput
+from app.workflow.schemas import ConfirmInput, CreateCase, PacketInput, RelationshipInput, RunInput
 from app.workflow.service import WorkflowService
 
 
@@ -132,12 +132,31 @@ def workflow_router(
 
     @router.post("/cases/{case_id}/sources", status_code=201)
     async def upload_source(
-        case_id: str, expected_revision: int = Form(...), file: UploadFile = File(...),
+        case_id: str, background: BackgroundTasks,
+        expected_revision: int = Form(...), file: UploadFile = File(...),
+        analyze: bool = Form(False),
         sid: str = Depends(mutation_session), key: str = Depends(idem),
     ) -> dict[str, Any]:
         data = await file.read(10 * 1024 * 1024 + 1)
-        return service.upload_source(sid, case_id, expected_revision, key,
-                                     file.filename or "source", file.content_type or "", data)
+        result = service.upload_source(sid, case_id, expected_revision, key,
+                                       file.filename or "source", file.content_type or "", data,
+                                       analyze=analyze)
+        if analyze and not result["duplicate"] and service.provider is not None and result["source"]["extraction_status"] == "ready":
+            started = service.start_job(sid, case_id, result["case_revision"],
+                                        key + ":analysis", "Interpret the uploaded source and identify missing or conflicting packet facts.",
+                                        author="Relay")
+            result["job_id"] = started["job_id"]
+            result["case_revision"] = started["case_revision"]
+            background.add_task(service.process_job, sid, case_id, started["job_id"])
+        return result
+
+    @router.post("/cases/{case_id}/sources/{source_id}/relationship")
+    def source_relationship(
+        case_id: str, source_id: str, body: RelationshipInput,
+        sid: str = Depends(mutation_session), key: str = Depends(idem),
+    ) -> dict[str, Any]:
+        return service.set_source_relationship(sid, case_id, source_id,
+            body.related_source_id, body.decision, body.expected_revision, key)
 
     @router.post("/cases/{case_id}/templates", status_code=201)
     async def upload_template(

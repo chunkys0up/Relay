@@ -8,6 +8,7 @@ from .documents import fill_pdf_form, generate_packet_pdf
 from .repository import Repository, WorkflowError
 from .schemas import FIELDS, ModelResult
 from .service import now, uid
+from .tasking import reconcile_tasks
 
 
 def verify_rendered_pdf(pdf: bytes, fields: dict[str, str], template_fields: list[str] | None,
@@ -52,17 +53,23 @@ def stage_edit(repo: Repository, owner: str, state: dict[str, Any], job_id: str,
     def finish(current: dict[str, Any], job: dict[str, Any]) -> None:
         if current['revision'] != state['revision'] or job['status'] != 'working':
             raise WorkflowError('STALE_REVISION')
-        current.setdefault('pdf_actions', []).append(action)
+        for prior in current.setdefault('pdf_actions', []):
+            if prior['status'] == 'pending':
+                prior['status'] = 'superseded'
+        current['pdf_actions'].append(action)
         job['status'] = 'needs_input'
         job['agent_steps'] = [*result.agent_steps, {'role': 'verifier', 'status': 'done',
             'detail': 'Generated PDF verified; awaiting human confirmation.'}]
         current['ui_state'] = 'Needs input'
         current['activity'] = 'Review the proposed PDF. Nothing is saved until you confirm.'
+        current['analysis_required'] = False
+        for source in current['sources']:
+            if (source.get('extraction_status', 'ready') == 'ready' and
+                    source.get('interpretation_status') in ('pending', 'blocked', 'awaiting_model')):
+                source['interpretation_status'] = 'review_needed'
         current['messages'].append({'id': uid(), 'author': 'Relay', 'created_at': now(),
             'text': result.reply or 'I prepared a PDF preview. Review and confirm to save a new version.'})
-        for task in current['tasks']:
-            if task['job_id'] == job_id:
-                task['state'] = 'Done'
+        reconcile_tasks(current)
     repo.update_job(owner, state['id'], job_id, finish, [(action['id'], 'pdf_preview', pdf)])
 
 
@@ -79,6 +86,11 @@ def resolve_edit(repo: Repository, owner: str, case_id: str, action_id: str,
         action = next((a for a in state.get('pdf_actions', []) if a['id'] == action_id), None)
         if action is None:
             raise WorkflowError('NOT_FOUND', 404)
+        if action['status'] == 'superseded':
+            if dismiss:
+                action['status'] = 'dismissed'
+                return {'action_id': action_id, 'status': 'dismissed'}, []
+            raise WorkflowError('STALE_PREVIEW')
         if action['status'] != 'pending':
             raise WorkflowError('ACTION_NOT_PENDING')
         if preview_hash != action['hash'] or hashlib.sha256(pdf).hexdigest() != preview_hash:
@@ -103,17 +115,34 @@ def resolve_edit(repo: Repository, owner: str, case_id: str, action_id: str,
             'hash': hashlib.sha256(text.encode()).hexdigest(), 'created_at': now()})
         for field in FIELDS:
             state['facts'][field].update(state='confirmed', value=fields[field],
-                confirmed_by='founder', confirmation_message_id=message_id)
+                confirmed_by='founder', confirmation_message_id=message_id,
+                accepted_value=fields[field])
+            cited_changes = [change for change in action.get('changes', [])
+                             if change['field'] == field]
+            for change in cited_changes:
+                if change not in state['facts'][field]['candidates']:
+                    state['facts'][field]['candidates'].append(change)
+            answer = {'field': field, 'value': fields[field], 'evidence': [{
+                'source_id': message_id, 'source_hash': state['messages'][-1]['hash'],
+                'page': 1, 'quote': f'{field}: {fields[field]}'}]}
+            state['facts'][field]['candidates'].append(answer)
+            state['facts'][field].setdefault('acceptance_history', []).append({
+                'value': fields[field], 'message_id': message_id, 'accepted_at': now(),
+                'acknowledged_source_ids': sorted({e['source_id'] for change in cited_changes
+                                                   for e in change['evidence']}),
+            })
         packet_id = uid()
         packet = {'id': packet_id, 'version': action['version'], 'fields': fields,
                   'hash': preview_hash, 'template_id': action['template_id'], 'created_at': now()}
         state['packets'].append(packet)
         state['current_packet_id'] = packet_id
         state['analysis_required'] = False
+        state['packet_error'] = None
         state['flags'] = []
         state['status'] = 'Draft ready'
         state['ui_state'] = 'Idle'
         state['activity'] = f"Packet v{packet['version']} saved from your confirmed preview."
         action.update(status='applied', packet_id=packet_id)
+        reconcile_tasks(state)
         return {'packet_id': packet_id, 'version': packet['version'], 'hash': preview_hash}, [(packet_id, 'packet', pdf)]
     return repo.mutate(owner, case_id, operation, key, request, revision, change)

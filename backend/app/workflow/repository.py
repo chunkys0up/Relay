@@ -203,12 +203,16 @@ class Repository:
                     raise WorkflowError("STALE_REVISION")
                 state = json.loads(row["state"])
                 response, blobs = change(state)
-                state["revision"] = row["revision"] + 1
+                no_change = response.pop("_no_change", False)
+                if no_change and blobs:
+                    raise WorkflowError("INVALID_NOOP")
+                state["revision"] = row["revision"] if no_change else row["revision"] + 1
                 response["case_revision"] = state["revision"]
-                conn.execute(
-                    "UPDATE cases SET state=?, revision=? WHERE id=?",
-                    (canonical(state), state["revision"], case_id),
-                )
+                if not no_change:
+                    conn.execute(
+                        "UPDATE cases SET state=?, revision=? WHERE id=?",
+                        (canonical(state), state["revision"], case_id),
+                    )
                 for blob_id, kind, body in blobs:
                     conn.execute(
                         "INSERT INTO blobs(id,case_id,kind,body) VALUES (?,?,?,?)",
