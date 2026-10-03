@@ -10,7 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from app.core.config import settings
 from app.db.pool import get_pool
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
-from app.storage.s3 import build_key, delete_object, upload_bytes
+from app.storage.s3 import build_key, delete_object, presigned_download_url, upload_bytes
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -23,6 +23,17 @@ async def list_documents(case_id: UUID) -> list[DocumentResponse]:
         case_id,
     )
     return [DocumentResponse(**row) for row in rows]
+
+
+@router.get("/{document_id}/url")
+async def document_url(document_id: UUID) -> dict[str, str]:
+    row = await get_pool().fetchrow(
+        "SELECT s3_key, filename FROM documents WHERE id = $1", document_id
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"document {document_id} not found")
+    url = await run_in_threadpool(presigned_download_url, row["s3_key"], row["filename"])
+    return {"url": url}
 
 
 @router.post("/upload", response_model=DocumentUploadResponse)

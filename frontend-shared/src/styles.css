@@ -33,3 +33,16 @@ main{margin-left:166px;padding:24px;min-height:calc(100vh - 88px);background:whi
 main .founder-home,main .founder-chat,main .advisor-clients{margin:-24px}
 @media(max-width:1100px){main .founder-home,main .founder-chat,main .advisor-clients{margin:-20px}}
 @media(max-width:700px){main .founder-home,main .founder-chat,main .advisor-clients{margin:-20px -14px}}
+/* Live backend panels (live.tsx): visually separate from local demo state. */
+.live-panel{display:grid;gap:14px;border-left:3px solid #117653}.live-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.live-heading small{display:block}.live-upload{position:relative;cursor:pointer}.live-upload input{position:absolute;inset:0;opacity:0;cursor:pointer}.live-upload.is-busy{opacity:.6}.live-upload:focus-within{outline:3px solid var(--lpl-orange);outline-offset:2px}
+.founder-home-content>.live-panel,.advisor-home>.live-panel{margin-top:24px}
+/* App shell: a real grid. The sidebar occupies its own column instead of floating over the page, and only
+   <main> scrolls, so the window never rubber-bands when pulled. Overrides the earlier fixed-position rules. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+#root{height:100vh;height:100dvh;display:grid;grid-template-columns:166px minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);grid-template-areas:"top top" "nav sim" "nav main"}
+.topbar{grid-area:top;position:relative}
+.simulation-bar{grid-area:sim;padding-left:20px}
+.navigation{grid-area:nav;position:static;width:auto;min-height:0;overflow-y:auto}
+main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+@media(max-width:1100px){#root{grid-template-columns:142px minmax(0,1fr)}}
+@media(max-width:700px){#root{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"top" "sim" "main" "nav"}.simulation-bar{padding-left:14px}.navigation{height:66px;overflow:visible}main{padding-bottom:20px}}
