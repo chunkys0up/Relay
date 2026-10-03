@@ -46,3 +46,4 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 @media(max-width:1100px){#root{grid-template-columns:142px minmax(0,1fr)}}
 @media(max-width:700px){#root{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"top" "sim" "main" "nav"}.simulation-bar{padding-left:14px}.navigation{height:66px;overflow:visible}main{padding-bottom:20px}}
+.audience-control:has(.relay-tabs){border-bottom:0;padding-bottom:0}.audience-control .relay-tabs{margin-top:0}

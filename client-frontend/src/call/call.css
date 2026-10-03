@@ -1,1 +1,10 @@
 .founder-call-screen .relay-call-header{border-bottom-color:#dce4ef}
+.founder-call-screen .relay-tabs{margin-top:0}
+.relay-pdf-viewer{display:grid;grid-template-rows:auto 1fr;min-height:620px;border:1px solid #dce4ef;border-radius:6px;overflow:hidden;background:#fff}
+.relay-pdf-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #dce4ef}
+.relay-pdf-toolbar select{min-width:0;max-width:340px;font-size:13px}
+.relay-pdf-actions{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.relay-pdf-stage{display:flex;align-items:center;justify-content:center;background:#eef2f7;min-height:560px}
+.relay-pdf-stage iframe{width:100%;height:100%;min-height:560px;border:0;align-self:stretch}
+.relay-pdf-stage p{max-width:420px;padding:24px;text-align:center;font-size:14px;color:#607391}
+@media(max-width:520px){.relay-pdf-viewer{min-height:480px}.relay-pdf-stage,.relay-pdf-stage iframe{min-height:420px}.relay-pdf-actions{margin-left:0}}

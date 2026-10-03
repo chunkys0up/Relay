@@ -2,12 +2,15 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, CallControls, Conversation, EmptyState, PacketPreview, Panel, useRelay } from '@relay/shared';
+import { Tabs } from '../../../frontend-shared/src/tabs';
+import { PdfViewer } from './PdfViewer';
 import './call.css';
 
 export default function Screen(): ReactNode {
   const { snapshot } = useRelay();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [livePacketId, setLivePacketId] = useState<string | null>(null);
+  const [documentView, setDocumentView] = useState<'pdf' | 'summary'>('pdf');
   if (!snapshot) return null;
 
   const available = snapshot.packets.filter(packet => snapshot.grants.some(grant =>
@@ -41,7 +44,10 @@ export default function Screen(): ReactNode {
           {!ongoing && available.length > 1 && <label className="relay-call-packet-picker">Shared document<select aria-label="Document for this call" value={selected.id} onChange={event => setSelectedId(event.target.value)}>{available.map(packet => <option value={packet.id} key={packet.id}>{packet.title} · v{packet.version}</option>)}</select></label>}
           <Badge tone="success">Already shared</Badge>
         </div>
-        <PacketPreview packet={selected} />
+        <Tabs id="founder-call-document" label="Document view" items={[{ id: 'pdf', label: 'PDF' }, { id: 'summary', label: 'Packet summary' }]} value={documentView} onChange={value => setDocumentView(value as 'pdf' | 'summary')}/>
+        <div id={`founder-call-document-${documentView}-panel`} role="tabpanel" aria-labelledby={`founder-call-document-${documentView}-tab`}>
+          {documentView === 'pdf' ? <PdfViewer /> : <PacketPreview packet={selected} />}
+        </div>
         {!ongoing && <p className="relay-call-document-note">Choose a connection to review this shared version together.</p>}
       </div>
       <div className="relay-call-right-column">

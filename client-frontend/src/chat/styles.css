@@ -16,3 +16,24 @@
 .founder-chat-conversation .founder-chat-flag{padding:10px;margin:10px 0}
 .founder-chat-conversation .founder-chat-flag .citation{display:inline-flex;margin-right:6px}
 .founder-chat-conversation .chat-attachments{margin-top:auto}
+/* Full-height chat: only the message list scrolls and the composer stays pinned at the bottom. */
+main:has(.founder-chat){display:flex;flex-direction:column;overflow:hidden}
+main:has(.founder-chat)>:not(.founder-chat){flex:0 0 auto}
+.founder-chat{flex:1 1 auto;min-height:0;align-items:stretch}
+.founder-chat-main{min-height:0;overflow:hidden}
+.founder-chat-conversation .conversation{min-height:0;overflow:hidden}
+.founder-chat-conversation .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain}
+.founder-chat-conversation .founder-chat-clarification{margin-bottom:8px}
+.founder-chat-aside{min-height:0;overflow-y:auto}
+@media(max-width:900px){.founder-chat{grid-template-rows:minmax(0,1fr)}.founder-chat-aside{display:none}.founder-chat-conversation .conversation{min-height:0}}
+@media(max-width:600px){.founder-chat-main{padding-bottom:0}}
+/* Give the messages the height: compact chrome on the chat page. The status row repeats the header badge. */
+main:has(.founder-chat) .app-footer,.founder-chat-status{display:none}
+main:has(.founder-chat) .backend-workspace-entry{padding-block:6px}
+.founder-chat-main{padding-top:12px}
+.founder-chat-header h1{font-size:22px;letter-spacing:-.3px}
+.founder-chat-header p{font-size:13px}
+.founder-chat-conversation .conversation{padding:6px 0 6px;gap:8px}
+.founder-chat-conversation .audience-control{padding-bottom:4px}
+.founder-chat-upload-note{padding:0 0 8px}
+@media(max-width:600px){main:has(.founder-chat) .backend-workspace-entry span,.founder-chat-upload-note,.founder-chat-header p{display:none}main:has(.founder-chat) .backend-workspace-entry{margin-bottom:8px}}
