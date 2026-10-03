@@ -33,12 +33,11 @@ function backendOptions(cases: WorkflowCase[]): PdfOption[] {
   return [...packets, ...sources];
 }
 
-export function PdfViewer({ caseId, packetId }: { caseId?: string; packetId?: string } = {}): ReactNode {
-  const scoped = Boolean(caseId && packetId);
+export function PdfViewer(): ReactNode {
   const [options, setOptions] = useState<PdfOption[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [backendNote, setBackendNote] = useState<string | null>(null);
-  const [url, setUrl] = useState<{ id: string; value: string } | null>(null);
+  const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -48,22 +47,20 @@ export function PdfViewer({ caseId, packetId }: { caseId?: string; packetId?: st
     void (async () => {
       try {
         await initializeWorkflowSession();
-        const items = scoped
-          ? [await workflowRequest<WorkflowCase>(`/cases/${encodeURIComponent(caseId!)}`)]
-          : (await workflowRequest<{ items: WorkflowCase[] }>('/cases')).items;
+        const { items } = await workflowRequest<{ items: WorkflowCase[] }>('/cases');
         if (!active) return;
-        const found = backendOptions(items).filter(option => !scoped || option.id === `${caseId}:${packetId}`);
-        setOptions(current => scoped ? found : [...current.filter(option => !found.some(item => item.id === option.id)), ...found]);
-        setSelectedId(current => scoped ? found[0]?.id ?? '' : current || found[0]?.id || '');
-        if (!found.length) setBackendNote(scoped ? 'The current shared packet PDF is unavailable.' : 'No PDFs yet. Upload a source or create a PDF draft in the backend workspace, or open a PDF from this computer.');
+        const found = backendOptions(items);
+        setOptions(current => [...current.filter(option => !found.some(item => item.id === option.id)), ...found]);
+        setSelectedId(current => current || found[0]?.id || '');
+        if (!found.length) setBackendNote('No PDFs yet. Upload a source or create a PDF draft in the backend workspace, or open a PDF from this computer.');
       } catch {
-        if (active) setBackendNote(scoped ? 'The current shared packet PDF is unavailable.' : 'Generated PDFs are unavailable because the workflow backend is not reachable. You can still open a PDF from this computer.');
+        if (active) setBackendNote('Generated PDFs are unavailable because the workflow backend is not reachable. You can still open a PDF from this computer.');
       }
     })();
     return () => { active = false; };
-  }, [caseId, packetId, scoped]);
+  }, []);
 
-  const selected = options.find(option => option.id === selectedId && (!scoped || option.id === `${caseId}:${packetId}`));
+  const selected = options.find(option => option.id === selectedId);
   useEffect(() => {
     if (!selected) { setUrl(null); return; }
     const controller = new AbortController();
@@ -71,7 +68,7 @@ export function PdfViewer({ caseId, packetId }: { caseId?: string; packetId?: st
     setLoading(true); setError(null); setUrl(null);
     selected.load(controller.signal).then(blob => {
       objectUrl = URL.createObjectURL(blob);
-      setUrl({ id: selected.id, value: objectUrl });
+      setUrl(objectUrl);
     }).catch((cause: unknown) => {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'The PDF could not be loaded.');
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -87,8 +84,6 @@ export function PdfViewer({ caseId, packetId }: { caseId?: string; packetId?: st
     if (fileInput.current) fileInput.current.value = '';
   }
 
-  const activeUrl = url && selected && url.id === selected.id ? url.value : null;
-
   return <section className="relay-pdf-viewer" aria-label="PDF viewer">
     <div className="relay-pdf-toolbar">
       <Icon name="file"/>
@@ -99,15 +94,15 @@ export function PdfViewer({ caseId, packetId }: { caseId?: string; packetId?: st
           })}</select>
         : <strong>No PDF selected</strong>}
       <div className="relay-pdf-actions">
-        {activeUrl && <a className="button button-outline" href={activeUrl} target="_blank" rel="noreferrer">Open in new tab</a>}
-        {!scoped && <><Button variant="outline" onClick={() => fileInput.current?.click()}>Open PDF…</Button>
-        <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden aria-label="Open a PDF from this computer" onChange={event => openLocal(event.target.files?.[0])}/></>}
+        {url && <a className="button button-outline" href={url} target="_blank" rel="noreferrer">Open in new tab</a>}
+        <Button variant="outline" onClick={() => fileInput.current?.click()}>Open PDF…</Button>
+        <input ref={fileInput} type="file" accept="application/pdf,.pdf" hidden aria-label="Open a PDF from this computer" onChange={event => openLocal(event.target.files?.[0])}/>
       </div>
     </div>
     <div className="relay-pdf-stage">
       {error ? <p role="alert">{error}</p>
         : loading ? <p role="status">Loading PDF…</p>
-        : activeUrl ? <iframe title={`PDF: ${selected?.label ?? 'document'}`} src={activeUrl}/>
+        : url ? <iframe title={`PDF: ${selected?.label ?? 'document'}`} src={url}/>
         : <p>{backendNote ?? 'Looking for generated PDFs…'}</p>}
     </div>
   </section>;

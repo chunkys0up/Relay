@@ -1,21 +1,16 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Badge, CallControls, CaseSidebar, EmptyState, PacketPreview, Panel, useRelay } from '@relay/shared';
+import { Badge, CaseSidebar, EmptyState, PacketPreview, Panel, useRelay } from '@relay/shared';
 import { Tabs } from '../../../frontend-shared/src/tabs';
 import { PdfViewer } from './PdfViewer';
 import './call.css';
 
 export default function Screen(): ReactNode {
-  const { snapshot,mode,serverActorRole } = useRelay();
+  const { snapshot } = useRelay();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [livePacketId, setLivePacketId] = useState<string | null>(null);
   const [documentView, setDocumentView] = useState<'pdf' | 'summary'>('pdf');
-  if(mode==='server'){
-    const packet=snapshot?.packets.find(item=>item.id===snapshot.current_packet_version_id);
-    const shared=packet&&snapshot?.grants.some(grant=>grant.packet_version_id===packet.id&&grant.packet_hash===packet.hash);
-    return <section className="relay-call-screen founder-call-screen"><div className="relay-call-layout"><div className="relay-call-document-column"><header className="relay-call-header"><h1>Packet PDF review</h1><p>Shared packet · Amazon Chime</p></header>{snapshot&&packet?<PdfViewer caseId={snapshot.id} packetId={packet.id}/>:<p>No current packet PDF is available.</p>}</div>{serverActorRole==='founder'&&shared?<CallControls/>:<Panel title="Call access"><p>A live call needs an active advisor grant for the current packet.</p><Link className="button button-outline" to="/founder/documents">View packet stages</Link></Panel>}</div></section>;
-  }
   if (!snapshot) return null;
 
   const available = snapshot.packets.filter(packet => snapshot.grants.some(grant =>

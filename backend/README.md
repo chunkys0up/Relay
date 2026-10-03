@@ -1,6 +1,6 @@
 # Relay Backend
 
-Normal packet screens use the owner-session workflow. Verified cloud synchronization registers matching workflow case/source/packet IDs in legacy PostgreSQL and S3. Mirrored workflow IDs require the owner session through legacy endpoints. Explicit browser fixtures and the separate advisor AI workspace retain their own state and authorization. See [document packets](../docs/document-packets.md).
+Relay has separate browser, legacy integration, founder packet-workflow and advisor synthetic-workspace paths. They do not share one authorization or persistence layer.
 
 ## Service map
 
@@ -8,22 +8,20 @@ Normal packet screens use the owner-session workflow. Verified cloud synchroniza
 | --- | --- | --- |
 | Browser demo | `MockRelayAdapter`, browser persistence | Synthetic packet versions, role-filtered grants, reviews, human-message history and simulated calls |
 | Legacy FastAPI | `app.main`, port 8000; PostgreSQL/S3, Bedrock, Chime | Founder chat with case tools, original uploads, case checklist/activity and optional live calls |
-| Founder packet workflow | `app.main`, port 8000; SQLite | Loopback owner sessions, source extraction, tasks/facts, bounded PDF agents and confirmed PDF versions |
-| Advisor synthetic workspace | `/api/advisor` on `app.main`; separate SQLite tables | Server-issued advisor sessions, seeded exact grants, private read-only chat and authorized previews |
+| Founder packet workflow | `app.workflow_app`, port 8001; SQLite | Loopback owner sessions, source extraction, tasks/facts, bounded PDF agents and confirmed PDF versions |
+| Advisor synthetic workspace | `/api/advisor` on `app.workflow_app`; separate SQLite tables | Server-issued advisor sessions, seeded exact grants, private read-only chat and authorized previews |
 
-These modules run in one process; this does not merge their state or authorization.
+Starting a service does not make it share browser case state with the others.
 
 ## Legacy FastAPI service
 
-The legacy frontend uses the configured FastAPI origin (same origin by default, proxied to `http://127.0.0.1:8000` during development). Start it from `backend/` with the existing project environment:
+The legacy frontend uses the configured FastAPI origin (default `http://127.0.0.1:8000`). Start it from `backend/` with the existing project environment:
 
 ```bash
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-From the repository checkout, `app.core.config` loads the root `.env` for both backend settings and SDKs that read process environment. Set `BEDROCK_MODEL_OR_PROFILE_ID` to the verified inference profile ID and `BEDROCK_ORCHESTRATOR_MODEL_ID` when advisor chat should use it. `AWS_PROFILE` selects a named profile when it exists in WSL; if that profile is absent but access key, secret key and optional session token are configured, AWS clients use those explicit environment credentials. A missing profile without complete environment credentials remains an AWS configuration error. This applies to packet models, legacy AI Chat, S3 and Chime; no credential material belongs in browser code.
-
-See [`.env.example`](.env.example) and [configuration](app/core/config.py) for setting names. Startup can continue without a database connection, but database-backed actions fail when they are used.
+See [`.env.example`](.env.example) and [configuration](app/core/config.py) for setting names. Do not put credentials in browser code. Startup can continue without a database connection, but database-backed actions fail when they are used.
 
 ### Chat and case progress
 
@@ -65,7 +63,7 @@ The Chime UI defaults to a simulated preview. Selecting Amazon Chime explicitly 
 
 ## Founder packet workflow
 
-The packet/advisor module in `app.main` runs on loopback port 8000 and is started as described in [workflow setup](../docs/bedrock-workflow.md). Vite proxies `/api/workflow` to it by default. Its SQLite repository owns workflow sessions, sources, tasks/jobs, facts and immutable PDF bytes. It supports source extraction, confirmed fact entry, bounded Strands analysis, PDF preview/edit proposals and explicit confirmation.
+The separate `app.workflow_app` service runs on loopback port 8001 and is started as described in [workflow setup](../docs/bedrock-workflow.md). Vite proxies `/api/workflow` to it by default. Its SQLite repository owns workflow sessions, sources, tasks/jobs, facts and immutable PDF bytes. It supports source extraction, confirmed fact entry, bounded Strands analysis, PDF preview/edit proposals and explicit confirmation.
 
 The owner workflow uses an HttpOnly session, CSRF tokens, revision checks and idempotency keys. Those protections are local-demo boundaries, not production identity. The service is separate from legacy Postgres/S3 documents and browser packet versions; no automatic import or advisor handoff connects them.
 
@@ -73,7 +71,7 @@ See [multi-agent runtime limits](../docs/multiagent-workflow.md) for tool scopes
 
 ## Server synthetic advisor workspace
 
-The same loopback `app.main` mounts `/api/advisor`. It uses its own server cookie/CSRF session, synthetic assignment and exact-version/source grants, private conversations and idempotency records. The seeded synthetic records live in separate SQLite tables and are independent of founder browser state, the legacy document catalog and owner workflow cases.
+The same loopback `app.workflow_app` mounts `/api/advisor`. It uses its own server cookie/CSRF session, synthetic assignment and exact-version/source grants, private conversations and idempotency records. The seeded synthetic records live in separate SQLite tables and are independent of founder browser state, the legacy document catalog and owner workflow cases.
 
 Advisor chat uses one read-only Strands agent. The server checks assignments and grants on every version/source read and citation preview; it validates that cited evidence was actually read and matches the source/version hash. The assistant can answer, identify unknown/conflicting evidence, compare selected versions, or prepare an editable private follow-up draft. It cannot save, approve, share, or send to a client. See [advisor boundaries](../docs/advisor-bedrock.md).
 
@@ -82,6 +80,3 @@ This is not production authentication or a real founder handoff. Do not substitu
 ## Configuration and verification
 
 See [`.env.example`](.env.example), [Bedrock role setup](../docs/bedrock-role-setup.md), [API boundaries](../docs/api-contract.md), and [specs](../specs.md). Configuration or fixture-based test success does not prove AWS access, live model quality, a real Chime session, or production authorization. No endpoint creates AWS resources.
-
-
-The unified backend entry point is `app.main:app` on port 8000. All frontend `/api` traffic uses this backend through Vite, including WebSockets. PostgreSQL/S3 and SQLite retain their separate persistence and authorization boundaries. See the root README for startup and port overrides.

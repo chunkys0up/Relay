@@ -1,7 +1,7 @@
 export type PacketField = 'company_name' | 'founder_name' | 'business_summary' | 'annual_revenue' | 'cash_reserve' | 'period';
 export interface Evidence { source_id: string; source_hash: string; page: number; quote: string }
 export interface WorkflowSource {
-  id: string; name: string; hash: string; excerpt_count: number; mime_type?: string; bytes?: number; created_at?: string; cloud?: {status:string};
+  id: string; name: string; hash: string; excerpt_count: number; mime_type?: string;
   extraction_status?: string; interpretation_status?: string;
   status_detail?: string | null;
   relationship_suggestion?: { related_source_id: string; reason: string } | null;
@@ -32,13 +32,12 @@ export interface WorkflowCase {
   templates?: { id: string; name: string; fields: string[] }[];
   jobs: { id: string; status: string; error?: string }[];
 }
-export interface WorkflowSession { provider: string; mode: 'live' | 'unconfigured' | 'simulated'; csrf_token: string; actor?:{role:'founder'|'advisor';name:string} }
+export interface WorkflowSession { provider: string; mode: 'live' | 'unconfigured' | 'simulated'; csrf_token: string }
 export class WorkflowRequestError extends Error {
   constructor(message: string, readonly status: number, readonly code?: string) { super(message); }
 }
 let csrfToken = '';
 export function setWorkflowCsrf(value: string): void { csrfToken = value; }
-export function workflowCsrfToken(): string { return csrfToken; }
 
 export async function workflowRequest<T>(path: string, options: { method?: string; body?: unknown; file?: FormData; signal?: AbortSignal; key?: string } = {}): Promise<T> {
   const headers: Record<string, string> = { 'X-CSRF-Token': csrfToken };
@@ -49,7 +48,7 @@ export async function workflowRequest<T>(path: string, options: { method?: strin
     response = await fetch('/api/workflow' + path, { method: options.method ?? 'GET', headers, credentials: 'same-origin', signal: options.signal, body: options.file ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) });
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    throw new Error('The packet backend could not be reached. Start the Relay backend on port 8000, then retry.');
+    throw new Error('The packet backend could not be reached. Start the workflow service on port 8001, then retry.');
   }
   if (!response.ok) {
     const data = await response.json().catch(() => null) as { detail?: unknown; error?: { code?: string } } | null;

@@ -1,5 +1,4 @@
 import { API_BASE } from './callsApi';
-import { initializeWorkflowSession, workflowCsrfToken } from '../../client-frontend/src/workflow/api';
 
 // Real FastAPI backend (backend/app/main.py): Strands chat and Postgres/S3 documents.
 // Like callsApi, this is separate from the simulated RelayAdapter and never touches mock case state.
@@ -17,17 +16,10 @@ export class RelayApiError extends Error {
 async function request(path: string, init: RequestInit): Promise<Response> {
   let response: Response;
   try {
-    const fixture = import.meta.env.MODE === 'test' || import.meta.env.VITE_PACKET_DATA_MODE === 'fixture';
-    const mutation = init.method !== undefined && init.method !== 'GET';
-    const headers: Record<string, string> = { ...(init.headers as Record<string, string> | undefined) };
-    if (!fixture && mutation) {
-      if (!workflowCsrfToken()) await initializeWorkflowSession();
-      headers['X-CSRF-Token'] = workflowCsrfToken();
-    }
-    response = await fetch(`${API_BASE}${path}`, { ...init, headers, credentials: 'same-origin' });
+    response = await fetch(`${API_BASE}${path}`, init);
   } catch (error) {
     if (init.signal?.aborted) throw error;
-    throw new RelayApiError(0, `Cannot reach the backend at ${API_BASE || 'this origin'}. Is it running?`);
+    throw new RelayApiError(0, `Cannot reach the backend at ${API_BASE}. Is it running?`);
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { detail?: unknown } | null;

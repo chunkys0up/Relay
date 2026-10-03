@@ -8,8 +8,6 @@ from typing import Any, Mapping, Protocol
 
 from pydantic import ValidationError
 
-from app.core.aws_session import create_aws_session
-
 from .schemas import ModelResult, PdfEditProposal
 
 
@@ -85,7 +83,7 @@ class BedrockProvider:
         from strands.models import BedrockModel
 
         model_id = self.model_id_for(role)
-        session = create_aws_session(self.region, self.profile)
+        session = boto3.Session(profile_name=self.profile, region_name=self.region)
         options: dict[str, Any] = {
             "model_id": model_id,
             "boto_session": session,

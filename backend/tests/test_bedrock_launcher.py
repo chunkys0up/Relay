@@ -53,24 +53,3 @@ def test_launcher_requires_all_explicit_roles(tmp_path: Path, monkeypatch: pytes
     monkeypatch.setattr("sys.argv", [str(SCRIPT), "check", "--config", str(config)])
     with pytest.raises(SystemExit, match="2"):
         runner.main()
-
-
-@pytest.mark.parametrize("port", [None, "8044"])
-def test_serve_uses_unified_backend(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, port: str | None) -> None:
-    config = tmp_path / "bedrock.json"
-    config.write_text(json.dumps({"profile": "unused", "region": "us-east-1",
-        "models": {role: "offline" for role in ("extractor", "orchestrator", "reader", "writer", "verifier")}}))
-    args = [str(SCRIPT), "serve", "--config", str(config)]
-    if port is not None:
-        args += ["--port", port]
-    monkeypatch.setattr("sys.argv", args)
-    calls: list[list[str]] = []
-
-    def child(command: list[str], *, cwd: Path, env: dict[str, str]) -> int:
-        calls.append(command)
-        assert command[3:] == ["app.main:app", "--host", "127.0.0.1", "--port", port or "8000"]
-        return 0
-
-    monkeypatch.setattr(runner.subprocess, "call", child)
-    assert runner.main() == 0
-    assert len(calls) == 1

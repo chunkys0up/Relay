@@ -1,4 +1,3 @@
-import { ServerAdvisorHome } from '../../../frontend-shared/src/ServerAdvisorViews';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Badge, EmptyState, Icon, ScreenState, useRelay } from '@relay/shared';
@@ -24,7 +23,7 @@ function latestReviewFor(snapshot: CaseSnapshot, packet: PacketVersion | null): 
   return packet ? snapshot.reviews.filter(review => review.packet_version_id === packet.id).sort((a, b) => a.created_at.localeCompare(b.created_at)).at(-1) ?? null : null;
 }
 
-function FixtureScreen() {
+export default function Screen() {
   const { snapshot, role } = useRelay();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -109,5 +108,3 @@ function FixtureScreen() {
     <p className="advisor-home-scope-note">This local demo contains one assigned client. Progress is based on shared sources, a shared packet, returned questions, and approval.</p>
   </div></ScreenState>;
 }
-
-export default function Screen() { const {mode}=useRelay(); return mode==='server'?<ServerAdvisorHome/>:<FixtureScreen/>; }

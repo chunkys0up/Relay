@@ -1,4 +1,3 @@
-import ServerCaseHome from '../../../frontend-shared/src/ServerCaseHome';
 import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -97,6 +96,5 @@ function DemoScreen() {
 }
 
 export default function Screen() {
-  const {mode}=useRelay();
-  return mode==='server'?<ServerCaseHome/>:<DemoScreen/>;
+  return <DemoScreen />;
 }

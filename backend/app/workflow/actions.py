@@ -136,9 +136,7 @@ def resolve_edit(repo: Repository, owner: str, case_id: str, action_id: str,
         packet_id = uid()
         packet = {'id': packet_id, 'version': action['version'], 'fields': fields,
                   'hash': preview_hash, 'template_id': action['template_id'],
-                  'verification': verification, 'created_at': now(),
-                  'title': f'Planning packet v{action["version"]}.pdf', 'kind': 'generated',
-                  'stage': 'draft', 'stage_events': [], 'cloud': {'status': 'unconfigured'}}
+                  'verification': verification, 'created_at': now()}
         state['packets'].append(packet)
         state['current_packet_id'] = packet_id
         state['analysis_required'] = False
