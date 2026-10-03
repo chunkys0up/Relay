@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { BackendWorkspace } from '../workflow/BackendWorkspace';
+import { Link } from 'react-router-dom';
 import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
 import type { ActivityEntry, ChecklistState } from '../../../frontend-shared/src/relayApi';
@@ -142,7 +141,5 @@ function DemoScreen() {
 }
 
 export default function Screen() {
-  const [params] = useSearchParams();
-  if (params.get('workspace') === 'backend') return <BackendWorkspace view="documents" />;
-  return <><div className="backend-workspace-entry"><Link to="/founder/home?workspace=backend">Open backend packet workspace</Link><span>Separate development workspace · Bedrock configuration required</span></div><DemoScreen /></>;
+  return <DemoScreen />;
 }

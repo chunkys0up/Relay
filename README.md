@@ -16,7 +16,7 @@ With dependencies installed, run `npm run dev` at the root (or in `frontend-shar
 
 The default workspace uses a synthetic browser adapter for packet versions, grants, review state and human conversation. Founder AI turns stream from the separate legacy FastAPI/Strands service. Chat attachments upload to S3/Postgres and are read by its case-scoped tools; checklist and activity also use legacy case endpoints. The legacy service has no production actor authorization, so a caller-selected case ID is not an access-control boundary.
 
-The founder Home and AI Chat screens also offer **Open backend packet workspace**. That separate service uses owner-scoped SQLite state, source extraction, bounded Strands agents, task updates and confirmed PDF generation/editing. See [workflow setup](docs/bedrock-workflow.md). Vite proxies `/api/workflow` to loopback port 8001 by default; `RELAY_WORKFLOW_PORT` overrides that port for isolated local testing.
+A separate packet-workflow service (no longer linked from Home or AI Chat) backs the call screen's PDF viewer and the advisor AI chat. It uses owner-scoped SQLite state, source extraction, bounded Strands agents, task updates and confirmed PDF generation/editing. See [workflow setup](docs/bedrock-workflow.md). Vite proxies `/api/workflow` to loopback port 8001 by default; `RELAY_WORKFLOW_PORT` overrides that port for isolated local testing.
 
 Advisor Clients also offers an explicit **server synthetic advisor workspace**. It uses separate server-issued sessions, version/source grants, read-only evidence tools, persisted private conversations and authorized citation previews. Its seeded synthetic records are independent of browser grants, legacy uploads and founder workflow cases. It cannot send to a client or approve/share a packet. See [advisor boundaries](docs/advisor-bedrock.md).
 
@@ -41,11 +41,10 @@ npm run typecheck
 npm test -- --maxWorkers=2
 npm run build
 npm run test:browser -- --workers=1
-npm run test:workflow
 PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests -q
 ```
 
-Browser suites start isolated loopback services. The workflow suite uses deterministic model fixtures, not AWS. Production identity, an integrated server-backed founder/advisor handoff, real device behavior and cloud availability require separate validation.
+Browser suites start isolated loopback services. Production identity, an integrated server-backed founder/advisor handoff, real device behavior and cloud availability require separate validation.
 
 ## Technical references
 

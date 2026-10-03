@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { BackendWorkspace } from '../workflow/BackendWorkspace';
 import { Badge, Collapsible, Conversation, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useChats, useRelay } from '@relay/shared';
 import type { ChatThread } from '../../../frontend-shared/src/conversation';
 import type { ChecklistItem, ChecklistState } from '../../../frontend-shared/src/relayApi';
@@ -69,7 +68,5 @@ function DemoScreen() {
 }
 
 export default function Screen() {
-  const [params] = useSearchParams();
-  if (params.get('workspace') === 'backend') return <BackendWorkspace view="chat" />;
-  return <><div className="backend-workspace-entry"><Link to="/founder/chat?workspace=backend">Open backend packet workspace</Link><span>Separate development workspace · Bedrock configuration required</span></div><DemoScreen /></>;
+  return <DemoScreen />;
 }

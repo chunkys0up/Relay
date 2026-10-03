@@ -29,14 +29,13 @@ main:has(.founder-chat)>:not(.founder-chat){flex:0 0 auto}
 @media(max-width:600px){.founder-chat-main{padding-bottom:0}}
 /* Give the messages the height: compact chrome on the chat page. The status row repeats the header badge. */
 main:has(.founder-chat) .app-footer,.founder-chat-status{display:none}
-main:has(.founder-chat) .backend-workspace-entry{padding-block:6px}
 .founder-chat-main{padding-top:12px}
 .founder-chat-header h1{font-size:22px;letter-spacing:-.3px}
 .founder-chat-header p{font-size:13px}
 .founder-chat-conversation .conversation{padding:6px 0 6px;gap:8px}
 .founder-chat-conversation .audience-control{padding-bottom:4px}
 .founder-chat-upload-note{padding:0 0 8px}
-@media(max-width:600px){main:has(.founder-chat) .backend-workspace-entry span,.founder-chat-upload-note,.founder-chat-header p{display:none}main:has(.founder-chat) .backend-workspace-entry{margin-bottom:8px}}
+@media(max-width:600px){.founder-chat-upload-note,.founder-chat-header p{display:none}}
 /* LLM-style thread: one centered reading column. User turns are compact right-aligned bubbles,
    assistant turns are plain full-width text, and the composer sits centered under the thread. */
 .founder-chat-conversation{--chat-column:760px}
