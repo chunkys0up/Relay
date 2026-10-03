@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Badge, Button, EmptyState, Icon, PacketPreview, PageTitle, Panel, SourcePreview } from './ui';
 import { useRelay } from './context';
 import type { PacketVersion } from './types';
+import ServerReturnedAnswer from './ServerReturnedAnswer';
 
 type View = 'home' | 'documents' | 'clients' | 'sources';
 function stageLabel(stage: PacketVersion['status']): string {
@@ -51,7 +52,7 @@ export default function ServerPacketLibrary({ view }: { view: View }) {
     <PageTitle title={title} subtitle={role === 'advisor' ? 'Packets and originals shared with this advisor session. Reviews are saved for the exact PDF version and hash.' : 'Packet stages and PDFs are read from the workflow backend.'}/>
     {role==='founder' && <div className="server-packet-actions"><label className="button button-outline">Import packet PDF<input className="sr-only" type="file" accept=".pdf,application/pdf" aria-label="Import packet PDF" onChange={event=>{const file=event.target.files?.[0];event.target.value='';if(file)void importPacket?.(file);}}/></label><Button variant="outline" disabled={busy} onClick={()=>{void loadExamples?.();}}>Load example packet cases</Button></div>}
     <div className="server-packet-summary"><strong>{snapshot.company}</strong>{snapshot.server_synthetic_example&&<Badge>Synthetic example</Badge>}<span>{snapshot.packets.length} packet{snapshot.packets.length === 1 ? '' : 's'}</span><span>{snapshot.sources.length} original{snapshot.sources.length === 1 ? '' : 's'}</span><span>Legacy service sync: {snapshot.server_legacy_sync_status ?? 'unconfigured'}</span></div>
-    {(snapshot.server_legacy_sync_status === 'failed' || snapshot.server_legacy_sync_status === 'unconfigured' && snapshot.packets.length+snapshot.sources.length>0) && role === 'founder' && <Button variant="outline" disabled={busy} onClick={()=>{void retrySync?.();}}>Retry storage sync</Button>}
+    {(snapshot.server_legacy_sync_status === 'failed' || snapshot.server_legacy_sync_status === 'pending' || snapshot.server_legacy_sync_status === 'unconfigured' && snapshot.packets.length+snapshot.sources.length>0) && role === 'founder' && <Button variant="outline" disabled={busy} onClick={()=>{void retrySync?.();}}>Retry storage sync</Button>}
     {notice && <p role="status">{notice}</p>}
     {error && <p role="alert">{error}</p>}
     <div className="server-packet-grid">
@@ -70,7 +71,7 @@ export default function ServerPacketLibrary({ view }: { view: View }) {
             <p>Cloud copy: {selected.cloud_status ?? 'unconfigured'}</p>
             <h3>Stage history</h3>
             {selected.stage_events?.length ? <ol>{selected.stage_events.map((event,index)=><li key={event.id ?? index}>{event.action ?? event.stage ?? 'Stage recorded'} - {event.actor ?? 'Actor unspecified'} - {date(event.at ?? event.created_at)}</li>)}</ol> : <p>No stage changes have been recorded for this PDF.</p>}
-            {role==='founder' && selected.id===snapshot.current_packet_version_id && (selected.status==='draft'||selected.status==='questions_returned') && <>
+            {role==='founder' && selected.id===snapshot.current_packet_version_id && selected.status==='draft' && <>
               {confirmStage ? <div className="confirm-panel"><p>Record packet v{selected.version} as in review? This updates the local workflow stage. It does not grant advisor access.</p><Button disabled={busy} onClick={()=>{void stagePacket?.(selected,'in_review').then(ok=>{if(ok)setConfirmStage(false);});}}>Confirm stage change</Button><Button variant="outline" onClick={()=>setConfirmStage(false)}>Cancel</Button></div>
                 : <Button onClick={()=>setConfirmStage(true)}>Move to review stage</Button>}
             </>}
@@ -86,6 +87,8 @@ export default function ServerPacketLibrary({ view }: { view: View }) {
                 : <div className="row wrap"><Button disabled={busy} onClick={()=>setReviewDecision('approved')}>Approve version</Button><Button variant="outline" disabled={busy||!reviewNote.trim()} onClick={()=>setReviewDecision('questions_returned')}>Return questions</Button></div>}
             </div>}
           </Panel>
+          {role==='founder' && serverActorRole==='founder' && selected.id===snapshot.current_packet_version_id && selected.status==='questions_returned' && snapshot.reviews.filter(review=>review.packet_version_id===selected.id&&review.packet_hash===selected.hash&&review.decision==='questions_returned').map(review=><ServerReturnedAnswer key={review.id} caseId={snapshot.id} packet={selected} review={review}/>)}
+          {role==='founder' && serverActorRole==='founder' && selected.id===snapshot.current_packet_version_id && selected.status==='questions_returned' && !snapshot.reviews.some(review=>review.packet_version_id===selected.id&&review.packet_hash===selected.hash&&review.decision==='questions_returned') && <Panel title="Example questions returned"><p>This synthetic example has a stage label but no saved advisor review or question. {snapshot.activity}</p><p>Confirm the missing source-backed facts on Home, then generate a new private packet. An actual advisor return will show its exact note and an answer form here.</p></Panel>}
         </> : <EmptyState title="No packet selected"><p>Saved packet PDFs will appear here.</p></EmptyState>}
       </section>
     </div>
