@@ -71,3 +71,22 @@ main:has(.founder-chat) .backend-workspace-entry{padding-block:6px}
 .founder-chat-activity-feed{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:10px}
 .founder-chat-activity-feed p{margin:0;font-size:12px;color:#1e293b}
 .founder-chat-activity-feed small{margin-top:2px!important}
+/* Chat history: a list of saved conversations for the selected tab, like other chat apps. */
+.founder-chat{grid-template-columns:240px minmax(0,1fr) 340px}
+.founder-chat-history{min-height:0;overflow-y:auto;overscroll-behavior:none;border-right:1px solid #e0e7f0;padding:18px 12px;display:flex;flex-direction:column;gap:10px;background:#fafbfd}
+.founder-chat-history-head{display:grid;gap:10px}
+.founder-chat-history-head h2{font-size:14px;color:#52627f;font-weight:600;margin:0 4px}
+.founder-chat-new{border:1px solid #d5dde8;background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;color:#0b1222;text-align:left;cursor:pointer}
+.founder-chat-new:hover,.founder-chat-new[aria-pressed=true]{border-color:#0566e8;color:#0063e7}
+.founder-chat-history ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.founder-chat-history li button{display:grid;gap:2px;width:100%;padding:9px 10px;border:0;border-radius:8px;background:none;font:inherit;text-align:left;cursor:pointer;color:#1e293b}
+.founder-chat-history li button:hover{background:#eef2f7}
+.founder-chat-history li button[aria-current=true]{background:#e6efff}
+.founder-chat-history li strong{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.founder-chat-history li span{font-size:12px;color:#65789d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.founder-chat-history li small{font-size:11px;color:#8a99b3}
+.founder-chat-history-empty{font-size:12px;color:#65789d;margin:4px}
+.founder-chat-history-select{display:none}
+@media(max-width:1100px){.founder-chat{grid-template-columns:210px minmax(0,1fr) 300px}}
+@media(max-width:900px){.founder-chat{grid-template-columns:minmax(0,1fr)}.founder-chat-history{display:none}
+  .founder-chat-history-select{display:flex;flex-direction:row;align-items:center;gap:8px;font-size:12px;margin:6px 0}.founder-chat-history-select select{flex:1;min-width:0;font-size:13px;padding:6px 8px}}

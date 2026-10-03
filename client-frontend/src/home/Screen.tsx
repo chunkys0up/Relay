@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRelay } from '@relay/shared';
+import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages, useRelay } from '@relay/shared';
 import type { PacketVersion } from '@relay/shared';
 import type { ActivityEntry, ChecklistState } from '../../../frontend-shared/src/relayApi';
 import { Tabs } from '../../../frontend-shared/src/tabs';
@@ -60,7 +60,7 @@ function DemoScreen() {
   const nextItem = items.find((item) => item.state !== 'done');
   const fileCount = caseDocuments.documents?.length ?? 0;
   const currentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
-  const lastMessages = snapshot?.messages.filter((message) => message.owner_id === snapshot.founder.id).slice(-3).reverse() ?? [];
+  const recentMessages = useRecentMessages('founder', 3);
 
   return <ScreenState>{snapshot && <div className="founder-home">
     <div className="founder-home-content">
@@ -133,7 +133,7 @@ function DemoScreen() {
           : <p className="founder-home-empty">No activity yet. Uploads, checklist changes and Relay&apos;s work show up here.</p>}
         </Collapsible>
         <Collapsible id="home-conversation" as="h3" title="Recent conversation">
-        {lastMessages.length ? <ul>{lastMessages.map((message) => <li key={message.id}><strong>{message.author.name}</strong><span className="founder-home-blurb">{plainText(message.text)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>No conversation yet.</p>}
+        {recentMessages?.length ? <ul>{recentMessages.map((message) => <li key={message.id}><strong>{message.sender_type === 'ai' ? 'Relay assistant' : message.sender_type === 'founder' ? snapshot.founder.name : snapshot.advisors[0]?.name}</strong><span className="founder-home-blurb">{plainText(message.content)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>{recentMessages === null ? 'Loading…' : 'No conversation yet.'}</p>}
         </Collapsible>
       </div>}
       <p className="founder-home-privacy">Uploads stay private until you choose what to share.</p>

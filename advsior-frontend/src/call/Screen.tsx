@@ -27,11 +27,9 @@ export default function Screen(): ReactNode {
     grant.packet_version_id === packet.id &&
     grant.packet_hash === packet.hash
   ));
-  const call = snapshot.call;
-  const demoOngoing = Boolean(call && !['ended', 'failed'].includes(call.state));
-  const ongoing = demoOngoing || livePacketId !== null;
+  const ongoing = livePacketId !== null;
   const selected = ongoing
-    ? available.find(packet => packet.id === (livePacketId ?? call?.packet_version_id))
+    ? available.find(packet => packet.id === livePacketId)
     : available.find(packet => packet.id === selectedId) ??
       available.find(packet => packet.id === snapshot.current_packet_version_id) ??
       available.at(-1);
@@ -54,14 +52,14 @@ export default function Screen(): ReactNode {
         </div>
       </div>
       <div className="relay-call-right-column">
-        <CallControls packet={selected} onLiveActiveChange={active => setLivePacketId(active ? selected.id : null)} />
+        <CallControls onLiveActiveChange={active => setLivePacketId(active ? selected.id : null)} />
         <section className="relay-call-review" aria-label={`Review packet v${selected.version}`}>
           <Collapsible id="advisor-call-review" title={<>Review v{selected.version} <Badge tone={reviewStatus(selected).tone}>{reviewStatus(selected).label}</Badge></>}>
             <ReviewControls packet={selected}/>
           </Collapsible>
         </section>
         {ongoing ? <section className="relay-call-messages" aria-label="Human messages"><h2>Messages</h2><Conversation humanOnly /></section>
-          : <details className="relay-call-pre-message"><summary>Send a message to {snapshot.founder.name}</summary><Conversation humanOnly /></details>}
+          : <details className="relay-call-pre-message"><summary>Send a message to {snapshot.founder.name}</summary><Conversation humanOnly startNew /></details>}
       </div>
     </div>
   </section>;
