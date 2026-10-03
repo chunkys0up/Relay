@@ -1,86 +1,74 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Badge, Button, EmptyState, Panel } from './ui';
-import { documentUrl, LIVE_CASE_ID, listDocuments, resetChat, streamChat, uploadDocument } from './relayApi';
-import type { LiveDocument } from './relayApi';
-import type { Role } from './types';
-
-interface Turn { id: string; author: 'you' | 'relay'; text: string }
+import { Button, EmptyState, Panel } from './ui';
+import { announceCaseUpdate, CASE_UPDATED_EVENT, documentUrl, LIVE_CASE_ID, listActivity, listChecklist, listDocuments, setChecklistState, uploadDocument } from './relayApi';
+import type { ActivityEntry, ChecklistItem, ChecklistState, LiveDocument } from './relayApi';
 
 const errorText = (error: unknown): string => error instanceof Error ? error.message : 'Request failed';
-const newSessionId = (role: Role): string => `${role}-${crypto.randomUUID()}`;
 
-/** Streaming chat with the backend Strands agent (POST /api/chat/stream). */
-export function LiveAssistant({ role }: { role: Role }): ReactNode {
-  const [sessionId, setSessionId] = useState(() => newSessionId(role));
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState('');
-  const [streaming, setStreaming] = useState(false);
+/** Re-run a fetch whenever the case changes (AI reply, upload, checklist tick). */
+function useCaseReload(): number {
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    const bump = (): void => setReload(n => n + 1);
+    window.addEventListener(CASE_UPDATED_EVENT, bump);
+    return () => window.removeEventListener(CASE_UPDATED_EVENT, bump);
+  }, []);
+  return reload;
+}
+
+/** Plain-text preview of a markdown message, for short blurbs. */
+export function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/^\s{0,3}(#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm, '')
+    .replace(/[*_~`|]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function timeAgo(iso: string, now: number = Date.now()): string {
+  const minutes = Math.round((now - new Date(iso).getTime()) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export interface CaseChecklist { items: ChecklistItem[] | null; error: string | null; setState: (itemId: string, state: ChecklistState) => Promise<void> }
+
+/** The case checklist the chat agent maintains; the founder can tick items off. */
+export function useCaseChecklist(caseId: string = LIVE_CASE_ID): CaseChecklist {
+  const [items, setItems] = useState<ChecklistItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const controller = useRef<AbortController | null>(null);
-
-  // Evict the backend's cached agent when the conversation is replaced or the panel unmounts.
-  useEffect(() => () => {
-    controller.current?.abort();
-    void resetChat(sessionId).catch(() => undefined);
-  }, [sessionId]);
-
-  const send = async (): Promise<void> => {
-    const text = draft.trim();
-    if (!text || streaming) return;
-    const replyId = crypto.randomUUID();
-    setTurns(prev => [...prev, { id: crypto.randomUUID(), author: 'you', text }, { id: replyId, author: 'relay', text: '' }]);
-    setDraft('');
-    setError(null);
-    setStreaming(true);
+  const reload = useCaseReload();
+  useEffect(() => {
     const c = new AbortController();
-    controller.current = c;
-    try {
-      await streamChat(sessionId, text, chunk => setTurns(prev => prev.map(turn => turn.id === replyId ? { ...turn, text: turn.text + chunk } : turn)), c.signal);
-    } catch (e) {
-      if (!c.signal.aborted) {
-        setError(errorText(e));
-        setTurns(prev => prev.filter(turn => turn.id !== replyId || turn.text));
-      }
-    } finally {
-      if (controller.current === c) { controller.current = null; setStreaming(false); }
-    }
-  };
+    listChecklist(caseId, c.signal).then(next => { setItems(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    return () => c.abort();
+  }, [caseId, reload]);
+  const setState = useCallback(async (itemId: string, state: ChecklistState): Promise<void> => {
+    setItems(prev => prev?.map(item => item.id === itemId ? { ...item, state } : item) ?? prev);
+    try { await setChecklistState(caseId, itemId, state); } catch (e) { setError(errorText(e)); }
+    announceCaseUpdate();
+  }, [caseId]);
+  return { items, error, setState };
+}
 
-  const restart = (): void => {
-    controller.current?.abort();
-    setTurns([]);
-    setError(null);
-    setStreaming(false);
-    setSessionId(newSessionId(role));
-  };
-
-  const inputId = `live-assistant-${role}`;
-  return <Panel className="live-panel">
-    <div className="live-heading">
-      <div><h2>Relay assistant</h2><small>Live backend · Strands agent on Bedrock · separate from the local demo case</small></div>
-      <Badge tone={streaming ? 'attention' : 'success'}>{streaming ? 'Replying…' : 'Live'}</Badge>
-    </div>
-    {turns.length === 0
-      ? <p className="muted">Ask a general question. Replies stream from the backend agent and don't change the demo packet.</p>
-      : <div className="message-list" aria-live="polite">{turns.map(turn => <div key={turn.id} className={`message ${turn.author === 'you' ? 'own-message' : ''}`}>
-          <div className="message-author"><strong>{turn.author === 'you' ? 'You' : 'Relay assistant'}</strong></div>
-          <div className="message-bubble">{turn.text || '…'}</div>
-        </div>)}</div>}
-    {error && <p className="feedback feedback-error" role="alert">{error}</p>}
-    <form className="composer" onSubmit={e => { e.preventDefault(); void send(); }}>
-      <label className="sr-only" htmlFor={inputId}>Message the live assistant</label>
-      <textarea id={inputId} value={draft} maxLength={8000} placeholder="Ask the live assistant" disabled={streaming}
-        onChange={e => setDraft(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}/>
-      <div className="composer-actions">
-        <Button variant="outline" onClick={restart}>New conversation</Button>
-        {streaming
-          ? <Button variant="outline" onClick={() => controller.current?.abort()}>Stop</Button>
-          : <Button type="submit" disabled={!draft.trim()}>Send</Button>}
-      </div>
-    </form>
-  </Panel>;
+/** Recent case activity: uploads, checklist changes and notes the agent logs. */
+export function useCaseActivity(caseId: string = LIVE_CASE_ID, limit = 8): { entries: ActivityEntry[] | null; error: string | null } {
+  const [entries, setEntries] = useState<ActivityEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const reload = useCaseReload();
+  useEffect(() => {
+    const c = new AbortController();
+    listActivity(caseId, limit, c.signal).then(next => { setEntries(next); setError(null); }).catch((e: unknown) => { if (!c.signal.aborted) setError(errorText(e)); });
+    return () => c.abort();
+  }, [caseId, limit, reload]);
+  return { entries, error };
 }
 
 export interface CaseDocuments {
@@ -98,7 +86,9 @@ export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [reload, setReload] = useState(0);
+  const [localReload, setReload] = useState(0);
+  const caseReload = useCaseReload();
+  const reload = localReload + caseReload;
   const documents = documentState?.caseId === caseId ? documentState.documents : null;
   const error = actionError ?? loadError;
 
@@ -125,7 +115,7 @@ export function useCaseDocuments(caseId: string = LIVE_CASE_ID): CaseDocuments {
       setActionError(errorText(e));
     } finally {
       setUploading(false);
-      setReload(n => n + 1);
+      announceCaseUpdate();
     }
   }, [caseId]);
 

@@ -131,12 +131,25 @@
 .advisor-client-assistant-head p { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
 .advisor-client-conversation { min-height: 0; flex: 1; overflow: auto; padding: 14px 16px; }
 .advisor-client-conversation .conversation { height: 100%; min-height: 0; padding: 0; gap: 12px; border: 0; }
+.advisor-client-conversation.browser-chat-mode .advisor-chat { min-height: 0; margin-bottom: 16px; }
+.advisor-client-conversation.browser-chat-mode .conversation { height: auto; min-height: 520px; }
+.advisor-browser-chat-label { font-size: 11px; font-weight: 600; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 10px; }
 .advisor-client-conversation .agent-status { display: none; }
 .advisor-client-conversation .message-list { max-height: none; min-height: 80px; }
 .advisor-client-conversation .composer { margin-top: auto; padding: 9px; }
 .advisor-client-conversation .composer textarea { min-height: 62px; }
 .advisor-client-conversation .conversation-footnote { font-size: 10px; }
 .advisor-client-chat-note { padding: 12px 18px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 11px; }
+.advisor-server-workspace { display: grid; gap: 14px; }
+.advisor-server-workspace .advisor-client-heading { padding-bottom: 0; }
+.advisor-server-workspace .advisor-client-heading .button { margin-top: 8px; }
+.advisor-server-version { display: grid; gap: 5px; max-width: 440px; font-weight: 600; font-size: 13px; }
+.advisor-server-version select { width: 100%; min-width: 0; }
+.advisor-server-document { border: 1px solid var(--border); border-radius: 7px; padding: 18px; background: #fff; min-width: 0; }
+.advisor-server-document h3 { font-size: 18px; margin-bottom: 8px; }
+.advisor-server-document code { overflow-wrap: anywhere; }
+.advisor-server-document pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.55; padding: 20px; margin: 14px 0; background: #fbfbfa; border: 1px solid var(--border); }
+.advisor-server-error { padding: 10px; border: 1px solid #e9b6bc; background: #fff0f0; color: #9b2432; }
 @media (max-width: 1250px) {
   .advisor-clients { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr) minmax(275px, 305px); }
   .advisor-client-document-toggle { grid-template-columns: 15px 22px minmax(0, 1fr) auto; }

@@ -5,6 +5,7 @@ import threading
 from strands.agent.agent import Agent
 from strands_harness import create_harness
 
+from app.agents.case_tools import CASE_TOOLS, INSTRUCTIONS
 from app.core.config import settings
 
 _agents: dict[str, Agent] = {}
@@ -24,8 +25,11 @@ def get_agent(session_id: str) -> Agent:
             agent = create_harness(
                 model=settings.strands_model,
                 effort=settings.strands_effort,
+                instructions=INSTRUCTIONS,
                 builtin_tools=[],
-                tools=[],
+                # The harness's own todo plugin would compete with the case checklist tools.
+                builtin_plugins=[],
+                tools=CASE_TOOLS,
                 session={"id": session_id, "dir": settings.session_dir},
             )
             _agents[session_id] = agent

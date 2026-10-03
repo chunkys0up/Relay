@@ -1,52 +1,49 @@
 # Relay transport boundaries
 
-This is a reference to implemented interfaces, not a proposal to add product features. UI scope is defined in [specs.md](../specs.md). Request/response definitions in the linked source files are authoritative.
+This documents implemented interfaces; it is not a proposal to add product features. UI scope is in [specs.md](../specs.md); request and response definitions in source are authoritative.
 
-## Three separate paths
+## Separate paths
 
-| Path | Client | Server/state | Boundary |
+| Path | Client | State/service | Boundary |
 | --- | --- | --- | --- |
-| Default demo | `MockRelayAdapter` via `context.tsx` | Browser persistence | Synthetic roles, grants, chat, review and call state |
-| Legacy integration | `relayApi.ts`, `callsApi.ts` | `app.main` on port 8000; S3/Postgres and Chime | Development prototype; not production-authenticated or case-authorized |
-| Backend packet workspace | `client-frontend/src/workflow/api.ts` | `app.workflow_app` on port 8001; SQLite | Loopback-only founder demo with session ownership, CSRF, revision and idempotency checks |
+| Browser demo | `MockRelayAdapter` via `context.tsx` | Browser persistence | Synthetic packet, grant-filtered views, human messages, reviews and simulated calls |
+| Legacy integration | `relayApi.ts`, `callsApi.ts`, `conversation.tsx` | `app.main`, port 8000; S3/PostgreSQL and Chime | Live founder Strands chat and case tools, document upload/list/open, checklist/activity and calls. Caller-supplied case IDs; not production actor authorization. |
+| Owner-scoped founder workspace | `client-frontend/src/workflow/api.ts` | `app.workflow_app`, port 8001; SQLite | Loopback-only case sessions, tasks/facts and PDFs; session/CSRF/revision/idempotency checks |
+| Server synthetic advisor workspace | `advisorApi.ts`, `advisorChat.tsx` | `app.workflow_app`, port 8001; separate SQLite tables | Own HttpOnly session/CSRF, synthetic assignment, exact grants, private chat and citation previews; read-only, no client actions |
 
-The demo does not become server-backed when either service starts. A selected case or role in the browser does not authorize legacy endpoints. The generic chat harness is not a grounded, grant-scoped advisor assistant.
-
-## Packet workflow
-
-Routes: [workflow.py](../backend/app/api/routes/workflow.py). Payloads: [schemas.py](../backend/app/workflow/schemas.py). Client DTOs and transport: [api.ts](../client-frontend/src/workflow/api.ts).
-
-All paths below start with `/api/workflow`. Case routes start with `/cases/{case_id}`.
-
-| Method/path | Current operation |
-| --- | --- |
-| `GET /session` | Establish/reuse HttpOnly local session; return CSRF token, provider mode and upload limits |
-| `GET /cases`, `POST /cases` | List owned cases; create with company and goal |
-| `GET /cases/{case_id}` | Read owned snapshot |
-| `WS /cases/{case_id}/events` | Authorized ready/snapshot stream; first client message contains CSRF token and after_revision |
-| `POST .../sources` | Multipart source plus expected_revision and optional analyze; PDF/text/CSV, up to 10 MiB |
-| `POST .../sources/{source_id}/relationship` | Confirm revision versus separate source |
-| `GET .../sources/{source_id}/preview` | Read authorized original bytes |
-| `POST .../templates` | Upload constrained PDF template |
-| `POST .../run`, `GET .../jobs/{job_id}` | Persist a job, then read its actual status |
-| `POST .../facts/confirm` | Human-confirm values with source acknowledgements |
-| `POST .../packets` | Explicitly generate a packet from confirmed fields |
-| `GET .../packets/{packet_id}/download` | Download exact saved PDF; optional inline display |
-| `GET .../pdf-actions/{action_id}/preview` | Inspect proposed PDF bytes |
-| `POST .../pdf-actions/{action_id}/confirm` | Save verified preview using expected revision and exact preview hash |
-| `POST .../pdf-actions/{action_id}/dismiss` | Dismiss the selected preview using expected revision/hash |
-
-Mutations require the session cookie, `X-CSRF-Token` and `Idempotency-Key`. Existing-case writes use `expected_revision`; replaying the same key/body returns the stored result, while changing the body or using stale state is rejected. HTTP 202 means accepted work, not completion. A cancelled client wait does not prove server cancellation.
-
-Workflow errors use `{error: {code, message, retryable}}`; framework validation/authentication errors may use `detail`. Responses are operation-specific, not a universal `{data, meta}` envelope. Preview/download routes recheck ownership and return sandboxed content. Only verified exact bytes can become a saved packet through the explicit confirmation path.
+These paths do not automatically share persistence or authorization. The local browser role selector is not authentication. The generic legacy chat is not the grant-scoped advisor assistant.
 
 ## Legacy service
 
-See [backend README](../backend/README.md) and [route implementations](../backend/app/api/routes) for current payloads:
+See [backend README](../backend/README.md) and [route code](../backend/app/api/routes):
 
-- `/api/chat`, `/api/chat/stream`, `/api/chat/{session_id}`: generic session chat/reset.
-- `/api/documents/upload`, `/api/documents`, `/api/documents/{document_id}/url`: multipart upload, list and short-lived document URL.
-- `/api/cases/{case_id}/calls` and per-call read/join/end routes: Chime meeting lifecycle.
-- `/api/client-log`: browser diagnostic ingestion.
+- `POST /api/chat`, `POST /api/chat/stream`, `DELETE /api/chat/{session_id}`: generic session chat/reset. Chat accepts optional `case_id` and `document_ids`; its six tools read files and maintain checklist/activity for that case.
+- `POST /api/documents/upload`, `GET /api/documents?case_id=`, `GET /api/documents/{document_id}/url`: multipart upload, case list and short-lived S3 URL.
+- `GET /api/cases/{case_id}/checklist`, `PATCH /api/cases/{case_id}/checklist/{item_id}`, `GET /api/cases/{case_id}/activity`: persisted case progress/activity.
+- `POST /api/cases/{case_id}/calls` plus per-call read/join/end routes: Chime lifecycle.
+- `POST /api/client-log`: browser diagnostic ingestion.
 
-These are not the previously proposed unified case API. There is no implemented presigned two-phase upload contract, general REST share/review/clarification service, recording/transcription service or production session system. Future integration requires a separate approved design and must preserve current UI and exact-version privacy/confirmation boundaries.
+The legacy service does not authenticate a user or authorize a supplied case ID. Do not treat these routes as production-private or grant-scoped.
+
+## Founder packet workflow
+
+All paths begin with `/api/workflow`. See [workflow routes](../backend/app/api/routes/workflow.py) and [setup/limits](bedrock-workflow.md).
+
+| Method/path | Operation |
+| --- | --- |
+| `GET /session` | Establish local owner session; return CSRF token, provider mode and upload limits |
+| `GET /cases`, `POST /cases`, `GET /cases/{id}` | List/create/read owned cases |
+| `WS /cases/{id}/events` | Authorized snapshot/status stream |
+| `POST /cases/{id}/sources`, `POST /templates` | Upload supported sources/templates |
+| `POST /cases/{id}/run`, `GET /jobs/{id}` | Start and inspect bounded analysis |
+| `POST /facts/confirm`, `POST /packets` | Confirm facts and generate a version |
+| `GET /packets/{id}/download` | Download exact saved PDF |
+| `GET /pdf-actions/{id}/preview`, `POST .../confirm`, `POST .../dismiss` | Review and explicitly confirm/dismiss verified PDF changes |
+
+Mutations use session cookie, CSRF token, idempotency key, and expected revision where applicable. Accepted work is not the same as completed work.
+
+## Advisor workspace
+
+The server advisor API is mounted at `/api/advisor` on the loopback workflow service. `GET /session` bootstraps the server actor and granted versions; conversation list/create/read/send routes bind history to one or two exact versions. Packet/source preview endpoints validate session, case assignment, grant and hashes. Conversation writes require CSRF and idempotency keys. No route sends a question to a founder, changes a grant or approves a packet. The store contains seeded synthetic records and is separate from workflow case records even though both use the local SQLite database file.
+
+No unified case handoff, general production identity, legacy upload grant checks, call recording or transcription service is implemented. Preserve explicit confirmation and exact-version checks in future integration work.

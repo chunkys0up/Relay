@@ -1,0 +1,7 @@
+
+> relay@0.1.0 typecheck
+> npm run typecheck --workspace relay-frontend --
+
+
+> relay-frontend@0.1.0 typecheck
+> tsc --noEmit

@@ -82,7 +82,8 @@ export class MockRelayAdapter implements RelayAdapter {
   const callCommand=command.kind==='call_action'||command.kind==='consent';
   if(this.state.ui_state==='Thinking / Working'&&'packet_version_id' in command)throw new RelayError('INVALID_TRANSITION','A simulated draft is being prepared. Wait for its result before starting another version-bound action.');
   const revision=callCommand?this.state.call?.revision:this.state.revision;
-  if(command.expected_revision!==revision)throw new RelayError('STALE_REVISION','The case or call changed. Refresh and review before trying again.');
+  // An AI reply only appends to the thread, so it never conflicts with concurrent case changes.
+  if(command.kind!=='ai_reply'&&command.expected_revision!==revision)throw new RelayError('STALE_REVISION','The case or call changed. Refresh and review before trying again.');
   if('packet_version_id' in command){const packet=this.state.packets.find(p=>p.id===command.packet_version_id);if(!packet||packet.hash!==command.packet_hash||packet.id!==this.state.current_packet_version_id)throw new RelayError('STALE_PACKET','This packet version is no longer current. Review the latest version.');if(role==='advisor'&&!this.state.grants.some(g=>g.advisor_id===actor.id&&g.packet_version_id===packet.id&&g.packet_hash===packet.hash))throw new RelayError('NOT_FOUND','This version has not been shared with you.');}
   const requireRole=(needed:Role):void=>{if(role!==needed)throw new RelayError('FORBIDDEN','This action is unavailable for this role.');};
   const validText=(text:string):void=>{if(!text.trim()||text.length>8000)throw new RelayError('VALIDATION_FAILED','Enter between 1 and 8,000 characters.');};
@@ -97,7 +98,7 @@ export class MockRelayAdapter implements RelayAdapter {
    case 'message':{
     validText(command.text);if(command.audience.kind==='human'&&(!command.confirmed||command.audience.recipient_id!==(role==='founder'?advisor.id:founder.id)))throw new RelayError('FORBIDDEN','Confirm the named recipient before sending.');
     const allowed=new Set(this.visible(role).sources.map(s=>s.id));if(command.attachments.some(id=>!allowed.has(id)))throw new RelayError('NOT_FOUND','An attachment is unavailable.');
-    const m=message(command.text,command.audience,command.attachments);
+    const m=message(command.text,command.audience,command.attachments);if(command.files?.length)m.files=command.files;
     const initial=role==='founder'&&command.audience.kind==='private_ai'&&this.state.ui_state!=='Thinking / Working'&&this.state.tasks.some(task=>task.state==='Blocked'&&task.title==='Confirm reserve target and revenue')&&!this.state.clarifications.some(q=>q.status==='sent')?initialFounderAnswer([...this.state.messages,m],actor.id):null;
     if(initial){
      const evidence=await Promise.all(initial.messages.map(item=>this.messageCitation(item)));
@@ -146,6 +147,10 @@ export class MockRelayAdapter implements RelayAdapter {
     if(command.action==='accept'){me.accepted=true;call.state='connecting';}
     if(command.action==='decline'||command.action==='end'){call.state='ended';call.capture='off';}
     if(command.action==='mute')me.muted=true;if(command.action==='unmute')me.muted=false;call.revision++;break;
+   }
+   case 'ai_reply':{
+    if(!command.text.trim())throw new RelayError('VALIDATION_FAILED','The assistant reply was empty.');
+    this.state.messages.push({id:crypto.randomUUID(),owner_id:actor.id,author:{kind:'ai',id:'relay',name:'Relay assistant'},created_at:new Date().toISOString(),audience:{kind:'private_ai'},text:command.text,attachments:[],citations:[],status:'stored'});break;
    }
    case 'consent':{
     const call=this.state.call;if(!call||['ended','failed'].includes(call.state))throw new RelayError('INVALID_TRANSITION','There is no active simulated call.');const me=call.participants.find(p=>p.actor.id===actor.id)!;me.capture_consent=command.consent;me.consent_revision++;call.capture=command.consent==='withdrawn'?'off':'awaiting_consent';call.revision++;break;

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Badge, Button, Conversation, EmptyState, Icon, PageTitle, PacketPreview,
-  ReviewControls, ScreenState, SourcePreview, useCaseDocuments, useRelay,
+  ReviewControls, ScreenState, SourcePreview, useRelay,
 } from '@relay/shared';
 import './Screen.css';
 
@@ -32,9 +32,6 @@ export default function Screen() {
   const grant = packet && snapshot ? snapshot.grants.find(item => item.advisor_id === snapshot.advisors[0]?.id && item.packet_version_id === packet.id && item.packet_hash === packet.hash) : undefined;
   const sources = snapshot?.sources.filter(source => grant?.source_ids.includes(source.id)) ?? [];
   const visiblePackets = packets.filter(item => !query || (item.title + ' v' + item.version).toLowerCase().includes(query));
-  const caseDocuments = useCaseDocuments();
-  const uploaded = caseDocuments.documents ?? [];
-  const visibleUploads = uploaded.filter(doc => !query || doc.filename.toLowerCase().includes(query));
   const requestedSource = params.get('source');
   const source = sources.find(item => item.id === requestedSource)
     ?? (query ? sources.find(item => item.name.toLowerCase().includes(query)) : null)
@@ -52,7 +49,7 @@ export default function Screen() {
       <PageTitle title="Documents" subtitle="Shared packet versions and originals" />
       <div className="advisor-documents-grid">
         <aside className="advisor-documents-files" aria-label="Shared client files">
-          <header className="advisor-documents-client"><Icon name="folder" size={24}/><div><strong>{snapshot.company}</strong><small>{uploaded.length} uploaded original{uploaded.length===1?'':'s'}</small></div></header>
+          <header className="advisor-documents-client"><Icon name="folder" size={24}/><div><strong>{snapshot.company}</strong><small>{sources.length} shared original{sources.length===1?'':'s'}</small></div></header>
           <div className="advisor-documents-file-group"><h2>Packet versions</h2>
             {visiblePackets.length ? visiblePackets.slice().reverse().map(item=>{
               const selected=packet?.id===item.id && !requestedSource;
@@ -60,11 +57,14 @@ export default function Screen() {
               return <button type="button" className={'advisor-document-file ' + (selected?'is-selected':'')} key={item.id} aria-pressed={selected} onClick={()=>setParams(params,update,{version:item.id,source:null})}><Icon name="file" size={20}/><span><strong>{item.title}</strong><small>Version {item.version}</small></span><Badge tone={status.tone}>{status.label}</Badge></button>;
             }) : <p className="advisor-document-empty-note">No packet versions match this search.</p>}
           </div>
-          <div className="advisor-documents-file-group"><h2>Uploaded originals</h2>
-            {caseDocuments.error ? <p className="advisor-document-empty-note" role="alert">{caseDocuments.error}</p>
-              : caseDocuments.documents === null ? <p className="advisor-document-empty-note" role="status">Loading documents…</p>
-              : visibleUploads.length ? visibleUploads.map(doc=><button type="button" className="advisor-document-file advisor-source-file" key={doc.id} onClick={()=>{ void caseDocuments.open(doc.id); }}><Icon name="file" size={20}/><span><strong>{doc.filename}</strong><small>Original · uploaded {new Date(doc.uploaded_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</small></span></button>)
-              : <p className="advisor-document-empty-note">{query ? 'No originals match this search.' : 'The founder has not uploaded any documents yet.'}</p>}
+          <div className="advisor-documents-file-group"><h2>Shared originals</h2>
+            {sources.filter(item => !query || item.name.toLowerCase().includes(query)).map(item =>
+              <button type="button" className="advisor-document-file advisor-source-file" key={item.id} onClick={() => setParams(params, update, { version: packet?.id ?? null, source: item.id })}>
+                <Icon name="file" size={20}/><span><strong>{item.name}</strong><small>Original · shared by founder</small></span><Badge>Source {item.extraction === 'ready' ? 'ready' : item.extraction}</Badge>
+              </button>)}
+            {query && !sources.some(item => item.name.toLowerCase().includes(query)) &&
+              <p className="advisor-document-empty-note">No shared originals match this search.</p>}
+            {!query && sources.length === 0 && <p className="advisor-document-empty-note">No originals are included in this selected packet grant.</p>}
           </div>
           <Link className="advisor-documents-back" to="/advisor/clients">← Back to clients</Link>
         </aside>

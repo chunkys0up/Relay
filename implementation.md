@@ -1,83 +1,53 @@
 # Relay implementation map
 
-Version 0.5 · 3 October 2026 · Current implementation map and integration constraints
+Version 0.6 · 3 October 2026 · Current routes, behavior and limits
 
-Read [specs.md](specs.md) before changing product behavior. This file describes the UI that exists and the actual boundaries between its synthetic adapter and backend-backed features. Keep those paths distinct unless an integration change is in scope.
+Read [specs.md](specs.md) before changing product behavior. This file maps the current UI to its service boundaries. Keep the separate browser, legacy, founder workflow and advisor workspace data paths clear.
 
-## 1. Current application map
+## Current application map
 
-The runnable app is the Vite/React application in `frontend-shared/`. Its entry point and route table are in `frontend-shared/src/main.tsx`; shared state and components are in `frontend-shared/src/`. Role screens remain in `client-frontend/` and `advsior-frontend/` (preserve the latter’s existing spelling).
+The Vite/React app is in `frontend-shared/`. Routes are registered in `frontend-shared/src/main.tsx`. Role screens remain in `client-frontend/` and `advsior-frontend/` (existing spelling).
 
-| Surface | Route / entry | Current behavior and boundary |
+| Surface | Route | Current behavior |
 | --- | --- | --- |
-| Founder Home | `/founder/home` | Shows founder/company context, uploaded originals and synthetic packet versions, Home document upload, and progress/activity. Document list/upload/open uses the real FastAPI/S3/PostgreSQL document API. Packet, task and activity data is local synthetic adapter state. A contextual link opens the separate backend packet workspace. |
-| Founder AI Chat | `/founder/chat` | Shows local simulated conversation, flags, tasks and case status. Includes a separate live Strands/Bedrock assistant, which does not alter the synthetic packet. A contextual link opens the backend packet workspace. Upload entry is on Home. |
-| Founder Call | `/founder/call` | Pre-call and active layouts show a shared packet, connection selector, controls and human messages. Demo preview is simulated; Amazon Chime mode uses the live backend/SDK when configured. |
-| Advisor Home | `/advisor/home` | Summary for the one synthetic assigned client, progress, status and attention, plus a separate backend uploaded-original list. |
-| Advisor Clients | `/advisor/clients` | Shared client rail, expandable packet/source previews, inline exact-version review actions, and private-to-advisor synthetic AI chat. This Clients surface uses synthetic snapshot/grant data; it does not call the backend document API. |
-| Advisor Call | `/advisor/call` | Pre-call and active layouts with shared packet, connection selector, review actions and human messages; Demo preview or explicit live Chime. |
-| Settings, Search | `/{role}/settings`, `/{role}/search` | Routed utility pages. Settings documents synthetic identity and unavailable capture controls; Search covers synthetic sources and drafts. |
-| Contextual tools | Founder `/sources`, `/documents`, `/home/clarification`; advisor `/reviews`, `/documents` | Routed and linked from relevant screens. These are not primary navigation items. Preserve their existing links and exact-version behavior; do not promote them back into the main navigation by default. |
-| Backend packet workspace | Home/AI Chat link with `?workspace=backend` | Separate service flow for sources/templates, analysis, fact confirmation, and immutable PDF drafts. Requires the workflow backend and its configuration; it does not share ordinary local packet state. |
+| Founder Home | `/founder/home` | Lists/uploads/opens original files through legacy FastAPI → S3/PostgreSQL. Packet versions and recent human conversation come from the browser adapter. Checklist and activity load from legacy case endpoints. A separate link opens the owner-scoped packet workspace. |
+| Founder AI Chat | `/founder/chat` | Browser adapter saves demo messages and simulated human delivery. Private AI replies stream from legacy `/api/chat/stream`; optional file attachments upload to the case and the live agent can read them. Agent checklist/activity changes persist through case tools. The separate owner-scoped packet workspace is linked here too. |
+| Founder Call | `/founder/call` | Pre-call/active layouts show a selected shared version with PDF and Packet summary tabs, plus human-message controls. Choose simulated Demo or live Amazon Chime; ordinary packet state and human conversation stay separate. |
+| Advisor Home | `/advisor/home` | Browser snapshot only: summary and counts for its grant-visible synthetic sources and packet versions. It has no raw backend-uploaded-file list. |
+| Advisor Clients | `/advisor/clients` | Browser mode shows grant-visible synthetic sources/packets, inline exact-version reviews and demo conversation. The explicit server synthetic mode uses the separate advisor API for granted packet context, private persisted chat and citations. |
+| Advisor Call | `/advisor/call` | Shared browser-demo packet, review actions and human-message controls with simulated Demo or explicit live Chime. |
+| Settings, Search | `/{role}/settings`, `/{role}/search` | Utilities. Search uses the role-visible browser snapshot. Settings shows synthetic identity and call privacy; it does not expose capture/transcription controls. |
+| Contextual tools | Founder `/founder/sources`, `/founder/documents`, `/founder/home/clarification`; advisor `/advisor/reviews`, `/advisor/documents` | Direct routes linked from relevant screens; not primary navigation. Advisor Documents previews only grant-visible browser packet versions and sources. |
+| Owner-scoped packet workspace | Founder Home/AI Chat link with `?workspace=backend` | Separate session-owned case flow for source/template upload, extraction, confirmed facts, bounded agent analysis and verified PDF proposals. SQLite development state; requires its own configured service. |
+| Server advisor workspace | Advisor Clients link/selector | Separate `/api/advisor` session and SQLite seed/grants. Read-only chat can cite authorized, actually read packet/source evidence and compare selected versions. No client send, approval or share action. |
 
-Primary navigation is Founder Home / AI Chat / Call and Advisor Home / Clients / Call. Settings and global search remain reachable outside that list. There is no primary Founder Sources/Documents or Advisor Reviews/Documents destination. Neither role has a recording, capture-consent, transcript, or call-AI-support interface.
+Primary navigation is Founder Home / AI Chat / Call and Advisor Home / Clients / Call. Settings and Search remain utilities. Sources, Documents, Reviews and clarification remain routed contextual tools. There is no call recording, capture-consent, transcript or call-AI-support interface.
 
-## 2. Runtime and service boundaries
+## Runtime and service boundaries
 
-- `RelayProvider` in `frontend-shared/src/context.tsx` reads and mutates the browser-backed synthetic adapter. This adapter owns ordinary case snapshots, local messages, handoffs, reviews, clarification simulations and demo call state.
-- `useCaseDocuments` in `frontend-shared/src/live.tsx` calls the legacy FastAPI document routes through `frontend-shared/src/relayApi.ts`. Uploads are sent as multipart requests; the backend writes originals to S3 and a row to PostgreSQL. List/open requires the same service and case configuration. This does not extract a file into the local adapter or attach it to a local packet automatically.
-- `LiveAssistant` calls the legacy FastAPI/Strands chat endpoint through the same API module. Its session is independent of local case messages and packet state.
-- `BackendWorkspace` uses the workflow API under `/api/workflow`. The source-aware workflow service runs separately (typically port 8001) and currently uses SQLite development persistence. It supports source/template intake, analysis and fact confirmation, plus confirmed PDF creation/actions. Consult [workflow setup](docs/bedrock-workflow.md) for current endpoints and checks.
-- Chime mode uses `frontend-shared/src/callsApi.ts` and `liveCall.tsx` against the FastAPI call routes and Amazon Chime SDK. It is a real media path when configured and connected. Current API identity is caller supplied, call metadata is in memory, and the packet/source previews, messages and review state alongside calls remain synthetic/local. Separately listed backend originals use the legacy document API.
-- Demo call mode updates only browser-backed synthetic state. Accepting a demo invitation reaches Connecting; it does not establish media or claim a live connection.
-- No route currently records or transcribes calls. Keep capture/transcription off and absent from UI.
+- `RelayProvider` and `MockRelayAdapter` in `frontend-shared/src/context.tsx` and `mock.ts` own browser packet snapshots, grant-filtered role views, local message history, reviews and simulated calls.
+- `Conversation` in `frontend-shared/src/conversation.tsx` stores visible messages/delivery state in the browser adapter. Private AI requests stream through `relayApi.ts` to the legacy FastAPI chat endpoint; attachments upload through the document endpoint and their IDs are passed with the case ID. Human delivery is simulated.
+- The legacy agent in `backend/app/agents/factory.py` has six registered tools for checklist/activity and case-document listing/reading. Checklist/activity endpoints are served from PostgreSQL and refreshed in Home/Chat. Tool data is scoped to the request’s case ID, not a production authenticated user. Do not describe the generic chat as grant-scoped advisor AI.
+- `useCaseDocuments` uses `/api/documents` routes. Original files go to S3 and metadata to PostgreSQL. This is not the source catalog, packet store or sharing logic of the browser adapter or SQLite workflow.
+- `BackendWorkspace` uses `/api/workflow` on `app.workflow_app`, normally port 8001. The SQLite service owns case sessions, sources, tasks/facts and immutable PDF bytes. Updates require loopback session/CSRF/revision/idempotency checks and explicit confirmations.
+- `AdvisorChat` calls `/api/advisor` on that same local workflow service but uses its own synthetic SQLite tables, cookie/CSRF session, assignment/version/source grants, conversations and request idempotency. Its model tools are read-only and source-read validated. It does not import founder records or browser grants.
+- `callsApi.ts` and `liveCall.tsx` connect the explicit Chime mode to legacy FastAPI and SDK. The legacy service accepts caller-supplied identity and keeps call records in memory. Demo calls remain simulated browser state.
 
-Do not describe the app as an end-to-end integrated founder → advisor workflow. The mock adapter, S3/PostgreSQL document routes, backend packet workflow, Bedrock assistant, and live Chime calls are separate flows.
+Do not describe these four paths as an end-to-end integrated founder-to-advisor system: browser adapter; legacy case/chat/document/Chime API; owner-scoped founder workflow; and server synthetic advisor API.
 
-## 3. Product and implementation constraints
+## Behavior and security constraints
 
-Preserve the current navigation and route map above. Home remains the founder’s main document/upload and progress surface; AI Chat remains a separate primary screen. Advisor Clients remains the normal location for shared-document browsing and inline review. Call remains a dedicated destination. Keep contextual screens linked from the surfaces that use them.
+Preserve the current route map, contextual links, keyboard access and responsive layouts. Keep Demo, backend upload, live AI, workflow and Chime actions labeled according to their actual state.
 
-Maintain synthetic-data labeling and demo boundaries. Do not imply local simulated messages were delivered to a person or local packet changes were saved in the backend. Keep upload, live Bedrock chat, backend packet work, and live Chime clearly identified as backend-backed paths requiring service access.
+The legacy case tools use the supplied case ID and are not actor-authenticated. The owner workflow is loopback/session scoped. The advisor API has its own server session, CSRF protection and exact grants, but operates on seeded synthetic data. None of these limitations should be hidden behind the browser role selector.
 
-For synthetic sharing and review:
+Within browser state, exact-version/hash grants control ordinary advisor visibility and review. Human messages require a visible confirmation and remain simulated. The advisor backend chat may only read assigned shared versions; cite only sources actually read. Model-generated follow-ups are editable private drafts, not messages.
 
-- Only an explicitly handed-off packet version and selected originals become advisor-visible.
-- Keep advisor AI chat private to the advisor.
-- Bind review decisions to the current exact version and hash; a new version requires a new decision.
-- Keep send/answer confirmation steps and author attribution visible. Never treat a proposed or simulated action as a real financial or institutional approval.
-- AI states, task states, case status, and call state remain distinct.
-
-For future backend integration:
-
-- Keep AWS calls and credentials in the backend. Do not copy secrets into browser code.
-- Keep server authorization as the source of truth. The current role selector and local adapter checks are not authentication.
-- Validate files, canonical hashes, schemas, cited source locators, recipient, version and revision on the server.
-- Persist state and idempotency keys before work or event publication; reject duplicate sends and stale-version approvals.
-- Restrict source retrieval to case and explicit sharing scope. Do not expose raw model reasoning or arbitrary tool/network/shell access.
-- Keep documents and sensitive content out of logs.
-- Do not add Chime capture, Transcribe, or transcript display to this UI. These are outside the current approved design.
-
-## 4. Backend status that must remain explicit
-
-The legacy FastAPI service currently exposes chat, direct multipart document upload/list/open, health, and Chime meeting lifecycle routes. Uploads use S3 and write document metadata to Postgres. The existing Postgres schema is not the full case workflow store. The legacy Strands chat agent has no tools and does not operate on case packets.
-
-The separate workflow service exposes source-aware case analysis, fact confirmation, packet PDF generation/actions, and event updates. It is a separate workflow and uses SQLite development persistence. Do not describe it as RDS-backed or connected to ordinary local adapter state.
-
-The ordinary synthetic workspace continues to use browser persistence for case messages, sharing, packet versions, reviews, and simulated calls. The live Chime path is independently connected to backend call routes. Current caller-supplied identity, in-memory call metadata, and lack of production authorization/persistence are limitations, not future promises.
-
-For run commands, endpoint details, configuration and latest service limitations, defer to [backend README](backend/README.md) and [Bedrock workflow documentation](docs/bedrock-workflow.md). Do not duplicate credentials, secrets, or volatile environment values here.
-
-## 5. When making UI changes
-
-Before changing navigation or screen responsibilities, inspect the route table and relevant screens. Keep the route list and contextual-vs-primary distinction accurate. Check user-visible links and labels so no dead or misleading route is introduced. Preserve responsive layouts and keyboard-accessible controls.
-
-The repo already has frontend lint, strict TypeScript, unit, build and browser commands documented in [README](README.md). Run checks only when requested or when the active task requires them; report only checks actually run. For changes to the real Chime connection, distinguish mocked browser evidence from a real two-person media test. For backend-dependent flows, clearly state whether the service and real AWS resources were exercised.
+Do not add Chime capture or Transcribe. Preserve server-side file validation, source hash checks, idempotency and bounded work in the flows that already implement them; do not imply the separate services share these protections or data.
 
 ## References
 
-- [App entry and routes](frontend-shared/src/main.tsx)
-- [Founder Home and chat](client-frontend/src/home/Screen.tsx), [AI Chat](client-frontend/src/chat/Screen.tsx)
-- [Advisor Clients](advsior-frontend/src/clients/Screen.tsx)
-- [Call connection selection](frontend-shared/src/call.tsx), [live Chime path](frontend-shared/src/liveCall.tsx)
-- [README](README.md), [backend status](backend/README.md)
+- [App routes](frontend-shared/src/main.tsx)
+- [Conversation and live adapter](frontend-shared/src/conversation.tsx), [API transport](frontend-shared/src/relayApi.ts)
+- [Advisor Clients](advsior-frontend/src/clients/Screen.tsx), [advisor API](frontend-shared/src/advisorApi.ts)
+- [Backend endpoint status](backend/README.md), [workflow transport](docs/api-contract.md)

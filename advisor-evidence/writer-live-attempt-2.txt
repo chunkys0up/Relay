@@ -1,0 +1,3 @@
+PASS live extractor: six grounded fields
+PASS live orchestrator -> reader -> writer -> verifier -> preview -> explicit confirmation -> identical PDF
+{"result": "PASS", "elapsed_seconds": 40.31, "models": {"extractor": "us.anthropic.claude-haiku-4-5-20251001-v1:0", "orchestrator": "us.anthropic.claude-sonnet-5", "reader": "us.anthropic.claude-haiku-4-5-20251001-v1:0", "writer": "us.anthropic.claude-sonnet-5", "verifier": "us.anthropic.claude-haiku-4-5-20251001-v1:0"}}

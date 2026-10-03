@@ -23,6 +23,6 @@ Package installation needs explicit authorization. Offline tests are not evidenc
 
 ## Structure and invariants
 - `frontend-shared/`: Vite entry point, routing, shared adapter and components. `client-frontend/` and `advsior-frontend/`: role screens; the advisor directory spelling is existing public project structure.
-- Browser demo state, the legacy service (`app.main`, port 8000), and the isolated owner-scoped packet service (`app.workflow_app`, port 8001) are separate systems. Do not imply shared authorization or persistence between them.
+- Browser demo state, the legacy service (`app.main`, port 8000), and the two separate services mounted in `app.workflow_app` (owner-scoped founder packets and server synthetic advisor workspace, port 8001) are separate systems. Do not imply shared authorization or persistence between them.
 - Preserve exact-version/hash review and sharing, source-read-before-cite checks, private role/audience history, explicit human save/share/send/approval, bounded terminal tool failures, and idempotent retries.
-- No production identity or complete server-backed advisor workflow exists in this checkout. A UI grant or browser-supplied role is not server authorization.
+- The server advisor workspace is synthetic and isolated; no integrated server-backed founder-to-advisor handoff or production identity exists. Browser grants and caller-supplied legacy case IDs are not production authorization.

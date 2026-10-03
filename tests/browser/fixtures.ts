@@ -1,5 +1,6 @@
 import { test as base, expect } from '@playwright/test';
 import type { BrowserContext } from '@playwright/test';
+import type { ActivityEntry, ChecklistItem } from '../../frontend-shared/src/relayApi';
 
 export interface FixtureDocument {
   id: string;
@@ -10,12 +11,15 @@ export interface FixtureDocument {
 }
 export interface DocumentApiState {
   documents: FixtureDocument[];
+  checklist: ChecklistItem[];
+  activity: ActivityEntry[];
+  chatRequests: { message: string; session_id: string; case_id?: string; document_ids?: string[] }[];
   uploads: { filename: string; body: Buffer; content: Buffer }[];
 }
 
 /** Intercept the legacy document service, including popup previews, without AWS or a running backend. */
 export async function installDocumentApi(context: BrowserContext): Promise<DocumentApiState> {
-  const state: DocumentApiState = { documents: [], uploads: [] };
+  const state: DocumentApiState = { documents: [], uploads: [], checklist: [], activity: [], chatRequests: [] };
   const previews = new Map<string, Buffer>();
   await context.route('**/api/documents**', async route => {
     const request = route.request();
@@ -54,15 +58,56 @@ export async function installDocumentApi(context: BrowserContext): Promise<Docum
     if (path.endsWith('/url')) { await json({ url: 'http://127.0.0.1:8000/api/documents/' + selected.id + '/preview' }); return; }
     await route.fulfill({ headers, contentType: 'text/plain', body: previews.get(selected.id) ?? Buffer.from(selected.filename) });
   });
+  await context.route('**/api/cases/*/checklist**', async route => {
+    const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS', 'Access-Control-Allow-Headers': '*' };
+    const request = route.request();
+    const parts = new URL(request.url()).pathname.split('/');
+    const caseId = parts[3];
+    if (request.method() === 'OPTIONS') { await route.fulfill({ status: 204, headers }); return; }
+    if (request.method() === 'PATCH') {
+      const item = state.checklist.find(entry => entry.id === parts[5] && entry.case_id === caseId);
+      if (!item) { await route.fulfill({ status: 404, headers, json: { detail: 'Offline checklist item not found' } }); return; }
+      item.state = (request.postDataJSON() as { state: ChecklistItem['state'] }).state;
+      await route.fulfill({ headers, json: item });
+      return;
+    }
+    await route.fulfill({ headers, json: state.checklist.filter(item => item.case_id === caseId) });
+  });
+  await context.route('**/api/cases/*/activity**', async route => {
+    const headers = { 'Access-Control-Allow-Origin': '*' };
+    const url = new URL(route.request().url());
+    const caseId = url.pathname.split('/')[3];
+    const limit = Number(url.searchParams.get('limit') ?? 20);
+    await route.fulfill({ headers, json: state.activity.filter(entry => entry.case_id === caseId).slice(0, limit) });
+  });
   await context.route('**/api/chat**', async route => {
     const headers = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS', 'Access-Control-Allow-Headers': '*' };
     if (['DELETE', 'OPTIONS'].includes(route.request().method())) {
       await route.fulfill({ status: 204, headers });
       return;
     }
+    if (route.request().method() === 'POST' && new URL(route.request().url()).pathname === '/api/chat/stream') {
+      state.chatRequests.push(route.request().postDataJSON() as DocumentApiState['chatRequests'][number]);
+      await route.fulfill({ headers, contentType: 'text/plain', body: 'Offline model reply for this browser test.' });
+      return;
+    }
     await route.fulfill({ status: 503, headers, contentType: 'application/json',
-      body: JSON.stringify({ detail: 'Live assistant disabled in offline browser tests.' }) });
+      body: JSON.stringify({ detail: 'Unexpected live assistant route in offline browser tests.' }) });
   });
+  await context.route('**/api/workflow/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (route.request().method() === 'GET' && path === '/api/workflow/session') {
+      await route.fulfill({ json: { csrf_token: 'offline-workflow-token', demo: true, mode: 'unconfigured', provider: 'Offline browser fixture' } });
+    } else if (route.request().method() === 'GET' && path === '/api/workflow/cases') {
+      await route.fulfill({ json: { items: [] } });
+    } else {
+      await route.fulfill({ status: 503, json: { error: { code: 'OFFLINE_FIXTURE', message: 'Packet workflow unavailable in generic browser tests.', retryable: true } } });
+    }
+  });
+  await context.route('**/api/advisor/**', route => route.fulfill({
+    status: 503, headers: { 'Access-Control-Allow-Origin': '*' },
+    json: { error: { code: 'OFFLINE_FIXTURE', message: 'Advisor service is not enabled in this browser fixture.', retryable: true } },
+  }));
   return state;
 }
 

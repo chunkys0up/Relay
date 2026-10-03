@@ -43,6 +43,34 @@ html,body{height:100%;overflow:hidden;overscroll-behavior:none}
 .topbar{grid-area:top;position:relative}
 .simulation-bar{grid-area:sim;padding-left:20px}
 .navigation{grid-area:nav;position:static;width:auto;min-height:0;overflow-y:auto}
-main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+main{grid-area:main;margin-left:0;min-height:0;overflow-y:auto;overscroll-behavior:none}
 @media(max-width:1100px){#root{grid-template-columns:142px minmax(0,1fr)}}
 @media(max-width:700px){#root{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;grid-template-areas:"top" "sim" "main" "nav"}.simulation-bar{padding-left:14px}.navigation{height:66px;overflow:visible}main{padding-bottom:20px}}
+.audience-control:has(.relay-tabs){border-bottom:0;padding-bottom:0}.audience-control .relay-tabs{margin-top:0}
+.message-list,.founder-chat-aside{overscroll-behavior:none}
+/* Markdown in AI replies. The global h1/h2/p/table rules are sized for pages, so reset them here. */
+.markdown{white-space:normal;line-height:1.6;overflow-wrap:anywhere}.markdown>:first-child{margin-top:0}.markdown>:last-child{margin-bottom:0}
+.markdown p{margin:0 0 12px}.markdown p+p{margin-top:0}
+.markdown h1,.markdown h2,.markdown h3,.markdown h4{margin:18px 0 8px;line-height:1.35;letter-spacing:0;color:inherit}.markdown h1{font-size:20px;font-weight:700}.markdown h2{font-size:18px;font-weight:650}.markdown h3{font-size:16px;font-weight:650}.markdown h4{font-size:15px;font-weight:600}
+.markdown ul,.markdown ol{margin:0 0 12px;padding-left:22px}.markdown li{margin:4px 0}.markdown li>p{margin:0}
+.markdown code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;background:#eef2f7;border-radius:4px;padding:2px 5px}
+.markdown pre{background:#0f172a;color:#e2e8f0;border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0 0 12px;white-space:pre}.markdown pre code{background:none;padding:0;color:inherit;font-size:13px}
+.markdown blockquote{margin:0 0 12px;padding:2px 0 2px 14px;border-left:3px solid #cbd5e1;color:var(--text-muted)}.markdown hr{margin:16px 0}.markdown a{color:#0063e7}
+.markdown-table{overflow-x:auto;margin:0 0 12px}.markdown table{border-collapse:collapse;font-size:13px;width:auto}.markdown th,.markdown td,.markdown tr:last-child td{border:1px solid var(--border);padding:6px 10px;text-align:left}.markdown th{background:#f6f8fa;color:inherit;font-size:13px;font-weight:600}
+.typing{display:inline-flex;gap:4px;align-items:center;height:22px}.typing span{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:relay-typing 1.2s infinite ease-in-out}.typing span:nth-child(2){animation-delay:.15s}.typing span:nth-child(3){animation-delay:.3s}
+@keyframes relay-typing{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+@media(prefers-reduced-motion:reduce){.typing span{animation:none}}
+/* Files attached to AI chat messages (composer chips and sent-message chips). */
+.composer-files,.message-files{display:flex;flex-wrap:wrap;gap:6px}.message-files{margin-bottom:6px}
+.file-chip{display:inline-flex;align-items:center;gap:6px;max-width:260px;padding:5px 8px 5px 10px;border:1px solid var(--border);border-radius:10px;background:#f8fafc;font-size:12px;color:#1e293b}
+.file-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-chip small{color:var(--text-muted);white-space:nowrap}
+.file-chip.is-failed{border-color:#f0c4a4;background:var(--warm)}
+.file-chip button{border:0;background:none;padding:0 2px;font-size:16px;line-height:1;color:var(--text-muted);cursor:pointer}
+.composer-attach{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-right:auto;border:0;border-radius:50%;background:none;color:#52627f;cursor:pointer}
+.composer-attach:hover:not(:disabled){background:#f1f4f9;color:#1e293b}.composer-attach:disabled{opacity:.4;cursor:not-allowed}
+/* Collapsible sidebar headings (collapsible.tsx). */
+.collapsible-heading button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:0;border:0;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.collapsible-heading button svg{flex-shrink:0;color:var(--text-muted);transition:transform .15s}
+.collapsible-heading button[aria-expanded=false] svg{transform:rotate(-90deg)}
+.collapsible-heading:has(button[aria-expanded=false]){margin-bottom:0!important}
+@media(prefers-reduced-motion:reduce){.collapsible-heading button svg{transition:none}}

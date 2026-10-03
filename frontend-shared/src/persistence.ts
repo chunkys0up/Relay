@@ -4,7 +4,7 @@ import { RelayError } from './types';
 import type { CaseSnapshot, MutationOptions, Receipt, RelayAdapter, RelayCommand, Role, Scenario } from './types';
 
 interface StoredCase { generation:number; data:DemoState }
-const databaseName='relay-local-demo-v1';
+const databaseName='relay-local-demo-v2';
 const lockName='relay-local-demo-case';
 
 function openDatabase():Promise<IDBDatabase>{

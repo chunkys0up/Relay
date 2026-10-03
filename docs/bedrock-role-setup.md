@@ -1,6 +1,6 @@
 # Bedrock role setup and verification
 
-Scope: existing AI Chat Strands workflow, with its source citations and human PDF confirmation gates. No new cloud resources, IAM grants, subscriptions, databases, or dependencies.
+Scope: the founder packet workflow's five Strands roles, source citations and human PDF confirmation gates. This configuration does not configure the legacy founder AI Chat agent or the separate server synthetic advisor assistant. No new cloud resources, IAM grants, subscriptions, databases, or dependencies.
 
 ## Model selection
 

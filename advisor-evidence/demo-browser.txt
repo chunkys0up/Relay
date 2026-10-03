@@ -1,0 +1,340 @@
+
+Running 69 tests using 1 worker
+
+[WebServer] [BABEL] Note: The code generator has deoptimised the styling of /tmp/relay-advisor-demo-vite/deps/react-dom_client.js?v=1c3526f3 as it exceeds the max of 500KB.
+  ✘   1 tests/browser/advisor-chat.spec.ts:46:1 › advisor server packet, grounded chat, private draft and reload remain in one exact context (15.1s)
+  ✓   2 tests/browser/advisor-chat.spec.ts:71:1 › advisor failed answer retries with same idempotency key and no duplicate rendered answer (4.8s)
+  ✓   3 tests/browser/advisor-chat.spec.ts:85:1 › advisor Home and Documents never request the unscoped live document catalog (5.0s)
+  ✓   4 tests/browser/chime-design.spec.ts:4:3 › founder: Chime fits V2 pre-call and makes no request before joining (4.1s)
+  ✓   5 tests/browser/chime-design.spec.ts:4:3 › advisor: Chime fits V2 pre-call and makes no request before joining (3.5s)
+  ✓   6 tests/browser/chime-design.spec.ts:34:3 › founder: mocked Chime lifecycle stays in the shared review layout (4.1s)
+  ✓   7 tests/browser/chime-design.spec.ts:34:3 › advisor: mocked Chime lifecycle stays in the shared review layout (3.4s)
+  ✓   8 tests/browser/control-transitions.spec.ts:62:2 › founder: every shell destination, brand, role switch and skip link (3.7s)
+  ✓   9 tests/browser/control-transitions.spec.ts:79:2 › founder: global search finds drafts and originals with working filters (2.9s)
+  ✓  10 tests/browser/control-transitions.spec.ts:95:2 › founder: Settings tabs expose distinct content and destinations (2.8s)
+  ✓  11 tests/browser/control-transitions.spec.ts:62:2 › advisor: every shell destination, brand, role switch and skip link (3.8s)
+  ✓  12 tests/browser/control-transitions.spec.ts:79:2 › advisor: global search finds drafts and originals with working filters (2.4s)
+  ✓  13 tests/browser/control-transitions.spec.ts:95:2 › advisor: Settings tabs expose distinct content and destinations (2.1s)
+  ✓  14 tests/browser/control-transitions.spec.ts:114:2 › /founder/chat: audience, message preview/edit and confirmed send change thread (3.8s)
+  ✓  15 tests/browser/control-transitions.spec.ts:114:2 › /founder/sources: audience, message preview/edit and confirmed send change thread (3.9s)
+  ✓  16 tests/browser/control-transitions.spec.ts:114:2 › /founder/documents: audience, message preview/edit and confirmed send change thread (3.3s)
+  ✓  17 tests/browser/control-transitions.spec.ts:114:2 › /founder/call: audience, message preview/edit and confirmed send change thread (3.7s)
+  ✘  18 tests/browser/control-transitions.spec.ts:114:2 › /advisor/clients: audience, message preview/edit and confirmed send change thread (10.0s)
+  ✓  19 tests/browser/control-transitions.spec.ts:114:2 › /advisor/reviews: audience, message preview/edit and confirmed send change thread (8.3s)
+  ✓  20 tests/browser/control-transitions.spec.ts:114:2 › /advisor/documents: audience, message preview/edit and confirmed send change thread (4.0s)
+  ✓  21 tests/browser/control-transitions.spec.ts:114:2 › /advisor/call: audience, message preview/edit and confirmed send change thread (3.7s)
+  ✘  22 tests/browser/control-transitions.spec.ts:143:1 › Home: chat entry, recent links and every source selection (30.1s)
+  ✘  23 tests/browser/control-transitions.spec.ts:159:1 › Sources: every file button, source citation, search clearing and Home links (7.7s)
+  ✓  24 tests/browser/control-transitions.spec.ts:178:1 › Documents: real tabs, history selection, citations and ancillary destinations (3.7s)
+  ✓  25 tests/browser/control-transitions.spec.ts:195:1 › Advisor Clients: card, every shared row, search clearing, citations and call (2.6s)
+  ✓  26 tests/browser/control-transitions.spec.ts:217:1 › Advisor Reviews: selection, search clear, open specific document and call (2.6s)
+  ✓  27 tests/browser/control-transitions.spec.ts:231:1 › Advisor Documents: each original, return to packet, version select and Back to clients (2.6s)
+  ✓  28 tests/browser/control-transitions.spec.ts:252:2 › /advisor/reviews: every question/approval control has correct confirmation transition (5.7s)
+  ✓  29 tests/browser/control-transitions.spec.ts:252:2 › /advisor/documents: every question/approval control has correct confirmation transition (7.7s)
+  ✓  30 tests/browser/control-transitions.spec.ts:252:2 › /advisor/call: every question/approval control has correct confirmation transition (7.9s)
+  ✓  31 tests/browser/control-transitions.spec.ts:281:1 › V2: comparison toggle/selector, historical controls, handoff choices and approval (10.8s)
+  ✓  32 tests/browser/control-transitions.spec.ts:314:1 › Clarification: preview/edit, answer, exact message citation and success destinations (7.2s)
+  ✓  33 tests/browser/control-transitions.spec.ts:336:2 › founder: invite, cancel, recipient decline/accept, mute and end without capture (6.3s)
+  ✓  34 tests/browser/control-transitions.spec.ts:336:2 › advisor: invite, cancel, recipient decline/accept, mute and end without capture (5.6s)
+  ✘  35 tests/browser/control-transitions.spec.ts:363:1 › Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation (30.7s)
+  ✓  36 tests/browser/control-transitions.spec.ts:393:2 › founder: mobile Search entry, empty search reset and every result link (2.3s)
+  ✓  37 tests/browser/control-transitions.spec.ts:413:2 › founder: Settings keyboard arrows/Home/End select and focus correct panel (1.5s)
+  ✓  38 tests/browser/control-transitions.spec.ts:393:2 › advisor: mobile Search entry, empty search reset and every result link (2.8s)
+  ✓  39 tests/browser/control-transitions.spec.ts:413:2 › advisor: Settings keyboard arrows/Home/End select and focus correct panel (2.2s)
+  ✓  40 tests/browser/control-transitions.spec.ts:433:1 › Founder Documents tabs support keyboard selection with correct timeline/preview (1.6s)
+  ✓  41 tests/browser/control-transitions.spec.ts:454:2 › /founder/sources: empty-state Go to Home destination works (1.5s)
+  ✓  42 tests/browser/control-transitions.spec.ts:454:2 › /founder/documents: empty-state Browse sources destination works (1.5s)
+  ✓  43 tests/browser/control-transitions.spec.ts:454:2 › /founder/call: empty-state View Documents destination works (1.3s)
+  ✓  44 tests/browser/control-transitions.spec.ts:454:2 › /advisor/call: empty-state View Clients destination works (1.3s)
+  ✓  45 tests/browser/control-transitions.spec.ts:454:2 › /founder/home/clarification: empty-state Return to Home destination works (1.3s)
+  ✓  46 tests/browser/control-transitions.spec.ts:463:1 › Clarification conversation: human-only audience, preview/edit/send and breadcrumb (3.2s)
+  ✓  47 tests/browser/control-transitions.spec.ts:480:1 › Search preserves role isolation for an unshared new packet version (4.2s)
+  ✓  48 tests/browser/control-transitions.spec.ts:491:1 › Founder Documents no-match Clear search returns selected current packet (1.6s)
+  ✘  49 tests/browser/screens.spec.ts:23:2 › founder-home: desktop, keyboard, responsive, empty and reconnect (7.3s)
+  ✓  50 tests/browser/screens.spec.ts:23:2 › founder-chat: desktop, keyboard, responsive, empty and reconnect (5.1s)
+  ✓  51 tests/browser/screens.spec.ts:23:2 › advisor-home: desktop, keyboard, responsive, empty and reconnect (5.4s)
+  ✓  52 tests/browser/screens.spec.ts:23:2 › founder-sources: desktop, keyboard, responsive, empty and reconnect (7.6s)
+  ✓  53 tests/browser/screens.spec.ts:23:2 › founder-documents: desktop, keyboard, responsive, empty and reconnect (6.0s)
+  ✓  54 tests/browser/screens.spec.ts:23:2 › founder-call: desktop, keyboard, responsive, empty and reconnect (9.9s)
+  ✓  55 tests/browser/screens.spec.ts:23:2 › founder-clarification: desktop, keyboard, responsive, empty and reconnect (12.4s)
+  ✓  56 tests/browser/screens.spec.ts:23:2 › advisor-clients: desktop, keyboard, responsive, empty and reconnect (7.7s)
+  ✓  57 tests/browser/screens.spec.ts:23:2 › advisor-reviews: desktop, keyboard, responsive, empty and reconnect (6.5s)
+  ✓  58 tests/browser/screens.spec.ts:23:2 › advisor-documents: desktop, keyboard, responsive, empty and reconnect (6.0s)
+  ✓  59 tests/browser/screens.spec.ts:23:2 › advisor-call: desktop, keyboard, responsive, empty and reconnect (3.3s)
+[WebServer] failed to load config from /home/tim/Relay-worktrees/advisor-bedrock-loop/advisor.vite.config.ts
+[WebServer] 11:06:09 PM [vite] config must export or return an object.
+[WebServer] 11:06:09 PM [vite] server restart failed
+[WebServer] [BABEL] Note: The code generator has deoptimised the styling of /tmp/relay-advisor-demo-vite/deps/react-dom_client.js?v=08c2a2b4 as it exceeds the max of 500KB.
+  ✘  60 tests/browser/screens.spec.ts:56:1 › returned questions create an unapproved version and require renewed handoff (15.1s)
+  ✘  61 tests/browser/screens.spec.ts:85:1 › local attachment intake succeeds and slow sends can be cancelled (7.8s)
+  ✓  62 tests/browser/screens.spec.ts:103:1 › call invitation requires recipient acceptance and never creates capture or live media (4.0s)
+  ✓  63 tests/browser/screens.spec.ts:121:1 › unsent drafts survive reconnect and stay scoped to role and audience (2.5s)
+  ✓  64 tests/browser/workflow-durability.spec.ts:4:1 › durable adapter rejects competing stale writes and remembers retry keys after reload (3.3s)
+  ✓  65 tests/browser/workflow-durability.spec.ts:26:1 › reloading during draft preparation recovers exactly one completed draft (2.8s)
+  ✓  66 tests/browser/workflow-regressions.spec.ts:10:1 › initial answer advances Home without advisor clarification and survives reload (2.6s)
+  ✘  67 tests/browser/workflow-regressions.spec.ts:23:1 › Home file intake stores actual content and remains visible after reload (30.2s)
+  ✓  68 tests/browser/workflow-regressions.spec.ts:35:1 › separate tabs receive confirmed human messages, preserve privacy, and retain state on reload (5.9s)
+  ✓  69 tests/browser/workflow-regressions.spec.ts:60:1 › an initial private draft appears to a second founder tab but not the advisor until handoff (3.5s)
+
+
+  1) tests/browser/advisor-chat.spec.ts:46:1 › advisor server packet, grounded chat, private draft and reload remain in one exact context
+
+    Error: expect(locator).toHaveValue(expected) failed
+
+    Locator:  getByRole('textbox', { name: 'Private follow-up draft' })
+    Expected: "Please confirm the revenue figure."
+    Received: "Which revenue amount is final?"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveValue" getByRole('textbox', { name: 'Private follow-up draft' }) with timeout 5000ms
+      - waiting for getByRole('textbox', { name: 'Private follow-up draft' })
+        14 × locator resolved to <textarea aria-label="Private follow-up draft">Which revenue amount is final?</textarea>
+           - unexpected value "Which revenue amount is final?"
+
+
+      62 |   await page.reload();
+      63 |   await expect(page.getByText(/The intake says \$240,000/)).toBeVisible();
+    > 64 |   await expect(page.getByRole('textbox', { name: 'Private follow-up draft' })).toHaveValue('Please confirm the revenue figure.');
+         |                                                                                ^
+      65 |   await page.setViewportSize({ width: 390, height: 844 });
+      66 |   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      67 |   expect(observed.genericCalls).toEqual([]);
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/advisor-chat.spec.ts:64:80
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/advisor-chat-advisor-serve-b368f-remain-in-one-exact-context/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/advisor-chat-advisor-serve-b368f-remain-in-one-exact-context/error-context.md
+
+  2) tests/browser/control-transitions.spec.ts:114:2 › /advisor/clients: audience, message preview/edit and confirmed send change thread
+
+    Error: expect(locator).toBeDisabled() failed
+
+    Locator: getByRole('button', { name: 'Send to simulated AI', exact: true })
+    Expected: disabled
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeDisabled" getByRole('button', { name: 'Send to simulated AI', exact: true }) with timeout 5000ms
+      - waiting for getByRole('button', { name: 'Send to simulated AI', exact: true })
+
+
+      117 |   const audience=page.getByLabel('Message audience',{exact:true});
+      118 |   if(!humanOnly){
+    > 119 |    await expect(page.getByRole('button',{name:'Send to simulated AI',exact:true})).toBeDisabled();
+          |                                                                                    ^
+      120 |    await page.getByRole('textbox',{name:'Message Relay',exact:true}).fill(`Private audit on ${path}`);
+      121 |    await page.getByRole('button',{name:'Send to simulated AI',exact:true}).click();
+      122 |    await expect(page.locator('.message-bubble').filter({hasText:`Private audit on ${path}`})).toHaveCount(1);
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/control-transitions.spec.ts:119:84
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/control-transitions--advis-11714-onfirmed-send-change-thread/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/control-transitions--advis-11714-onfirmed-send-change-thread/error-context.md
+
+  3) tests/browser/control-transitions.spec.ts:143:1 › Home: chat entry, recent links and every source selection
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('link', { name: 'Founder intake.pdf', exact: true })
+
+
+      146 |  await expect(page.getByRole('textbox',{name:'Message Relay',exact:true})).toBeFocused();
+      147 |  for(const name of sourceNames){
+    > 148 |   await go(page,'/founder/home');await page.getByRole('link',{name,exact:true}).click();
+          |                                                                                 ^
+      149 |   await expect(page.locator('.source-excerpt')).toBeVisible();
+      150 |   await expect(page.locator('.founder-sources-preview-title h2')).toHaveText(name);
+      151 |  }
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/control-transitions.spec.ts:148:81
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/control-transitions-Home-c-0330f--and-every-source-selection/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/control-transitions-Home-c-0330f--and-every-source-selection/error-context.md
+
+  4) tests/browser/control-transitions.spec.ts:159:1 › Sources: every file button, source citation, search clearing and Home links
+
+    Error: expect(locator).toBeAttached() failed
+
+    Locator: getByLabel('Attach a source')
+    Expected: attached
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeAttached" getByLabel('Attach a source') with timeout 5000ms
+      - waiting for getByLabel('Attach a source')
+
+
+      173 |  await expect(page.locator('main h1')).toHaveText('AI Chat');
+      174 |  await navigate(page,'Sources');await page.getByRole('link',{name:/Upload documents on Home/}).click();
+    > 175 |  await expect(page.getByLabel('Attach a source')).toBeAttached();
+          |                                                   ^
+      176 | });
+      177 |
+      178 | test('Documents: real tabs, history selection, citations and ancillary destinations',async({page})=>{
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/control-transitions.spec.ts:175:51
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/control-transitions-Source-30b68-rch-clearing-and-Home-links/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/control-transitions-Source-30b68-rch-clearing-and-Home-links/error-context.md
+
+  5) tests/browser/control-transitions.spec.ts:363:1 › Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.setInputFiles: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Attach a source')
+
+
+      363 | test('Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation',async({page})=>{
+      364 |  await go(page,'/founder/home');
+    > 365 |  await page.getByLabel('Attach a source').setInputFiles({name:'control-audit.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic audit')});
+          |  ^
+      366 |  await expect(page.getByText('Selected locally: control-audit.pdf',{exact:true})).toBeVisible();
+      367 |  await page.getByRole('button',{name:'Add source locally',exact:true}).click();
+      368 |  await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/control-transitions.spec.ts:365:2
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/control-transitions-Test-s-03ab3-ful-attachment-cancellation/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/control-transitions-Test-s-03ab3-ful-attachment-cancellation/error-context.md
+
+  6) tests/browser/screens.spec.ts:23:2 › founder-home: desktop, keyboard, responsive, empty and reconnect
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('No documents in this view yet.', { exact: true })
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('No documents in this view yet.', { exact: true }) with timeout 5000ms
+      - waiting for getByText('No documents in this view yet.', { exact: true })
+
+
+      41 |   await page.getByText('Test states',{exact:true}).click();
+      42 |   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('empty');
+    > 43 |   if(name==='founder-home')await expect(page.getByText('No documents in this view yet.',{exact:true})).toBeVisible();
+         |                                                                                                        ^
+      44 |   else if(name==='founder-chat')await expect(page.getByText('Tasks will appear as your packet work begins.',{exact:true})).toBeVisible();
+      45 |   else await expect(page.getByRole('heading').filter({hasText:/No |Your workspace is ready|Home conversation|Call/}).first()).toBeVisible();
+      46 |   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('error');
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/screens.spec.ts:43:104
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/screens-founder-home-deskt-095c8-ponsive-empty-and-reconnect/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/screens-founder-home-deskt-095c8-ponsive-empty-and-reconnect/error-context.md
+
+  7) tests/browser/screens.spec.ts:56:1 › returned questions create an unapproved version and require renewed handoff
+
+    Error: expect(locator).toBeDisabled() failed
+
+    Locator: getByRole('button', { name: 'Review approval of v2', exact: true })
+    Expected: disabled
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeDisabled" getByRole('button', { name: 'Review approval of v2', exact: true }) with timeout 5000ms
+      - waiting for getByRole('button', { name: 'Review approval of v2', exact: true })
+        - waiting for "http://127.0.0.1:5198/advisor/clients" navigation to finish...
+        - navigated to "http://127.0.0.1:5198/advisor/clients"
+
+
+      80 |  await page.getByRole('button',{name:'Review approval of v2',exact:true}).click();
+      81 |  await page.getByRole('button',{name:'Confirm simulated approval of v2',exact:true}).click();
+    > 82 |  await expect(page.getByRole('button',{name:'Review approval of v2',exact:true})).toBeDisabled();
+         |                                                                                   ^
+      83 | });
+      84 |
+      85 | test('local attachment intake succeeds and slow sends can be cancelled',async({page})=>{
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/screens.spec.ts:82:83
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/screens-returned-questions-bdfb0-and-require-renewed-handoff/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/screens-returned-questions-bdfb0-and-require-renewed-handoff/error-context.md
+
+  8) tests/browser/screens.spec.ts:85:1 › local attachment intake succeeds and slow sends can be cancelled
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('Selected locally: fictional.pdf')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" getByText('Selected locally: fictional.pdf') with timeout 5000ms
+      - waiting for getByText('Selected locally: fictional.pdf')
+
+
+      86 |  await page.goto('/founder/home');
+      87 |  await page.getByLabel('Attach a source').setInputFiles({name:'fictional.pdf',mimeType:'application/pdf',buffer:Buffer.from('synthetic fixture')});
+    > 88 |  await expect(page.getByText('Selected locally: fictional.pdf')).toBeVisible();
+         |                                                                  ^
+      89 |  await page.getByRole('button',{name:'Add source locally'}).click();
+      90 |  await expect(page.getByText(/Selected locally:/)).toHaveCount(0);
+      91 |  await page.getByLabel('Attach a source').setInputFiles({name:'cancel-this.txt',mimeType:'text/plain',buffer:Buffer.from('cancel me')});
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/screens.spec.ts:88:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/screens-local-attachment-i-b8cde-slow-sends-can-be-cancelled/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/screens-local-attachment-i-b8cde-slow-sends-can-be-cancelled/error-context.md
+
+  9) tests/browser/workflow-regressions.spec.ts:23:1 › Home file intake stores actual content and remains visible after reload
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Add source locally', exact: true })
+
+
+      24 |  await page.goto('/founder/home');
+      25 |  await page.getByLabel('Attach a source').setInputFiles({name:'local-intake.txt',mimeType:'text/plain',buffer:Buffer.from('Unique uploaded source evidence 4271')});
+    > 26 |  await page.getByRole('button',{name:'Add source locally',exact:true}).click();
+         |                                                                        ^
+      27 |  await expect(page.getByText('Selected locally: local-intake.txt',{exact:true})).toHaveCount(0);
+      28 |  await page.goto('/founder/sources?q=local-intake');
+      29 |  await expect(page.getByText('local-intake.txt',{exact:true}).first()).toBeVisible();
+        at /home/tim/Relay-worktrees/advisor-bedrock-loop/tests/browser/workflow-regressions.spec.ts:26:72
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    advisor-evidence/demo-browser/workflow-regressions-Home--2a155-emains-visible-after-reload/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: advisor-evidence/demo-browser/workflow-regressions-Home--2a155-emains-visible-after-reload/error-context.md
+
+  9 failed
+    tests/browser/advisor-chat.spec.ts:46:1 › advisor server packet, grounded chat, private draft and reload remain in one exact context
+    tests/browser/control-transitions.spec.ts:114:2 › /advisor/clients: audience, message preview/edit and confirmed send change thread
+    tests/browser/control-transitions.spec.ts:143:1 › Home: chat entry, recent links and every source selection
+    tests/browser/control-transitions.spec.ts:159:1 › Sources: every file button, source citation, search clearing and Home links
+    tests/browser/control-transitions.spec.ts:363:1 › Test states: slow cancel, explicit retry, reconnect and truthful attachment cancellation
+    tests/browser/screens.spec.ts:23:2 › founder-home: desktop, keyboard, responsive, empty and reconnect
+    tests/browser/screens.spec.ts:56:1 › returned questions create an unapproved version and require renewed handoff
+    tests/browser/screens.spec.ts:85:1 › local attachment intake succeeds and slow sends can be cancelled
+    tests/browser/workflow-regressions.spec.ts:23:1 › Home file intake stores actual content and remains visible after reload
+  60 passed (7.3m)

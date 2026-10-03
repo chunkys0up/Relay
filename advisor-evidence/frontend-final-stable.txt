@@ -1,0 +1,84 @@
+
+> relay@0.1.0 test
+> npm run test --workspace relay-frontend -- --run
+
+
+> relay-frontend@0.1.0 test
+> vitest run --run
+
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90m/home/tim/Relay-worktrees/advisor-bedrock-loop[39m
+
+ [32m✓[39m frontend-shared/src/events.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m client-frontend/src/workflow/api.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/range-and-binary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/answer-ambiguity.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 152[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/workflow-regressions.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1125[2mms[22m[39m
+     [33m[2m✓[22m[39m initial answer creates exactly one private unapproved draft and completes input task [33m 531[2mms[22m[39m
+     [33m[2m✓[22m[39m concurrent stale initial answers cannot create competing drafts [33m 504[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/mock.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 841[2mms[22m[39m
+     [33m[2m✓[22m[39m returns questions once, makes a new unapproved private version, rejects stale approval [33m 599[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/call.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1329[2mms[22m[39m
+     [33m[2m✓[22m[39m shows an honest founder pre-call preview and invites the assigned person for the shared version [33m 895[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/call-screen.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 926[2mms[22m[39m
+     [33m[2m✓[22m[39m guides the founder to documents without showing an invitation [33m 660[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/live.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 2737[2mms[22m[39m
+     [33m[2m✓[22m[39m lists backend documents for the case [33m 876[2mms[22m[39m
+     [33m[2m✓[22m[39m uploads a file as multipart with the case id, then refreshes the list [33m 325[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the backend error detail [33m 613[2mms[22m[39m
+     [33m[2m✓[22m[39m streams the reply into the conversation [33m 596[2mms[22m[39m
+     [33m[2m✓[22m[39m evicts the old backend session when starting a new conversation [33m 309[2mms[22m[39m
+ [32m✓[39m client-frontend/src/chat/Screen.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 1935[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps AI mode, task state, and the clarification route distinct [33m 1901[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/advisorApi.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+ [32m✓[39m client-frontend/src/documents/Screen.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 2455[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a URL-selected packet version with source references and exact-version handoff [33m 1561[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the current matching packet selected for a global search query [33m 410[2mms[22m[39m
+     [33m[2m✓[22m[39m offers comparison only when another packet version exists [33m 479[2mms[22m[39m
+ [32m✓[39m advsior-frontend/src/clients/Screen.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 2545[2mms[22m[39m
+     [33m[2m✓[22m[39m honors a source citation query and previews the shared original [33m 2054[2mms[22m[39m
+     [33m[2m✓[22m[39m offers a clear path when a query has no assigned match [33m 344[2mms[22m[39m
+ [32m✓[39m client-frontend/src/home/KeyboardTabs.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 2329[2mms[22m[39m
+     [33m[2m✓[22m[39m moves between labeled panels with arrow, Home, and End keys [33m 1878[2mms[22m[39m
+     [33m[2m✓[22m[39m discloses only the known advisor identity and role [33m 430[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/liveCall.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 3975[2mms[22m[39m
+     [33m[2m✓[22m[39m requires the SDK start event before saying connected and keeps camera off on join [33m 1538[2mms[22m[39m
+     [33m[2m✓[22m[39m aborts a pending create and ignores its late result [33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m releases a microphone acquired after cancellation [33m 357[2mms[22m[39m
+     [33m[2m✓[22m[39m starts audio shutdown even if video shutdown is still pending [33m 359[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps local media connected when ending for everyone fails [33m 372[2mms[22m[39m
+ [32m✓[39m advsior-frontend/src/reviews/Screen.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 2871[2mms[22m[39m
+     [33m[2m✓[22m[39m selects the requested shared version and shows its source-linked flags and exact-version controls [33m 2424[2mms[22m[39m
+     [33m[2m✓[22m[39m does not show results outside the assigned packet set [33m 433[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/conversation-v2.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 4215[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps advisor AI private even when a human audience is requested in the URL [33m 1520[2mms[22m[39m
+     [33m[2m✓[22m[39m does not offer private uploads to a human recipient before packet handoff [33m 1429[2mms[22m[39m
+     [33m[2m✓[22m[39m previews explicitly selected documents before sending a human message [33m 1247[2mms[22m[39m
+ [32m✓[39m frontend-shared/src/advisorChat.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 3801[2mms[22m[39m
+     [33m[2m✓[22m[39m requires explicit server context and renders a grounded reply with scoped citation and editable private draft [33m 1946[2mms[22m[39m
+     [33m[2m✓[22m[39m retries a failed request with the original idempotency key and one server history [33m 636[2mms[22m[39m
+     [33m[2m✓[22m[39m does not treat another tab’s answer as completion of an interrupted request [33m 808[2mms[22m[39m
+     [33m[2m✓[22m[39m unlocks editing after a terminal rejection [33m 387[2mms[22m[39m
+ [32m✓[39m advsior-frontend/src/documents/Screen.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 3383[2mms[22m[39m
+     [33m[2m✓[22m[39m honors the selected packet version and keeps its review controls version-bound [33m 1851[2mms[22m[39m
+     [33m[2m✓[22m[39m previews an original only when it is in the selected packet grant [33m 338[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps an older packet selected when opening its granted source and hides decisions on the source preview [33m 901[2mms[22m[39m
+ [32m✓[39m client-frontend/src/sources/Screen.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 3447[2mms[22m[39m
+     [33m[2m✓[22m[39m selects the source from the URL and supports source-only browsing [33m 2072[2mms[22m[39m
+     [33m[2m✓[22m[39m labels page locators accurately and identifies fixture originals [33m 375[2mms[22m[39m
+     [33m[2m✓[22m[39m updates the selected source and keeps the query parameter in the URL [33m 996[2mms[22m[39m
+ [32m✓[39m client-frontend/src/clarification/Screen.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 3979[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the actual advisor question author and founder answer author [33m 1820[2mms[22m[39m
+     [33m[2m✓[22m[39m previews before creating v2 and then links to the new draft [33m 2152[2mms[22m[39m
+ [32m✓[39m client-frontend/src/workflow/BackendWorkspace.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 5617[2mms[22m[39m
+     [33m[2m✓[22m[39m requires explicit preview review and submits the exact preview hash [33m 2134[2mms[22m[39m
+     [33m[2m✓[22m[39m revokes review when manual edits could conflict with the proposal [33m 479[2mms[22m[39m
+     [33m[2m✓[22m[39m shows cited conflicting answers, a focused question, and human/AI task dependencies in order [33m 471[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the same send identity and revision when a response is lost and retried [33m 543[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers an uncertain send after reload without changing its identity [33m 673[2mms[22m[39m
+     [33m[2m✓[22m[39m starts a new send identity after a definite stale revision rejection [33m 627[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m22 passed[39m[22m[90m (22)[39m
+[2m      Tests [22m [1m[32m92 passed[39m[22m[90m (92)[39m
+[2m   Start at [22m 23:15:37
+[2m   Duration [22m 13.93s[2m (transform 18.18s, setup 25.39s, import 35.22s, tests 47.90s, environment 87.17s)[22m

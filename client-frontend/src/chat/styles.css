@@ -16,3 +16,58 @@
 .founder-chat-conversation .founder-chat-flag{padding:10px;margin:10px 0}
 .founder-chat-conversation .founder-chat-flag .citation{display:inline-flex;margin-right:6px}
 .founder-chat-conversation .chat-attachments{margin-top:auto}
+/* Full-height chat: only the message list scrolls and the composer stays pinned at the bottom. */
+main:has(.founder-chat){display:flex;flex-direction:column;overflow:hidden}
+main:has(.founder-chat)>:not(.founder-chat){flex:0 0 auto}
+.founder-chat{flex:1 1 auto;min-height:0;align-items:stretch}
+.founder-chat-main{min-height:0;overflow:hidden}
+.founder-chat-conversation .conversation{min-height:0;overflow:hidden}
+.founder-chat-conversation .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:none}
+.founder-chat-conversation .founder-chat-clarification{margin-bottom:8px}
+.founder-chat-aside{min-height:0;overflow-y:auto}
+@media(max-width:900px){.founder-chat{grid-template-rows:minmax(0,1fr)}.founder-chat-aside{display:none}.founder-chat-conversation .conversation{min-height:0}}
+@media(max-width:600px){.founder-chat-main{padding-bottom:0}}
+/* Give the messages the height: compact chrome on the chat page. The status row repeats the header badge. */
+main:has(.founder-chat) .app-footer,.founder-chat-status{display:none}
+main:has(.founder-chat) .backend-workspace-entry{padding-block:6px}
+.founder-chat-main{padding-top:12px}
+.founder-chat-header h1{font-size:22px;letter-spacing:-.3px}
+.founder-chat-header p{font-size:13px}
+.founder-chat-conversation .conversation{padding:6px 0 6px;gap:8px}
+.founder-chat-conversation .audience-control{padding-bottom:4px}
+.founder-chat-upload-note{padding:0 0 8px}
+@media(max-width:600px){main:has(.founder-chat) .backend-workspace-entry span,.founder-chat-upload-note,.founder-chat-header p{display:none}main:has(.founder-chat) .backend-workspace-entry{margin-bottom:8px}}
+/* LLM-style thread: one centered reading column. User turns are compact right-aligned bubbles,
+   assistant turns are plain full-width text, and the composer sits centered under the thread. */
+.founder-chat-conversation{--chat-column:760px}
+.founder-chat-conversation .message-list{gap:28px;padding:24px 16px 32px}
+.founder-chat-conversation .message,.founder-chat-conversation .message-list>p.muted,.founder-chat-conversation .founder-chat-clarification,
+.founder-chat-conversation .composer,.founder-chat-conversation .conversation-footnote,.founder-chat-conversation .chat-attachments,
+.founder-chat-conversation .confirm-panel,.founder-chat-conversation .feedback{width:100%;max-width:var(--chat-column);margin-inline:auto;align-self:center}
+.founder-chat-conversation .message-list>p.muted{margin-block:auto;text-align:center;font-size:15px}
+.founder-chat-conversation .own-message{display:flex;flex-direction:column;align-items:flex-end}
+.founder-chat-conversation .own-message .message-author{display:none}
+.founder-chat-conversation .own-message .message-bubble{max-width:75%;background:#f1f4f9;border:0;border-radius:18px;padding:10px 16px;font-size:15px;line-height:1.5}
+.founder-chat-conversation .ai-message .message-author{margin-bottom:6px;gap:8px}
+.founder-chat-conversation .ai-message .message-author small{display:none}
+.founder-chat-conversation .ai-message .message-bubble{background:none;border:0;padding:0;font-size:15px;line-height:1.65;color:#1e293b}
+.founder-chat-conversation .composer{border:1px solid #d5dde8;border-radius:16px;padding:10px 10px 10px 16px;box-shadow:0 2px 12px rgba(15,23,42,.06);align-items:flex-end}
+.founder-chat-conversation .composer textarea{resize:none;min-height:24px;max-height:200px;padding:6px 0;font-size:15px;line-height:1.5}
+.founder-chat-conversation .composer-actions button{border-radius:10px;min-height:36px}
+.founder-chat-conversation .conversation-footnote{margin-top:-2px}
+/* Claude/Gemini-style composer: the rounded box shows focus, not the bare textarea; round icon send button. */
+.founder-chat-conversation .composer{flex-direction:column;align-items:stretch;gap:4px;border:1px solid #dfe5ee;border-radius:24px;padding:14px 12px 10px 20px;background:#fff;box-shadow:0 1px 6px rgba(15,23,42,.06);transition:border-color .15s,box-shadow .15s}
+.founder-chat-conversation .composer:focus-within{border-color:#c5d0df;box-shadow:0 2px 16px rgba(15,23,42,.1)}
+.founder-chat-conversation .composer textarea,.founder-chat-conversation .composer textarea:focus,.founder-chat-conversation .composer textarea:focus-visible{outline:none;border:0;box-shadow:none;background:transparent;padding:2px 0;min-height:28px}
+.founder-chat-conversation .composer-actions{display:flex;justify-content:flex-end;align-items:center}
+.founder-chat-conversation .composer-actions .button:has(svg){width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;background:#0566e8;border-color:#0566e8;color:#fff}
+.founder-chat-conversation .composer-actions .button:has(svg):disabled{background:#e8edf3;border-color:#e8edf3;color:#9aa8bb;opacity:1}
+.founder-chat-conversation .composer-actions .button-outline:has(svg){background:#1f2937;border-color:#1f2937}
+/* In the stacked composer, an older flex:1 overrides the auto-grow height; let the JS-set height apply. */
+.founder-chat-conversation .composer textarea{flex:none;overflow-y:auto}
+/* The paperclip is a plain icon button; older rules paint every composer-actions button blue. */
+.founder-chat-conversation .composer-actions .composer-attach{background:none;border:0;border-radius:50%;color:#52627f}
+.founder-chat-conversation .composer-actions .composer-attach:hover:not(:disabled){background:#f1f4f9;color:#1e293b}
+.founder-chat-activity-feed{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:10px}
+.founder-chat-activity-feed p{margin:0;font-size:12px;color:#1e293b}
+.founder-chat-activity-feed small{margin-top:2px!important}

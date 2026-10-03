@@ -1,0 +1,13 @@
+PASS live extractor: six grounded fields
+PDF writer not staged: reader_used=True writer_used=True tool_calls=10
+Traceback (most recent call last):
+  File "/home/tim/Relay-worktrees/advisor-bedrock-loop/backend/scripts/check_advisor_bedrock.py", line 92, in <module>
+    main()
+    ~~~~^^
+  File "/home/tim/Relay-worktrees/advisor-bedrock-loop/backend/scripts/check_advisor_bedrock.py", line 84, in main
+    check_bedrock.main()  # Original evaluator and every assertion remain unchanged.
+    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/tim/Relay-worktrees/advisor-bedrock-loop/backend/scripts/check_bedrock.py", line 52, in main
+    assert state["jobs"][-1]["error"] is None, state["jobs"][-1]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: {'carry_preview_ids': [], 'created_at': '2026-10-03T06:09:52.830980+00:00', 'error': 'WRITER_REQUIRED', 'goal_message_id': '3921f3a1-e3ec-471b-be12-9e8997ed0a76', 'id': '20ed84e7-7252-4dd7-a04f-df20822b4eed', 'started_revision': 1, 'status': 'blocked', 'work_revision': 2}

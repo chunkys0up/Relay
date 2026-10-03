@@ -6,3 +6,6 @@ export * from './review';
 export * from './call';
 export * from './events';
 export * from './live';
+export * from './advisorApi';
+export * from './advisorChat';
+export * from './collapsible';

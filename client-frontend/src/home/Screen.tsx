@@ -2,8 +2,9 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Icon, ScreenState, useCaseDocuments, useRelay } from '@relay/shared';
-import type { PacketVersion, Task } from '@relay/shared';
+import { Collapsible, Icon, ScreenState, plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRelay } from '@relay/shared';
+import type { PacketVersion } from '@relay/shared';
+import type { ActivityEntry, ChecklistState } from '../../../frontend-shared/src/relayApi';
 import { Tabs } from '../../../frontend-shared/src/tabs';
 import './styles.css';
 
@@ -20,15 +21,14 @@ function packetStatus(packet: PacketVersion): string {
   return 'Draft';
 }
 
-function taskStatus(task: Task): string {
-  if (task.state === 'Done') return 'Done';
-  if (task.state === 'Blocked') return 'Needs input';
-  return task.state;
-}
+const checklistLabels: Record<ChecklistState, string> = { todo: 'To do', in_progress: 'In progress', blocked: 'Blocked', done: 'Done' };
+const actorLabels: Record<ActivityEntry['actor'], string> = { agent: 'Relay', founder: 'You', advisor: 'Advisor', system: 'System' };
 
 function DemoScreen() {
   const { snapshot, error, notice } = useRelay();
   const caseDocuments = useCaseDocuments();
+  const checklist = useCaseChecklist();
+  const activity = useCaseActivity();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<DocumentFilter>('all');
   const [asideTab, setAsideTab] = useState<'progress' | 'activity'>('progress');
@@ -55,10 +55,10 @@ function DemoScreen() {
   const packets = snapshot?.packets.filter((packet) =>
     (filter !== 'originals') && (!normalizedQuery || `${packet.title} ${packet.status} v${packet.version}`.toLowerCase().includes(normalizedQuery)),
   ) ?? [];
-  const tasks = [...(snapshot?.tasks ?? [])].sort((a, b) => a.order - b.order);
-  const doneCount = tasks.filter((task) => task.state === 'Done').length;
-  const firstOpenTask = tasks.find((task) => task.state !== 'Done');
-  const currentFlags = snapshot?.flags.filter((flag) => flag.packet_version_id === snapshot.current_packet_version_id && !flag.resolved) ?? [];
+  const items = checklist.items ?? [];
+  const doneCount = items.filter((item) => item.state === 'done').length;
+  const nextItem = items.find((item) => item.state !== 'done');
+  const fileCount = caseDocuments.documents?.length ?? 0;
   const currentQuestion = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
   const lastMessages = snapshot?.messages.filter((message) => message.owner_id === snapshot.founder.id).slice(-3).reverse() ?? [];
 
@@ -85,7 +85,7 @@ function DemoScreen() {
           <span>or <button type="button" className="founder-home-text-button" onClick={() => fileInput.current?.click()} disabled={uploading}>choose files</button></span>
           <button className="founder-home-upload-button" type="button" onClick={() => fileInput.current?.click()} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload documents'}</button>
           <input ref={fileInput} className="sr-only" type="file" multiple aria-label="Upload documents" onChange={onFileChange} disabled={uploading}/>
-          <small>Uploaded originals are visible to your advisor. Packet sharing is separate.</small>
+          <small>Upload to this backend case. Sharing with your advisor is a separate step.</small>
         </div>
         {(caseDocuments.error || error) && <p className="founder-home-feedback is-error" role="alert">{caseDocuments.error || error}</p>}
         {notice && <p className="founder-home-feedback" role="status">{notice}</p>}
@@ -110,22 +110,31 @@ function DemoScreen() {
       <div className="founder-home-aside-tabs"><Tabs id="founder-home-aside" label="Workspace details" items={[{ id: 'progress', label: 'Progress' }, { id: 'activity', label: 'Activity' }]} value={asideTab} onChange={(value) => setAsideTab(value as 'progress' | 'activity')}/></div>
       {asideTab === 'progress' ? <div id="founder-home-aside-progress-panel" role="tabpanel" aria-labelledby="founder-home-aside-progress-tab" tabIndex={0} className="founder-home-aside-panel">
         <section aria-labelledby="founder-home-checklist-title">
-          <h2 id="founder-home-checklist-title">Document checklist</h2>
-          <p>{doneCount} of {tasks.length} planning steps complete · {caseDocuments.documents?.length ?? 0} original file{caseDocuments.documents?.length === 1 ? '' : 's'} received</p>
-          <div className="founder-home-progress" role="progressbar" aria-label="Planning tasks complete" aria-valuemin={0} aria-valuemax={tasks.length || 1} aria-valuenow={doneCount}><span style={{ width: `${tasks.length ? doneCount / tasks.length * 100 : 0}%` }}/></div>
-          {tasks.length ? <ul className="founder-home-checklist">{tasks.map((task) => <li key={task.id}><span className={`founder-home-check ${task.state === 'Done' ? 'is-done' : ''}`} aria-hidden="true">{task.state === 'Done' ? '✓' : ''}</span><span>{task.title}</span><small>{taskStatus(task)}</small></li>)}</ul> : <p className="founder-home-empty">Planning tasks will appear here as work begins.</p>}
+          <Collapsible id="home-checklist" headingId="founder-home-checklist-title" title="Checklist">
+          <p>{doneCount} of {items.length} done · {fileCount} file{fileCount === 1 ? '' : 's'} received</p>
+          <div className="founder-home-progress" role="progressbar" aria-label="Checklist items done" aria-valuemin={0} aria-valuemax={items.length || 1} aria-valuenow={doneCount}><span style={{ width: `${items.length ? doneCount / items.length * 100 : 0}%` }}/></div>
+          {checklist.error ? <p className="founder-home-empty" role="alert">{checklist.error}</p>
+            : checklist.items === null ? <p className="founder-home-empty" role="status">Loading checklist…</p>
+            : items.length ? <ul className="founder-home-checklist">{items.map((item) => <li key={item.id}><button type="button" role="checkbox" aria-checked={item.state === 'done'} aria-label={`${item.title}: mark ${item.state === 'done' ? 'not done' : 'done'}`} className={`founder-home-check ${item.state === 'done' ? 'is-done' : ''}`} onClick={() => { void checklist.setState(item.id, item.state === 'done' ? 'todo' : 'done'); }}>{item.state === 'done' ? '✓' : ''}</button><span>{item.title}</span><small>{checklistLabels[item.state]}</small></li>)}</ul>
+            : <p className="founder-home-empty">Relay adds items here as you chat about your packet. <Link to="/founder/chat#message-main">Start in AI Chat</Link></p>}
+          </Collapsible>
         </section>
-        <section className="founder-home-next" aria-labelledby="founder-home-next-title"><h2 id="founder-home-next-title">Next steps</h2>
-          {firstOpenTask ? <div className="founder-home-next-step"><span className="founder-home-step-number">{firstOpenTask.order}</span><div><strong>{firstOpenTask.title}</strong><p>{firstOpenTask.detail}</p><Link className="founder-home-chat-link" to={currentQuestion ? '/founder/home/clarification' : '/founder/chat#message-main'}>{currentQuestion ? 'Answer clarification in chat' : 'Open AI Chat'}</Link></div></div> : <p className="founder-home-empty">All current planning tasks are complete.</p>}
-          {currentFlags.length > 0 && <p className="founder-home-open-flags">{currentFlags.length} detail{currentFlags.length === 1 ? '' : 's'} to confirm before the next packet revision.</p>}
+        <section className="founder-home-next" aria-labelledby="founder-home-next-title"><Collapsible id="home-next" headingId="founder-home-next-title" title="Next steps">
+          {nextItem ? <div className="founder-home-next-step"><span className="founder-home-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
+            : <p className="founder-home-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
+          {currentQuestion && <Link className="founder-home-chat-link" to="/founder/home/clarification">Answer {snapshot.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
           <Link className="founder-home-packet-link" to="/founder/documents">Review packet versions →</Link>
-        </section>
+        </Collapsible></section>
       </div> : <div id="founder-home-aside-activity-panel" role="tabpanel" aria-labelledby="founder-home-aside-activity-tab" tabIndex={0} className="founder-home-aside-panel founder-home-activity-panel">
-        <h2>Current activity</h2><p className="founder-home-activity-current">{snapshot.activity ?? 'Waiting for your next step.'}</p>
-        <p className="founder-home-case-status">Case status: {snapshot.status}</p>
-        <h3>Recent conversation</h3>
-        {lastMessages.length ? <ul>{lastMessages.map((message) => <li key={message.id}><strong>{message.author.name}</strong><span>{message.text}</span><small>{new Date(message.created_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small></li>)}</ul> : <p>No conversation activity yet.</p>}
-        <Link className="founder-home-chat-link" to="/founder/chat#message-main">Open AI Chat</Link>
+        <Collapsible id="home-activity" title="Activity">
+        {activity.error ? <p className="founder-home-empty" role="alert">{activity.error}</p>
+          : activity.entries === null ? <p className="founder-home-empty" role="status">Loading activity…</p>
+          : activity.entries.length ? <ul className="founder-home-activity-feed">{activity.entries.map((entry) => <li key={entry.id}><strong>{actorLabels[entry.actor]}</strong><span>{entry.text}</span><small>{timeAgo(entry.created_at)}</small></li>)}</ul>
+          : <p className="founder-home-empty">No activity yet. Uploads, checklist changes and Relay&apos;s work show up here.</p>}
+        </Collapsible>
+        <Collapsible id="home-conversation" as="h3" title="Recent conversation">
+        {lastMessages.length ? <ul>{lastMessages.map((message) => <li key={message.id}><strong>{message.author.name}</strong><span className="founder-home-blurb">{plainText(message.text)}</span><small>{timeAgo(message.created_at)}</small></li>)}</ul> : <p>No conversation yet.</p>}
+        </Collapsible>
       </div>}
       <p className="founder-home-privacy">Packet versions require a separate handoff to your advisor.</p>
     </aside>
