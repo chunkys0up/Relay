@@ -1,0 +1,86 @@
+/* Shared chat page (chatPage.tsx): chat history, the conversation, and an optional sidebar. */
+.chat-page{display:grid;grid-template-columns:minmax(0,1fr) auto;min-height:calc(100vh - 170px);align-items:start;margin:-28px -30px;background:#fff;color:#10182b}
+.chat-page-main{min-width:0;min-height:calc(100vh - 170px);display:flex;flex-direction:column;padding:24px 26px 0}
+.chat-page-header{display:flex;align-items:center;justify-content:space-between;gap:15px}.chat-page-header h1{font-size:32px;color:#0b1222;letter-spacing:-.7px}.chat-page-header p{font-size:16px;color:#65789d}.chat-page-header .badge{font-size:12px;white-space:nowrap}
+.chat-page-status{display:flex;gap:22px;border-bottom:1px solid #dfe7f0;padding:18px 0 14px;color:#65789d;font-size:12px}.chat-page-status>span{display:inline-flex;align-items:center;gap:5px}.chat-page-status>span>span{width:8px;height:8px;border-radius:50%;border:1px solid currentColor}.chat-page-status .is-current{color:#0063e7;font-weight:600}.chat-page-status .is-current>span{background:#0063e7}
+.chat-page-conversation{display:flex;flex-direction:column;min-height:0;flex:1}.chat-page-conversation .conversation{border:0;border-radius:0;padding:18px 0 10px;min-height:530px;flex:1;gap:14px}.chat-page-conversation .agent-status{display:none}.chat-page-conversation .audience-control{padding-bottom:9px}.chat-page-conversation .audience-control label{display:flex;flex-direction:row;align-items:center;gap:10px}.chat-page-conversation .audience-control select{min-width:240px;border:0;border-bottom:2px solid #0566e8;border-radius:0;color:#0063e7;font-weight:600}.chat-page-conversation .message-list{padding:12px 4px;max-height:none;min-height:260px}.chat-page-conversation .message{max-width:85%}.chat-page-conversation .message-bubble{background:#f8fafd;border:1px solid #e0e7f0}.chat-page-conversation .own-message .message-bubble{background:#edf5ff}.chat-page-conversation .composer{display:flex;align-items:center;gap:10px;padding:9px 12px}.chat-page-conversation .composer textarea{min-height:42px;max-height:180px;resize:none;flex:1}.chat-page-conversation .composer-actions{flex:0 0 auto}.chat-page-conversation .composer-actions button{background:#0566e8;border-color:#0566e8}.chat-page-conversation .conversation-footnote{font-size:11px}
+.chat-page-upload-note{font-size:12px;color:#65789d;padding:0 0 12px}.chat-page-upload-note a{color:#0063e7}
+.chat-page-clarification>p{font-size:12px;color:#52627f}.chat-page-action{display:inline-flex;border:1px solid #b6d2fb;border-radius:6px;background:#eaf3ff;color:#0063e7;padding:8px 11px;text-decoration:none;font-size:12px;font-weight:600}
+@media(max-width:900px){.chat-page{grid-template-columns:1fr}.chat-page-conversation .conversation{min-height:440px}}
+@media(max-width:600px){.chat-page{margin:-20px -14px}.chat-page-main{padding:20px 14px 90px}.chat-page-header h1{font-size:28px}.chat-page-header p{font-size:13px}.chat-page-status{gap:9px;flex-wrap:wrap;font-size:11px}.chat-page-conversation .conversation{min-height:420px}.chat-page-conversation .message{max-width:95%}.chat-page-conversation .composer{display:block}.chat-page-conversation .composer-actions{justify-content:flex-end}}
+.chat-page-conversation .conversation{min-height:calc(100vh - 265px)}
+.chat-page-conversation .message-list{flex:0 0 auto;max-height:260px}
+.chat-page-conversation .chat-page-clarification{margin:0 0 12px;padding:14px;border:1px solid var(--border);border-radius:6px}
+.chat-page-conversation .chat-page-clarification h2{font-size:17px;margin-bottom:8px}
+.chat-page-conversation .chat-attachments{margin-top:auto}
+/* Full-height chat: only the message list scrolls and the composer stays pinned at the bottom. */
+main:has(.chat-page){display:flex;flex-direction:column;overflow:hidden}
+main:has(.chat-page)>:not(.chat-page){flex:0 0 auto}
+.chat-page{flex:1 1 auto;min-height:0;align-items:stretch}
+.chat-page-main{min-height:0;overflow:hidden}
+.chat-page-conversation .conversation{min-height:0;overflow:hidden}
+.chat-page-conversation .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:none}
+.chat-page-conversation .chat-page-clarification{margin-bottom:8px}
+@media(max-width:900px){.chat-page{grid-template-rows:minmax(0,1fr)}.chat-page .case-sidebar{display:none}.chat-page-conversation .conversation{min-height:0}}
+@media(max-width:600px){.chat-page-main{padding-bottom:0}}
+/* Give the messages the height: compact chrome on the chat page. The status row repeats the header badge. */
+main:has(.chat-page) .app-footer,.chat-page-status{display:none}
+.chat-page-main{padding-top:12px}
+.chat-page-header h1{font-size:22px;letter-spacing:-.3px}
+.chat-page-header p{font-size:13px}
+.chat-page-conversation .conversation{padding:6px 0 6px;gap:8px}
+.chat-page-conversation .audience-control{padding-bottom:4px}
+.chat-page-upload-note{padding:0 0 8px}
+@media(max-width:600px){.chat-page-upload-note,.chat-page-header p{display:none}}
+/* LLM-style thread: one centered reading column. User turns are compact right-aligned bubbles,
+   assistant turns are plain full-width text, and the composer sits centered under the thread. */
+.chat-page-conversation{--chat-column:760px}
+.chat-page-conversation .message-list{gap:28px;padding:24px 16px 32px}
+.chat-page-conversation .message,.chat-page-conversation .message-list>p.muted,.chat-page-conversation .chat-page-clarification,
+.chat-page-conversation .composer,.chat-page-conversation .conversation-footnote,.chat-page-conversation .chat-attachments,
+.chat-page-conversation .confirm-panel,.chat-page-conversation .feedback{width:100%;max-width:var(--chat-column);margin-inline:auto;align-self:center}
+.chat-page-conversation .message-list>p.muted{margin-block:auto;text-align:center;font-size:15px}
+.chat-page-conversation .own-message{display:flex;flex-direction:column;align-items:flex-end}
+.chat-page-conversation .own-message .message-author{display:none}
+.chat-page-conversation .own-message .message-bubble{max-width:75%;background:#f1f4f9;border:0;border-radius:18px;padding:10px 16px;font-size:15px;line-height:1.5}
+.chat-page-conversation .other-message .message-author{margin-bottom:6px;gap:8px;align-items:center}
+.chat-page-conversation .other-message .message-author small{display:none}
+.chat-page-conversation .other-message .message-bubble{background:none;border:0;padding:0;font-size:15px;line-height:1.65;color:#1e293b}
+.chat-page-conversation .other-message:not(.ai-message) .message-bubble,.chat-page-conversation .own-message .message-bubble{white-space:pre-wrap}
+.chat-page-conversation .message-avatar{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#e6efff;color:#0063e7;font-size:10px;font-weight:700;flex:none}
+.chat-page-conversation .composer{border:1px solid #d5dde8;border-radius:16px;padding:10px 10px 10px 16px;box-shadow:0 2px 12px rgba(15,23,42,.06);align-items:flex-end}
+.chat-page-conversation .composer textarea{resize:none;min-height:24px;max-height:200px;padding:6px 0;font-size:15px;line-height:1.5}
+.chat-page-conversation .composer-actions button{border-radius:10px;min-height:36px}
+.chat-page-conversation .conversation-footnote{margin-top:-2px}
+/* Claude/Gemini-style composer: the rounded box shows focus, not the bare textarea; round icon send button. */
+.chat-page-conversation .composer{flex-direction:column;align-items:stretch;gap:4px;border:1px solid #dfe5ee;border-radius:24px;padding:14px 12px 10px 20px;background:#fff;box-shadow:0 1px 6px rgba(15,23,42,.06);transition:border-color .15s,box-shadow .15s}
+.chat-page-conversation .composer:focus-within{border-color:#c5d0df;box-shadow:0 2px 16px rgba(15,23,42,.1)}
+.chat-page-conversation .composer textarea,.chat-page-conversation .composer textarea:focus,.chat-page-conversation .composer textarea:focus-visible{outline:none;border:0;box-shadow:none;background:transparent;padding:2px 0;min-height:28px}
+.chat-page-conversation .composer-actions{display:flex;justify-content:flex-end;align-items:center}
+.chat-page-conversation .composer-actions .button:has(svg){width:36px;height:36px;min-height:36px;padding:0;border-radius:50%;background:#0566e8;border-color:#0566e8;color:#fff}
+.chat-page-conversation .composer-actions .button:has(svg):disabled{background:#e8edf3;border-color:#e8edf3;color:#9aa8bb;opacity:1}
+.chat-page-conversation .composer-actions .button-outline:has(svg){background:#1f2937;border-color:#1f2937}
+/* In the stacked composer, an older flex:1 overrides the auto-grow height; let the JS-set height apply. */
+.chat-page-conversation .composer textarea{flex:none;overflow-y:auto}
+/* The paperclip is a plain icon button; older rules paint every composer-actions button blue. */
+.chat-page-conversation .composer-actions .composer-attach{background:none;border:0;border-radius:50%;color:#52627f}
+.chat-page-conversation .composer-actions .composer-attach:hover:not(:disabled){background:#f1f4f9;color:#1e293b}
+/* Chat history: a list of saved conversations for the selected tab, like other chat apps. */
+.chat-page{grid-template-columns:240px minmax(0,1fr) auto}
+.chat-page-history{min-height:0;overflow-y:auto;overscroll-behavior:none;border-right:1px solid #e0e7f0;padding:18px 12px;display:flex;flex-direction:column;gap:10px;background:#fafbfd}
+.chat-page-history-head{display:grid;gap:10px}
+.chat-page-history-head h2{font-size:14px;color:#52627f;font-weight:600;margin:0 4px}
+.chat-page-new{border:1px solid #d5dde8;background:#fff;border-radius:10px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;color:#0b1222;text-align:left;cursor:pointer}
+.chat-page-new:hover,.chat-page-new[aria-pressed=true]{border-color:#0566e8;color:#0063e7}
+.chat-page-history ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.chat-page-history li button{display:grid;gap:2px;width:100%;padding:9px 10px;border:0;border-radius:8px;background:none;font:inherit;text-align:left;cursor:pointer;color:#1e293b}
+.chat-page-history li button:hover{background:#eef2f7}
+.chat-page-history li button[aria-current=true]{background:#e6efff}
+.chat-page-history li strong{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-page-history li span{font-size:12px;color:#65789d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-page-history li small{font-size:11px;color:#8a99b3}
+.chat-page-history-empty{font-size:12px;color:#65789d;margin:4px}
+.chat-page-history-select{display:none}
+@media(max-width:1100px){.chat-page{grid-template-columns:210px minmax(0,1fr) auto}}
+@media(max-width:900px){.chat-page{grid-template-columns:minmax(0,1fr)}.chat-page-history{display:none}
+  .chat-page-history-select{display:flex;flex-direction:row;align-items:center;gap:8px;font-size:12px;margin:6px 0}.chat-page-history-select select{flex:1;min-width:0;font-size:13px;padding:6px 8px}}

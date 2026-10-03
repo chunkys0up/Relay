@@ -4,14 +4,19 @@ import io
 import os
 import re
 import uuid
+from functools import lru_cache
+from typing import Any
 
 import boto3
 from botocore.exceptions import ClientError
 
+from app.core.aws_session import create_aws_session
 from app.core.config import settings
 
-_session = boto3.Session(profile_name=settings.aws_profile or None, region_name=settings.aws_region)
-_s3 = _session.client("s3")
+@lru_cache(maxsize=1)
+def _client() -> Any:
+    session = create_aws_session(settings.aws_region, settings.aws_profile)
+    return session.client("s3")
 
 DEFAULT_URL_TTL_SECONDS = 300
 MAX_URL_TTL_SECONDS = 900
@@ -34,17 +39,17 @@ def build_key(case_id: str | uuid.UUID, source_id: str | uuid.UUID, filename: st
 
 def upload_bytes(data: bytes, key: str, content_type: str | None = None) -> None:
     extra_args = {"ContentType": content_type} if content_type else {}
-    _s3.upload_fileobj(io.BytesIO(data), settings.s3_bucket, key, ExtraArgs=extra_args)
+    _client().upload_fileobj(io.BytesIO(data), settings.s3_bucket, key, ExtraArgs=extra_args)
 
 
 def download_bytes(key: str) -> bytes:
-    return _s3.get_object(Bucket=settings.s3_bucket, Key=key)["Body"].read()
+    return _client().get_object(Bucket=settings.s3_bucket, Key=key)["Body"].read()
 
 
 def head_object(key: str) -> dict | None:
     """Return size/content type/ETag for a key, or None if it does not exist."""
     try:
-        head = _s3.head_object(Bucket=settings.s3_bucket, Key=key)
+        head = _client().head_object(Bucket=settings.s3_bucket, Key=key)
     except ClientError as exc:
         if exc.response["Error"]["Code"] in ("404", "NoSuchKey", "NotFound"):
             return None
@@ -68,7 +73,7 @@ def presigned_download_url(
         safe_name = re.sub(r'[^A-Za-z0-9._ -]', "_", filename)
         disposition = "inline" if inline else "attachment"
         params["ResponseContentDisposition"] = f'{disposition}; filename="{safe_name}"'
-    return _s3.generate_presigned_url(
+    return _client().generate_presigned_url(
         "get_object",
         Params=params,
         ExpiresIn=min(max(expires_in, 1), MAX_URL_TTL_SECONDS),
@@ -84,7 +89,7 @@ def presigned_upload_url(
     params: dict[str, str] = {"Bucket": settings.s3_bucket, "Key": key}
     if content_type:
         params["ContentType"] = content_type
-    return _s3.generate_presigned_url(
+    return _client().generate_presigned_url(
         "put_object",
         Params=params,
         ExpiresIn=min(max(expires_in, 1), MAX_URL_TTL_SECONDS),
@@ -92,4 +97,4 @@ def presigned_upload_url(
 
 
 def delete_object(key: str) -> None:
-    _s3.delete_object(Bucket=settings.s3_bucket, Key=key)
+    _client().delete_object(Bucket=settings.s3_bucket, Key=key)

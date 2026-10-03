@@ -14,6 +14,7 @@ export interface ChatThread { kind: ChatKind; id: string | null | undefined }
 
 const errorText = (error: unknown, fallback: string): string => error instanceof Error ? error.message : fallback;
 const HUMAN_POLL_MS = 5000;
+const initials = (name: string): string => name.split(/\s+/).slice(0, 2).map(part => part[0] ?? '').join('').toUpperCase();
 
 /** Same messages in the same order, so a background refresh can leave the screen untouched. */
 function sameMessages(a: ChatMessage[] | null, b: ChatMessage[]): boolean {
@@ -177,6 +178,10 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
       }
       cache.current.set(id, saved);
       if (shownId.current === id) setMessages(saved);
+      // No saved reply means the AI service failed; the stream's text carries the reason.
+      if (result && !result.stopped && saved.at(-1)?.sender_type !== 'ai') {
+        setChatError(result.text.trim() || 'Relay didn\'t send a reply. Try again.');
+      }
     } catch (error) {
       setChatError(errorText(error, 'The message could not be sent.'));
       setText(content);
@@ -199,12 +204,12 @@ export function Conversation({ large = false, humanOnly = false, privateOnly = f
       {kind === 'ai' && children}
       {messages === null && conversationId && !pending && !replying ? <p className="muted" role="status">Loading messages…</p>
         : shown.length === 0 && !replying ? <p className="muted">{kind === 'ai' ? 'Ask Relay anything about your packet.' : `Start a conversation with ${other.name}.`}</p>
-        : shown.map(m => <article key={m.id} className={`message ${m.sender_type === role ? 'own-message' : ''} ${m.sender_type === 'ai' ? 'ai-message' : ''}`}>
-          <div className="message-author">{m.sender_type === 'ai' && <Icon name="agent" size={24}/>}<strong>{authorName(m)}</strong><small>{m.sender_type === 'ai' ? 'AI' : 'Human'} · {new Date(m.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</small></div>
+        : shown.map(m => <article key={m.id} className={`message ${m.sender_type === role ? 'own-message' : 'other-message'} ${m.sender_type === 'ai' ? 'ai-message' : ''}`}>
+          <div className="message-author">{m.sender_type === 'ai' ? <Icon name="agent" size={24}/> : m.sender_type !== role && <span className="message-avatar" aria-hidden="true">{initials(authorName(m))}</span>}<strong>{authorName(m)}</strong><small>{m.sender_type === 'ai' ? 'AI' : 'Human'} · {new Date(m.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</small></div>
           {m.files.length > 0 && <div className="message-files">{m.files.map(f => <button type="button" className="file-chip" key={f.id} onClick={() => { void openFile(f.id); }}><Icon name="file" size={16}/><span className="file-chip-name">{f.name}</span></button>)}</div>}
           <div className="message-bubble">{m.sender_type === 'ai' ? <MarkdownText text={m.content}/> : m.content}</div>
         </article>)}
-      {streaming && streaming.conversationId === conversationId && <article className="message ai-message" aria-busy="true"><div className="message-author"><Icon name="agent" size={24}/><strong>Relay assistant</strong><small>AI · replying…</small></div><div className="message-bubble">{streaming.text ? <MarkdownText text={streaming.text}/> : <span className="typing" aria-label="Relay is replying"><span/><span/><span/></span>}</div></article>}
+      {streaming && streaming.conversationId === conversationId && <article className="message other-message ai-message" aria-busy="true"><div className="message-author"><Icon name="agent" size={24}/><strong>Relay assistant</strong><small>AI · replying…</small></div><div className="message-bubble">{streaming.text ? <MarkdownText text={streaming.text}/> : <span className="typing" aria-label="Relay is replying"><span/><span/><span/></span>}</div></article>}
     </div>
     {chatError && <p className="feedback feedback-error" role="alert">{chatError}</p>}
     <form className="composer" onSubmit={e => { void send(e); }}>

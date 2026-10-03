@@ -29,7 +29,7 @@ test('reloading during draft preparation recovers exactly one completed draft',a
  await page.getByRole('button',{name:'Send',exact:true}).click();
  await expect(page.getByLabel('Relay status').getByText('Thinking / Working',{exact:true})).toHaveAttribute('aria-current','step');
  await page.reload();
- await expect(page.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
+ await expect(page.locator('.chat-page-case').getByText('Draft ready',{exact:true})).toBeVisible();
  const versions=await page.evaluate(async()=>{
   const path='/src/persistence.ts';const module=await import(/* @vite-ignore */ path) as {createBrowserRelayAdapter:(latency?:number)=>RelayAdapter};
   return (await module.createBrowserRelayAdapter(0).snapshot('founder')).data.packets.map(p=>p.version);

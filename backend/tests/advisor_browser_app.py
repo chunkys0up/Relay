@@ -12,7 +12,8 @@ from strands.models.model import Model
 
 from app.advisor.model import AdvisorProvider
 from app.advisor.store import P1, P2, S1, S3
-from app.workflow_app import create_workflow_app
+from app.workflow_application import create_workflow_app
+from app.main import create_app
 from browser_app import FixtureProvider
 
 
@@ -113,5 +114,5 @@ class AdvisorFixtureModel(Model):
 db_path = os.environ.get("RELAY_FIXTURE_DB") or str(Path.cwd() / ".relay" / "advisor-browser.sqlite3")
 advisor_provider = AdvisorProvider("synthetic-strands-model", "us-east-1",
                                    model_factory=AdvisorFixtureModel)
-app = create_workflow_app(database_path=db_path, provider=FixtureProvider(),
-                          advisor_provider=advisor_provider, test_mode=True)
+app = create_app(create_workflow_app(database_path=db_path, provider=FixtureProvider(),
+                          advisor_provider=advisor_provider, test_mode=True))

@@ -2,7 +2,7 @@ import { test, expect } from './fixtures';
 import type { Page } from '@playwright/test';
 
 const routes = [
- ['founder-home','/founder/home'],['founder-chat','/founder/chat'],['advisor-home','/advisor/home'],['founder-sources','/founder/sources'],
+ ['founder-home','/founder/home'],['chat-page','/founder/chat'],['advisor-home','/advisor/home'],['founder-sources','/founder/sources'],
  ['founder-documents','/founder/documents'],['founder-call','/founder/call'],
  ['founder-clarification','/founder/home/clarification'],
  ['advisor-clients','/advisor/clients'],['advisor-reviews','/advisor/reviews'],
@@ -41,7 +41,7 @@ for(const [name,route] of routes){
   await page.getByText('Test states',{exact:true}).click();
   await page.getByRole('combobox',{name:'Test scenario'}).selectOption('empty');
   if(name==='founder-home')await expect(page.getByText('No documents in this view yet.',{exact:true})).toBeVisible();
-  else if(name==='founder-chat'){
+  else if(name==='chat-page'){
    await expect(page.getByText('Ask Relay anything about your packet.',{exact:true})).toBeVisible();
    await expect(page.locator('.message-bubble')).toHaveCount(0);
    await page.setViewportSize({width:1600,height:1000});

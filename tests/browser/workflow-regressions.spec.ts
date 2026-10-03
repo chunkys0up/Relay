@@ -13,7 +13,7 @@ test('initial answer advances Home without advisor clarification and survives re
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/founder/chat');
  await sendPrivate(page,'2026 revenue is $240,000. My reserve target is $60,000.');
- await expect(page.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
+ await expect(page.locator('.chat-page-case').getByText('Draft ready',{exact:true})).toBeVisible();
  // Local packet tasks and the server checklist are separate stores.
  const tasks=await page.evaluate(async()=>{
   const path='/src/persistence.ts';
@@ -24,7 +24,7 @@ test('initial answer advances Home without advisor clarification and survives re
  expect(tasks.filter(task=>task.state==='Done')).toHaveLength(4);
  await expect(page.getByText('Relay adds items here as you talk through your packet.',{exact:true})).toBeVisible();
  await page.reload();
- await expect(page.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
+ await expect(page.locator('.chat-page-case').getByText('Draft ready',{exact:true})).toBeVisible();
  await expect(page.locator('.message-bubble').filter({hasText:'My reserve target is $60,000.'})).toHaveCount(1);
  expect(errors).toEqual([]);
 });
@@ -78,7 +78,7 @@ test('an initial private draft appears to a second founder tab but not the advis
  const other=await context.newPage();await other.goto('/founder/chat');
  const advisor=await context.newPage();await advisor.goto('/advisor/documents');
  await sendPrivate(page,'2026 revenue is $240,000. My reserve target is $60,000.');
- await expect(other.locator('.founder-chat-case').getByText('Draft ready',{exact:true})).toBeVisible();
+ await expect(other.locator('.chat-page-case').getByText('Draft ready',{exact:true})).toBeVisible();
  await expect(advisor.getByRole('region',{name:/Packet version 2 preview/})).toHaveCount(0);
  await page.goto('/founder/documents');
  await page.getByRole('button',{name:'Preview handoff of v2',exact:true}).click();

@@ -48,7 +48,7 @@ export async function workflowRequest<T>(path: string, options: { method?: strin
     response = await fetch('/api/workflow' + path, { method: options.method ?? 'GET', headers, credentials: 'same-origin', signal: options.signal, body: options.file ?? (options.body === undefined ? undefined : JSON.stringify(options.body)) });
   } catch (error) {
     if (options.signal?.aborted) throw error;
-    throw new Error('The packet backend could not be reached. Start the workflow service on port 8001, then retry.');
+    throw new Error('The packet backend could not be reached. Start the backend on port 8000, then retry.');
   }
   if (!response.ok) {
     const data = await response.json().catch(() => null) as { detail?: unknown; error?: { code?: string } } | null;

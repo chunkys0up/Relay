@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -13,6 +14,7 @@ from app.db import conversations as store
 from app.schemas.chat import ChatRequest, ChatResponse
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+log = logging.getLogger("relay.chat")
 
 
 async def _prepare(request: ChatRequest) -> tuple[Any, Any, dict[str, Any] | None, dict[str, str]]:
@@ -64,6 +66,14 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
                     parts.append(text)
                     yield text
             completed = True
+        except Exception as exc:
+            # The response has already started, so the error goes out as text instead of a status code.
+            log.exception("chat stream failed session=%s", request.session_id)
+            expired = "ExpiredToken" in str(exc)
+            yield ("\n\n" if parts else "") + (
+                "Relay couldn't reach the AI service: the AWS credentials have expired. Refresh them and restart the backend."
+                if expired else "Relay couldn't finish this reply because the AI service returned an error. Try again."
+            )
         finally:
             reply = "".join(parts).strip()
             if conversation and reply:

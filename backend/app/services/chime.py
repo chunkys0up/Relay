@@ -128,3 +128,50 @@ def end_call(case_id: str, call_id: str, actor: ActorIn) -> CallSession:
             log.info("call ended call=%s case=%s by=%s role=%s (meeting deleted)",
                      call.id, case_id, actor.id, actor.role)
         return _view(call)
+
+
+def _end_locked(call: _Call) -> None:
+    if call.state == "ended":
+        return
+    try:
+        _chime.delete_meeting(MeetingId=call.meeting_id)
+    except _chime.exceptions.NotFoundException:
+        pass
+    call.state = "ended"
+
+
+def revoke_actor(case_id: str, actor_id: str) -> None:
+    """Disconnect an advisor whose packet share was revoked."""
+    with _lock:
+        for call in _calls.values():
+            if call.case_id != case_id or call.state == "ended":
+                continue
+            part = call.participants.get(actor_id)
+            if part is None or part.attendee_id is None:
+                continue
+            try:
+                _chime.delete_attendee(MeetingId=call.meeting_id, AttendeeId=part.attendee_id)
+            except _chime.exceptions.NotFoundException:
+                pass
+            except Exception:
+                _end_locked(call)
+                continue
+            part.attendee_id = None
+
+
+def invalidate_case(case_id: str) -> None:
+    """End active calls when a case's current packet is replaced."""
+    with _lock:
+        for call in _calls.values():
+            if call.case_id == case_id:
+                _end_locked(call)
+
+
+def shutdown_calls() -> None:
+    """Delete meetings held by this process when the server shuts down."""
+    with _lock:
+        for call in _calls.values():
+            try:
+                _end_locked(call)
+            except Exception as exc:
+                log.error("meeting cleanup failed call=%s error=%s", call.id, type(exc).__name__)
