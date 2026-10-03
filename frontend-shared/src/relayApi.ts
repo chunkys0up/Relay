@@ -67,7 +67,3 @@ export async function streamChat(sessionId: string, message: string, onChunk: (t
   }
   return reply;
 }
-
-export async function resetChat(sessionId: string): Promise<void> {
-  await request(`/api/chat/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
-}

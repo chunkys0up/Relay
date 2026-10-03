@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Badge, CitationLink, Conversation, LiveAssistant, ScreenState, useRelay } from '@relay/shared';
+import { Badge, CitationLink, Conversation, ScreenState, useRelay } from '@relay/shared';
 import type { Task } from '@relay/shared';
 import './styles.css';
 
@@ -29,12 +29,11 @@ function DemoScreen() {
       <div className="founder-chat-conversation">
         <Conversation large>
       {currentFlags.length > 0 && <section className="founder-chat-clarification" aria-labelledby="founder-chat-clarification-title"><h2 id="founder-chat-clarification-title">Details to confirm</h2><p>Relay found source details that need your input before the next draft.</p>{currentFlags.map((flag) => <div key={flag.id} className="founder-chat-flag"><Badge tone="attention">{flag.kind === 'missing' ? 'Missing detail' : flag.kind === 'conflict' ? 'Source conflict' : 'Needs review'}</Badge><p>{flag.text}</p>{flag.citations.map((citation, index) => <CitationLink key={`${citation.source_id}-${index}`} citation={citation}/>)}</div>)}
-        {sentClarification ? <Link className="founder-chat-action" to="/founder/home/clarification">Answer clarification in chat</Link> : <><p className="founder-chat-simulation-note">No advisor question has been sent yet. Add numeric revenue and reserve details in this private conversation to prepare a local draft. General simulated AI replies need the backend.</p><Link className="founder-chat-action" to="/founder/chat#message-main">Answer in AI Chat</Link></>}
+        {sentClarification ? <Link className="founder-chat-action" to="/founder/home/clarification">Answer clarification in chat</Link> : <><p className="founder-chat-simulation-note">No advisor question has been sent yet. Share your revenue and reserve details in this conversation to prepare the next draft.</p><Link className="founder-chat-action" to="/founder/chat#message-main">Answer in AI Chat</Link></>}
       </section>}
 </Conversation>
         <div className="founder-chat-upload-note"><Link to="/founder/home">Add documents on Home</Link><span> · Private uploads are available from your document workspace.</span></div>
       </div>
-      <LiveAssistant role="founder" />
     </div>
     <aside className="founder-chat-aside" aria-label="Planning steps and case details">
       <section aria-labelledby="founder-chat-steps-title"><h2 id="founder-chat-steps-title">Your next steps</h2>

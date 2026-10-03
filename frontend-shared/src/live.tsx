@@ -1,87 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Badge, Button, EmptyState, Panel } from './ui';
-import { documentUrl, LIVE_CASE_ID, listDocuments, resetChat, streamChat, uploadDocument } from './relayApi';
+import { Button, EmptyState, Panel } from './ui';
+import { documentUrl, LIVE_CASE_ID, listDocuments, uploadDocument } from './relayApi';
 import type { LiveDocument } from './relayApi';
-import type { Role } from './types';
-
-interface Turn { id: string; author: 'you' | 'relay'; text: string }
 
 const errorText = (error: unknown): string => error instanceof Error ? error.message : 'Request failed';
-const newSessionId = (role: Role): string => `${role}-${crypto.randomUUID()}`;
-
-/** Streaming chat with the backend Strands agent (POST /api/chat/stream). */
-export function LiveAssistant({ role }: { role: Role }): ReactNode {
-  const [sessionId, setSessionId] = useState(() => newSessionId(role));
-  const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState('');
-  const [streaming, setStreaming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const controller = useRef<AbortController | null>(null);
-
-  // Evict the backend's cached agent when the conversation is replaced or the panel unmounts.
-  useEffect(() => () => {
-    controller.current?.abort();
-    void resetChat(sessionId).catch(() => undefined);
-  }, [sessionId]);
-
-  const send = async (): Promise<void> => {
-    const text = draft.trim();
-    if (!text || streaming) return;
-    const replyId = crypto.randomUUID();
-    setTurns(prev => [...prev, { id: crypto.randomUUID(), author: 'you', text }, { id: replyId, author: 'relay', text: '' }]);
-    setDraft('');
-    setError(null);
-    setStreaming(true);
-    const c = new AbortController();
-    controller.current = c;
-    try {
-      await streamChat(sessionId, text, chunk => setTurns(prev => prev.map(turn => turn.id === replyId ? { ...turn, text: turn.text + chunk } : turn)), c.signal);
-    } catch (e) {
-      if (!c.signal.aborted) {
-        setError(errorText(e));
-        setTurns(prev => prev.filter(turn => turn.id !== replyId || turn.text));
-      }
-    } finally {
-      if (controller.current === c) { controller.current = null; setStreaming(false); }
-    }
-  };
-
-  const restart = (): void => {
-    controller.current?.abort();
-    setTurns([]);
-    setError(null);
-    setStreaming(false);
-    setSessionId(newSessionId(role));
-  };
-
-  const inputId = `live-assistant-${role}`;
-  return <Panel className="live-panel">
-    <div className="live-heading">
-      <div><h2>Relay assistant</h2><small>Live backend · Strands agent on Bedrock · separate from the local demo case</small></div>
-      <Badge tone={streaming ? 'attention' : 'success'}>{streaming ? 'Replying…' : 'Live'}</Badge>
-    </div>
-    {turns.length === 0
-      ? <p className="muted">Ask a general question. Replies stream from the backend agent and don't change the demo packet.</p>
-      : <div className="message-list" aria-live="polite">{turns.map(turn => <div key={turn.id} className={`message ${turn.author === 'you' ? 'own-message' : ''}`}>
-          <div className="message-author"><strong>{turn.author === 'you' ? 'You' : 'Relay assistant'}</strong></div>
-          <div className="message-bubble">{turn.text || '…'}</div>
-        </div>)}</div>}
-    {error && <p className="feedback feedback-error" role="alert">{error}</p>}
-    <form className="composer" onSubmit={e => { e.preventDefault(); void send(); }}>
-      <label className="sr-only" htmlFor={inputId}>Message the live assistant</label>
-      <textarea id={inputId} value={draft} maxLength={8000} placeholder="Ask the live assistant" disabled={streaming}
-        onChange={e => setDraft(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}/>
-      <div className="composer-actions">
-        <Button variant="outline" onClick={restart}>New conversation</Button>
-        {streaming
-          ? <Button variant="outline" onClick={() => controller.current?.abort()}>Stop</Button>
-          : <Button type="submit" disabled={!draft.trim()}>Send</Button>}
-      </div>
-    </form>
-  </Panel>;
-}
 
 export interface CaseDocuments {
   documents: LiveDocument[] | null;

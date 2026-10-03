@@ -1,13 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LiveAssistant, LiveCaseDocuments } from './live';
+import { LiveCaseDocuments } from './live';
 import { LIVE_CASE_ID } from './relayApi';
 
 const fetchMock = vi.fn<typeof fetch>();
 const json = (data: unknown, status = 200): Response => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } });
-const stream = (...chunks: string[]): Response => new Response(new ReadableStream({
-  start(controller) { const encoder = new TextEncoder(); for (const chunk of chunks) controller.enqueue(encoder.encode(chunk)); controller.close(); },
-}));
 const doc = { id: 'd1', case_id: LIVE_CASE_ID, filename: 'cap-table.csv', s3_key: 'tenants/x/original.csv', uploaded_at: '2026-10-02T23:10:45Z' };
 
 beforeEach(() => { fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock); });
@@ -39,30 +36,5 @@ describe('LiveCaseDocuments', () => {
     fetchMock.mockResolvedValueOnce(json({ detail: 'case 123 not found' }, 404));
     render(<LiveCaseDocuments canUpload={false} />);
     expect(await screen.findByRole('alert')).toHaveTextContent('case 123 not found');
-  });
-});
-
-describe('LiveAssistant', () => {
-  it('streams the reply into the conversation', async () => {
-    fetchMock.mockResolvedValueOnce(stream('Hi ', 'there'));
-    render(<LiveAssistant role="founder" />);
-    fireEvent.change(screen.getByLabelText('Message the live assistant'), { target: { value: 'hello' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    expect(await screen.findByText('Hi there')).toBeInTheDocument();
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(String(url)).toContain('/api/chat/stream');
-    expect(JSON.parse(String(init?.body))).toMatchObject({ message: 'hello', session_id: expect.stringMatching(/^founder-/) });
-  });
-
-  it('evicts the old backend session when starting a new conversation', async () => {
-    fetchMock.mockResolvedValueOnce(stream('ok')).mockResolvedValue(json({ status: 'cleared' }));
-    render(<LiveAssistant role="founder" />);
-    fireEvent.change(screen.getByLabelText('Message the live assistant'), { target: { value: 'hello' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
-    await screen.findByText('ok');
-    const sessionId = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)).session_id as string;
-    fireEvent.click(screen.getByRole('button', { name: 'New conversation' }));
-    await waitFor(() => expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith(`/api/chat/${sessionId}`) && init?.method === 'DELETE')).toBe(true));
-    expect(screen.queryByText('ok')).toBeNull();
   });
 });

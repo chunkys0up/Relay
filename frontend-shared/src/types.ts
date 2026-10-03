@@ -29,6 +29,7 @@ export type RelayCommand =
  | ({kind:'review';decision:'approved'|'questions_returned';clarification_id?:string;clarification_revision?:number} & VersionInput)
  | ({kind:'invite';recipient_id:string} & VersionInput)
  | {kind:'call_action';expected_revision:number;action:'accept'|'decline'|'mute'|'unmute'|'end'}
- | {kind:'consent';expected_revision:number;consent:'granted'|'withdrawn'};
+ | {kind:'consent';expected_revision:number;consent:'granted'|'withdrawn'}
+ | {kind:'ai_reply';text:string};
 export interface RelayAdapter { readonly mode:'simulated'; snapshot(role:Role,signal?:AbortSignal):Promise<Receipt<CaseSnapshot>>; mutate(role:Role,command:RelayCommand,options:MutationOptions):Promise<Receipt<CaseSnapshot>>; subscribe(listener:()=>void):()=>void; setScenario(scenario:Scenario):void; reset():void }
 export class RelayError extends Error { constructor(public readonly code:string,message:string,public readonly retryable=false){super(message);this.name='RelayError';} }
