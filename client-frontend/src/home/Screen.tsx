@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { CaseSidebar, Icon, ScreenState, useCaseDocuments, useRelay } from '@relay/shared';
-import type { PacketVersion } from '@relay/shared';
+import { CaseSidebar, Icon, packetStatus, ScreenState, useCaseDocuments, useCasePackets, useRelay } from '@relay/shared';
 import './styles.css';
 
 type DocumentFilter = 'all' | 'originals' | 'packets';
@@ -11,16 +10,11 @@ function initials(name: string): string {
   return name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
 }
 
-function packetStatus(packet: PacketVersion): string {
-  if (packet.status === 'approved') return 'Approved';
-  if (packet.status === 'in_review') return 'In review';
-  if (packet.status === 'questions_returned') return 'Questions returned';
-  return 'Draft';
-}
 
 function DemoScreen() {
   const { snapshot, error, notice } = useRelay();
   const caseDocuments = useCaseDocuments();
+  const { packets: livePackets } = useCasePackets();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<DocumentFilter>('all');
   const [dragging, setDragging] = useState(false);
@@ -43,8 +37,8 @@ function DemoScreen() {
   const documents = caseDocuments.documents?.filter((doc) =>
     (filter !== 'packets') && (!normalizedQuery || doc.filename.toLowerCase().includes(normalizedQuery)),
   ) ?? [];
-  const packets = snapshot?.packets.filter((packet) =>
-    (filter !== 'originals') && (!normalizedQuery || `${packet.title} ${packet.status} v${packet.version}`.toLowerCase().includes(normalizedQuery)),
+  const packets = livePackets?.filter((packet) =>
+    (filter !== 'originals') && (!normalizedQuery || `planning packet v${packet.version} ${packetStatus(packet).label}`.toLowerCase().includes(normalizedQuery)),
   ) ?? [];
 
   return <ScreenState>{snapshot && <div className="founder-home">
@@ -82,9 +76,9 @@ function DemoScreen() {
             <button type="button" className="founder-home-file-name" onClick={() => { void caseDocuments.open(doc.id); }}><Icon name="file" size={25}/><span>{doc.filename}</span></button>
             <span>Original</span><span className="founder-home-status is-ready">Uploaded {new Date(doc.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </div>)}
-          {[...packets].reverse().map((packet) => <div className="founder-home-file-row" key={packet.id}>
-            <Link className="founder-home-file-name" to={`/founder/documents?version=${encodeURIComponent(packet.id)}`}><Icon name="file" size={25}/><span>{packet.title} v{packet.version}</span></Link>
-            <span>Packet</span><span className={`founder-home-status ${packet.status === 'approved' ? 'is-ready' : 'is-draft'}`}>{packetStatus(packet)}</span>
+          {packets.map((packet) => <div className="founder-home-file-row" key={packet.id}>
+            <Link className="founder-home-file-name" to="/founder/call"><Icon name="file" size={25}/><span>Planning packet v{packet.version}</span></Link>
+            <span>Packet</span><span className={`founder-home-status ${packet.status === 'approved' ? 'is-ready' : 'is-draft'}`}>{packetStatus(packet).label}</span>
           </div>)}
           {caseDocuments.documents !== null && documents.length + packets.length === 0 && <p className="founder-home-no-documents">{query ? 'No documents match your search.' : 'No documents in this view yet.'}</p>}
         </div>

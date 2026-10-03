@@ -6,6 +6,7 @@ import { Collapsible } from './collapsible';
 import { Conversation } from './conversation';
 import type { ChatThread } from './conversation';
 import { useRelay } from './context';
+import { packetStatus, useCasePackets } from './packets';
 import { Tabs } from './tabs';
 import { Icon } from './ui';
 import { plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages } from './live';
@@ -142,7 +143,7 @@ export function NextStepsSection({ id, checklist }: { id: string; checklist: Cas
     {nextItem ? <div className="case-sidebar-next-step"><span className="case-sidebar-step-number">{items.indexOf(nextItem) + 1}</span><div><strong>{nextItem.title}</strong>{nextItem.detail && <p>{nextItem.detail}</p>}</div></div>
       : <p className="case-sidebar-empty">{items.length ? 'Everything on the checklist is done.' : 'Ask Relay what your packet needs to get started.'}</p>}
     {currentQuestion && <Link className="case-sidebar-action" to="/founder/home/clarification">Answer {snapshot?.advisors[0]?.name ?? 'your advisor'}&apos;s question</Link>}
-    <Link className="case-sidebar-link" to="/founder/documents">Review packet versions →</Link>
+    <Link className="case-sidebar-link" to="/founder/call">Review packet versions →</Link>
   </SidebarSection>;
 }
 
@@ -172,12 +173,14 @@ export function RecentConversationSection({ id, limit = 3, as }: { id: string; l
 /** The case's company, status and current packet. */
 export function CaseDetailsSection({ id }: { id: string }): ReactNode {
   const { snapshot } = useRelay();
+  const { packets } = useCasePackets();
   if (!snapshot) return null;
+  const latest = packets?.[0];
   return <SidebarSection id={id} title="Case details">
     <dl className="case-sidebar-details">
       <div><dt>Name</dt><dd>{snapshot.company}</dd></div>
-      <div><dt>Status</dt><dd>{snapshot.status}</dd></div>
-      <div><dt>Packet</dt><dd>{snapshot.current_packet_version_id ? <Link to={`/founder/documents?version=${encodeURIComponent(snapshot.current_packet_version_id)}`}>View current version</Link> : 'No draft yet'}</dd></div>
+      <div><dt>Status</dt><dd>{latest ? packetStatus(latest).label : packets === null ? 'Loading…' : 'Gathering documents'}</dd></div>
+      <div><dt>Packet</dt><dd>{latest ? <Link to="/founder/call">View packet v{latest.version}</Link> : 'No packet yet'}</dd></div>
     </dl>
   </SidebarSection>;
 }

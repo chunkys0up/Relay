@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  advisorApi, advisorPacketHref, AssistantSidebar, Badge, Button, EmptyState, Icon, PacketPreview,
-  ReviewControls, ScreenState, SourcePreview, useRelay,
+  advisorApi, advisorPacketHref, AssistantSidebar, Badge, Button, DocumentPreview, EmptyState, Icon,
+  PacketReviewPanel, PacketStatusBadge, PacketSummary, ScreenState, packetStatus, useCaseDocuments, useCasePackets, useRelay,
 } from '@relay/shared';
-import type { AdvisorSession, PacketVersion, Source } from '@relay/shared';
+import type { AdvisorSession, LiveDocument, LivePacket } from '@relay/shared';
 import './Screen.css';
 
 type SharedItem =
-  | { kind: 'packet'; id: string; date: string; packet: PacketVersion }
-  | { kind: 'source'; id: string; date: string; source: Source };
+  | { kind: 'packet'; id: string; date: string; packet: LivePacket }
+  | { kind: 'source'; id: string; date: string; document: LiveDocument };
 
 function updateParams(
   search: URLSearchParams,
@@ -79,40 +79,24 @@ function ServerWorkspace({ params, update }: { params: URLSearchParams; update: 
 export default function Screen() {
   const { snapshot, role } = useRelay();
   const [params, setParams] = useSearchParams();
+  const { packets: livePackets } = useCasePackets();
+  const { documents } = useCaseDocuments();
   const query = (params.get('q') ?? '').trim().toLowerCase();
-  const packets = useMemo(() => {
-    if (!snapshot || role !== 'advisor') return [];
-    const advisorId = snapshot.advisors[0]?.id;
-    return snapshot.packets.filter(packet => snapshot.grants.some(grant =>
-      grant.advisor_id === advisorId
-      && grant.packet_version_id === packet.id
-      && grant.packet_hash === packet.hash,
-    )).sort((a, b) => b.version - a.version);
-  }, [role, snapshot]);
-  const sources = useMemo(() => {
-    if (!snapshot || role !== 'advisor') return [];
-    const shared = new Set(snapshot.grants.filter(grant => grant.advisor_id === snapshot.advisors[0]?.id).flatMap(grant => grant.source_ids));
-    return snapshot.sources.filter(source => shared.has(source.id));
-  }, [role, snapshot]);
+  const packets = livePackets ?? [];
   const items: SharedItem[] = [
     ...packets.map(packet => ({ kind: 'packet' as const, id: packet.id, date: packet.created_at, packet })),
-    ...sources.map(source => ({ kind: 'source' as const, id: source.id, date: source.created_at, source })),
+    ...(documents ?? []).map(document => ({ kind: 'source' as const, id: document.id, date: document.uploaded_at, document })),
   ];
   const hasWorkspace = items.length > 0;
   const clientMatches = Boolean(snapshot && (snapshot.company + ' ' + snapshot.founder.name).toLowerCase().includes(query));
   const requestedSource = params.get('source');
   const requestedVersion = params.get('version');
-  const selected = items.find(item => item.id === requestedSource || (item.kind === 'packet' && (item.id === requestedVersion || String(item.packet.version) === requestedVersion)))
+  const selected = items.find(item => item.id === requestedSource || item.id === requestedVersion)
     ?? (requestedSource || requestedVersion || params.get('open') === 'none' ? null : items[0] ?? null);
   const selectedId = selected?.id ?? null;
   const serverMode = params.get('advisor_demo') === 'server';
   const latest = packets[0] ?? null;
-  const latestReview = latest ? snapshot?.reviews.filter(review => review.packet_version_id === latest.id).sort((a, b) => a.created_at.localeCompare(b.created_at)).at(-1) : null;
-  const reviewState = latestReview?.decision === 'approved' || latest?.status === 'approved'
-    ? 'Approved'
-    : latestReview?.decision === 'questions_returned' || latest?.status === 'questions_returned'
-      ? 'Questions returned'
-      : latest ? 'Ready for advisor review' : 'Shared sources';
+  const reviewState = latest ? packetStatus(latest).label : 'Shared documents';
 
   function toggle(item: SharedItem): void {
     updateParams(params, setParams, {
@@ -164,19 +148,19 @@ export default function Screen() {
                     <button type="button" className="advisor-client-document-toggle" aria-expanded={expanded} aria-controls={'advisor-client-content-' + item.id} onClick={() => toggle(item)}>
                       <span className="advisor-document-chevron" aria-hidden="true">{expanded ? '⌄' : '›'}</span>
                       <Icon name="file" size={25}/>
-                      <strong>{item.kind === 'packet' ? item.packet.title + ' · v' + item.packet.version : item.source.name}</strong>
-                      <Badge tone={item.kind === 'packet' && item.packet.status === 'approved' ? 'success' : 'neutral'}>{item.kind === 'packet' ? item.packet.status.replaceAll('_', ' ') : 'Original'}</Badge>
+                      <strong>{item.kind === 'packet' ? 'Planning packet · v' + item.packet.version : item.document.filename}</strong>
+                      {item.kind === 'packet' ? <PacketStatusBadge packet={item.packet}/> : <Badge>Original</Badge>}
                       <time dateTime={item.date}>{new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</time>
                     </button>
                     {expanded && <div id={'advisor-client-content-' + item.id} className="advisor-client-document-content">
                       {item.kind === 'packet'
                         ? <>
-                            <PacketPreview packet={item.packet} compact/>
-                            {item.packet.id === snapshot.current_packet_version_id
-                              ? <ReviewControls packet={item.packet}/>
-                              : <p className="advisor-document-history">This is a historical version. Decisions apply to the current shared version only.</p>}
+                            <PacketSummary packet={item.packet}/>
+                            {item.packet.id === latest?.id
+                              ? <PacketReviewPanel packet={item.packet}/>
+                              : <p className="advisor-document-history">This is an earlier version. Decisions apply to the latest version only.</p>}
                           </>
-                        : <SourcePreview source={item.source}/>}
+                        : <DocumentPreview document={item.document}/>}
                     </div>}
                   </article>;
                 })}

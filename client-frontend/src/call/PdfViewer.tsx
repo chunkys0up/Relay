@@ -1,85 +1,59 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Icon } from '@relay/shared';
-import { initializeWorkflowSession, workflowRequest, type WorkflowCase } from '../workflow/api';
+import { Button, Icon, packetUrl, documentUrl, useCaseDocuments, useCasePackets } from '@relay/shared';
 
-type PdfGroup = 'Generated packets' | 'Uploaded sources' | 'This computer';
-interface PdfOption { id: string; group: PdfGroup; label: string; load: (signal: AbortSignal) => Promise<Blob> }
-const groups: PdfGroup[] = ['Generated packets', 'Uploaded sources', 'This computer'];
+type PdfGroup = 'Packet versions' | 'Uploaded documents' | 'This computer';
+interface PdfOption { id: string; group: PdfGroup; label: string; load: (signal: AbortSignal) => Promise<string> }
+const groups: PdfGroup[] = ['Packet versions', 'Uploaded documents', 'This computer'];
 
-// The backend serves PDFs with `Content-Security-Policy: sandbox`, which stops
-// the browser's built-in viewer from rendering them inside an iframe. Loading
-// the bytes and viewing a same-origin blob URL keeps the native viewer working.
-async function fetchPdf(url: string, signal: AbortSignal): Promise<Blob> {
-  const response = await fetch(url, { credentials: 'same-origin', signal });
-  if (!response.ok) throw new Error(`The PDF could not be loaded (${response.status}).`);
-  return new Blob([await response.arrayBuffer()], { type: 'application/pdf' });
-}
-
-function backendOptions(cases: WorkflowCase[]): PdfOption[] {
-  const base = (item: WorkflowCase) => `/api/workflow/cases/${encodeURIComponent(item.id)}`;
-  const packets = cases.flatMap(item => [...item.packets].sort((a, b) => b.version - a.version).map((packet): PdfOption => ({
-    id: `${item.id}:${packet.id}`,
-    group: 'Generated packets',
-    label: `${item.company} · packet v${packet.version}`,
-    load: signal => fetchPdf(`${base(item)}/packets/${encodeURIComponent(packet.id)}/download?inline=true`, signal),
-  })));
-  const sources = cases.flatMap(item => item.sources.filter(source => source.mime_type === 'application/pdf' || source.name.toLowerCase().endsWith('.pdf')).map((source): PdfOption => ({
-    id: `${item.id}:source:${source.id}`,
-    group: 'Uploaded sources',
-    label: `${item.company} · ${source.name}`,
-    load: signal => fetchPdf(`${base(item)}/sources/${encodeURIComponent(source.id)}/preview`, signal),
-  })));
-  return [...packets, ...sources];
-}
-
-export function PdfViewer(): ReactNode {
-  const [options, setOptions] = useState<PdfOption[]>([]);
+/**
+ * Views the case's packet PDFs and uploaded PDFs from S3, or a PDF from this computer.
+ * `packetId` selects that packet version whenever it changes.
+ */
+export function PdfViewer({ packetId }: { packetId?: string }): ReactNode {
+  const { packets, error: packetsError } = useCasePackets();
+  const { documents } = useCaseDocuments();
+  const [localOptions, setLocalOptions] = useState<PdfOption[]>([]);
   const [selectedId, setSelectedId] = useState('');
-  const [backendNote, setBackendNote] = useState<string | null>(null);
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        await initializeWorkflowSession();
-        const { items } = await workflowRequest<{ items: WorkflowCase[] }>('/cases');
-        if (!active) return;
-        const found = backendOptions(items);
-        setOptions(current => [...current.filter(option => !found.some(item => item.id === option.id)), ...found]);
-        setSelectedId(current => current || found[0]?.id || '');
-        if (!found.length) setBackendNote('No PDFs yet. Upload a source or create a PDF draft in the backend workspace, or open a PDF from this computer.');
-      } catch {
-        if (active) setBackendNote('Generated PDFs are unavailable because the workflow backend is not reachable. You can still open a PDF from this computer.');
-      }
-    })();
-    return () => { active = false; };
-  }, []);
+  const options: PdfOption[] = [
+    ...(packets ?? []).map((packet): PdfOption => ({
+      id: `packet:${packet.id}`, group: 'Packet versions', label: `Planning packet v${packet.version}`,
+      load: signal => packetUrl(packet.case_id, packet.id, signal),
+    })),
+    ...(documents ?? []).filter(doc => /\.pdf$/i.test(doc.filename)).map((doc): PdfOption => ({
+      id: `doc:${doc.id}`, group: 'Uploaded documents', label: doc.filename,
+      load: signal => documentUrl(doc.id, signal),
+    })),
+    ...localOptions,
+  ];
 
-  const selected = options.find(option => option.id === selectedId);
+  useEffect(() => { if (packetId) setSelectedId(`packet:${packetId}`); }, [packetId]);
+  const selected = options.find(option => option.id === selectedId) ?? options[0];
+  const selectedKey = selected?.id ?? '';
+
   useEffect(() => {
     if (!selected) { setUrl(null); return; }
     const controller = new AbortController();
-    let objectUrl: string | null = null;
     setLoading(true); setError(null); setUrl(null);
-    selected.load(controller.signal).then(blob => {
-      objectUrl = URL.createObjectURL(blob);
-      setUrl(objectUrl);
-    }).catch((cause: unknown) => {
+    selected.load(controller.signal).then(setUrl).catch((cause: unknown) => {
       if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'The PDF could not be loaded.');
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
-  }, [selected]);
+    return () => controller.abort();
+    // Reload only when the chosen document changes, not on every list refresh.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedKey]);
 
   function openLocal(file: File | undefined): void {
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) { setError('Choose a PDF file.'); return; }
-    const option: PdfOption = { id: `local:${crypto.randomUUID()}`, group: 'This computer', label: `${file.name} · this computer`, load: () => Promise.resolve(new Blob([file], { type: 'application/pdf' })) };
-    setOptions(current => [...current, option]);
+    const objectUrl = URL.createObjectURL(file);
+    const option: PdfOption = { id: `local:${crypto.randomUUID()}`, group: 'This computer', label: `${file.name} · this computer`, load: () => Promise.resolve(objectUrl) };
+    setLocalOptions(current => [...current, option]);
     setSelectedId(option.id);
     if (fileInput.current) fileInput.current.value = '';
   }
@@ -88,7 +62,7 @@ export function PdfViewer(): ReactNode {
     <div className="relay-pdf-toolbar">
       <Icon name="file"/>
       {options.length > 0
-        ? <select aria-label="PDF to view" value={selectedId} onChange={event => setSelectedId(event.target.value)}>{groups.map(group => {
+        ? <select aria-label="PDF to view" value={selectedKey} onChange={event => setSelectedId(event.target.value)}>{groups.map(group => {
             const items = options.filter(option => option.group === group);
             return items.length > 0 && <optgroup key={group} label={group}>{items.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</optgroup>;
           })}</select>
@@ -103,7 +77,7 @@ export function PdfViewer(): ReactNode {
       {error ? <p role="alert">{error}</p>
         : loading ? <p role="status">Loading PDF…</p>
         : url ? <iframe title={`PDF: ${selected?.label ?? 'document'}`} src={url}/>
-        : <p>{backendNote ?? 'Looking for generated PDFs…'}</p>}
+        : <p>{packetsError ?? (packets === null ? 'Loading PDFs…' : 'No packet PDFs yet. Open a PDF from this computer.')}</p>}
     </div>
   </section>;
 }

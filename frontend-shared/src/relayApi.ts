@@ -84,6 +84,38 @@ export async function setChecklistState(caseId: string, itemId: string, state: C
   return response.json() as Promise<ChecklistItem>;
 }
 
+// Packet versions (the `drafts` table) and the advisor's review decisions.
+export type PacketStatus = 'draft' | 'in_review' | 'approved' | 'questions_returned';
+export type ReviewDecision = 'approved' | 'questions_returned';
+export interface LivePacket {
+  id: string; case_id: string; version: number; status: PacketStatus; created_at: string;
+  review_decision: ReviewDecision | null; review_notes: string | null; reviewed_at: string | null;
+}
+
+const packetPath = (caseId: string, packetId?: string): string =>
+  `/api/cases/${encodeURIComponent(caseId)}/packets${packetId ? `/${encodeURIComponent(packetId)}` : ''}`;
+
+export async function listPackets(caseId: string, signal?: AbortSignal): Promise<LivePacket[]> {
+  return (await request(packetPath(caseId), { signal })).json() as Promise<LivePacket[]>;
+}
+
+/** Short-lived S3 link to the packet PDF. */
+export async function packetUrl(caseId: string, packetId: string, signal?: AbortSignal): Promise<string> {
+  return ((await (await request(`${packetPath(caseId, packetId)}/url`, { signal })).json()) as { url: string }).url;
+}
+
+/** Relay's Markdown summary of the packet, generated from the PDF's text on first request. */
+export async function packetSummary(caseId: string, packetId: string, signal?: AbortSignal): Promise<string> {
+  return ((await (await request(`${packetPath(caseId, packetId)}/summary`, { signal })).json()) as { summary: string }).summary;
+}
+
+export async function reviewPacket(caseId: string, packetId: string, decision: ReviewDecision, notes: string): Promise<LivePacket> {
+  const response = await request(`${packetPath(caseId, packetId)}/review`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, notes }),
+  });
+  return response.json() as Promise<LivePacket>;
+}
+
 export async function listActivity(caseId: string, limit = 20, signal?: AbortSignal): Promise<ActivityEntry[]> {
   return (await request(`/api/cases/${encodeURIComponent(caseId)}/activity?limit=${limit}`, { signal })).json() as Promise<ActivityEntry[]>;
 }
