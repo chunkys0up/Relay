@@ -47,7 +47,8 @@ def main() -> int:
             config["profile relay-windows"] = {
                 "region": settings["region"],
                 "credential_process": shlex.join([windows_cli, "configure", "export-credentials",
-                    "--profile", settings["profile"], "--format", "process"]),
+                    "--profile", settings["profile"], "--region", settings["region"],
+                    "--format", "process"]),
             }
             config_path = Path(scratch) / "config"
             with config_path.open("w") as handle:
