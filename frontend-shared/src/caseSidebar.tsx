@@ -38,7 +38,9 @@ function store(key: string, value: string): void {
  * Every tab stays mounted while hidden, so switching tabs never drops a live call.
  */
 export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; onLiveCallChange?: (active: boolean) => void }): ReactNode {
-  const checklist = useCaseChecklist();
+  const {snapshot,mode}=useRelay();
+  const caseId=mode==='server'?snapshot?.id:undefined;
+  const checklist = useCaseChecklist(caseId);
   const [width, setWidth] = useState(() => clampWidth(Number(readStored(WIDTH_KEY)) || DEFAULT_WIDTH));
   const [tab, setTab] = useState(() => readStored(TAB_KEY) ?? 'progress');
   const resize = (next: number): void => { const clamped = clampWidth(next); setWidth(clamped); store(WIDTH_KEY, String(clamped)); };
@@ -65,9 +67,9 @@ export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; 
   }
 
   const tabs = [
-    { id: 'progress', label: 'Progress', content: <><ChecklistSection id="sidebar-checklist" checklist={checklist}/><NextStepsSection id="sidebar-next" checklist={checklist}/><CaseDetailsSection id="sidebar-case"/></> },
-    { id: 'call', label: 'Call', content: <CallPanel onLiveCallChange={onLiveCallChange}/> },
-    { id: 'activity', label: 'Activity', content: <><ActivitySection id="sidebar-activity"/><RecentConversationSection id="sidebar-conversation"/></> },
+    { id: 'progress', label: 'Progress', content: <><ChecklistSection id="sidebar-checklist" checklist={checklist} caseId={caseId}/><NextStepsSection id="sidebar-next" checklist={checklist}/><CaseDetailsSection id="sidebar-case"/></> },
+    ...(mode === 'server' ? [] : [{ id: 'call', label: 'Call', content: <CallPanel onLiveCallChange={onLiveCallChange}/> }]),
+    { id: 'activity', label: 'Activity', content: <><ActivitySection id="sidebar-activity" caseId={caseId}/><RecentConversationSection id="sidebar-conversation" caseId={caseId}/></> },
   ];
   const current = tabs.find((item) => item.id === tab) ?? tabs[0];
   return <div className="case-sidebar" style={{ width }}>
@@ -88,8 +90,8 @@ export function SidebarSection({ id, title, as, children }: { id: string; title:
 }
 
 /** The case checklist with a progress bar; each item can be ticked off. */
-export function ChecklistSection({ id, checklist }: { id: string; checklist: CaseChecklist }): ReactNode {
-  const { documents, error: documentsError } = useCaseDocuments();
+export function ChecklistSection({ id, checklist, caseId }: { id: string; checklist: CaseChecklist; caseId?:string }): ReactNode {
+  const { documents, error: documentsError } = useCaseDocuments(caseId);
   const items = checklist.items ?? [];
   const doneCount = items.filter((item) => item.state === 'done').length;
   const fileCount = documents?.length;
@@ -124,8 +126,8 @@ export function NextStepsSection({ id, checklist }: { id: string; checklist: Cas
 }
 
 /** The case activity feed: who did what, and when. */
-export function ActivitySection({ id, title = 'Activity', limit, as }: { id: string; title?: string; limit?: number; as?: 'h2' | 'h3' }): ReactNode {
-  const activity = useCaseActivity(undefined, limit);
+export function ActivitySection({ id, title = 'Activity', limit, as, caseId }: { id: string; title?: string; limit?: number; as?: 'h2' | 'h3'; caseId?:string }): ReactNode {
+  const activity = useCaseActivity(caseId, limit);
   return <SidebarSection id={id} title={title} as={as}>
     {activity.error ? <p className="case-sidebar-empty" role="alert">{activity.error}</p>
       : activity.entries === null ? <p className="case-sidebar-empty" role="status">Loading activity…</p>
@@ -135,9 +137,9 @@ export function ActivitySection({ id, title = 'Activity', limit, as }: { id: str
 }
 
 /** The latest messages across the role's conversations. */
-export function RecentConversationSection({ id, limit = 3, as }: { id: string; limit?: number; as?: 'h2' | 'h3' }): ReactNode {
+export function RecentConversationSection({ id, limit = 3, as, caseId }: { id: string; limit?: number; as?: 'h2' | 'h3'; caseId?:string }): ReactNode {
   const { snapshot, role } = useRelay();
-  const messages = useRecentMessages(role, limit);
+  const messages = useRecentMessages(role, limit, caseId);
   const senderName = (sender: string): string | undefined =>
     sender === 'ai' ? 'Relay assistant' : sender === 'founder' ? snapshot?.founder.name : snapshot?.advisors[0]?.name;
   return <SidebarSection id={id} title="Recent conversation" as={as}>

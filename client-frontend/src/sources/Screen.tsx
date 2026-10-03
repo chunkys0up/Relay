@@ -1,3 +1,4 @@
+import ServerPacketLibrary from '../../../frontend-shared/src/ServerPacketLibrary';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Badge, Button, Conversation, EmptyState, Icon, PageTitle, Panel, ScreenState, SourcePreview, useRelay } from '@relay/shared';
 import type { Source } from '@relay/shared';
@@ -18,7 +19,7 @@ function sourceSearchText(source: Source): string {
   return [source.name, source.excerpt, source.mime_type, ...source.citations.map((citation) => citation.label)].join(' ').toLowerCase();
 }
 
-export default function Screen() {
+function FixtureScreen() {
   const { snapshot } = useRelay();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
@@ -124,3 +125,5 @@ export default function Screen() {
     </ScreenState>
   );
 }
+
+export default function Screen() { const {mode}=useRelay(); return mode==='server'?<ServerPacketLibrary view="sources"/>:<FixtureScreen/>; }

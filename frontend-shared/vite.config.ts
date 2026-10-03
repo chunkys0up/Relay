@@ -8,6 +8,9 @@ export default defineConfig({
   define: { global: 'globalThis' },
   optimizeDeps: { esbuildOptions: { define: { global: 'globalThis' } } },
   resolve: { alias: { '@relay/shared': fileURLToPath(new URL('./src/index.ts', import.meta.url)) } },
-  server: { proxy: { '/api/advisor': { target: `http://127.0.0.1:${process.env.RELAY_WORKFLOW_PORT ?? '8001'}` }, '/api/workflow': { target: `http://127.0.0.1:${process.env.RELAY_WORKFLOW_PORT ?? '8001'}`, ws: true } }, fs: { allow: [repositoryRoot] } },
+  server: {
+    proxy: { '/api': { target: `http://127.0.0.1:${process.env.RELAY_BACKEND_PORT ?? process.env.RELAY_WORKFLOW_PORT ?? '8000'}`, ws: true } },
+    fs: { allow: [repositoryRoot] },
+  },
   test: { root: repositoryRoot, environment: 'jsdom', include: ['**/*.test.ts', '**/*.test.tsx'], setupFiles: ['./tests/setup.ts'] },
 });

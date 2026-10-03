@@ -6,9 +6,12 @@ import { Tabs } from './tabs';
 
 const sections=[{id:'profile',label:'Profile'},{id:'privacy',label:'Call privacy'},{id:'about',label:'About this demo'}] as const;
 export default function Settings():ReactNode {
-  const {snapshot,role}=useRelay();const [params,setParams]=useSearchParams();
+  const {snapshot,role,mode}=useRelay();const [params,setParams]=useSearchParams();
   const active=sections.find(item=>item.id===params.get('section'))?.id??'profile';
   if(!snapshot)return null;
+  if(mode==='server')return <section className="utility-page"><PageTitle title="Settings" subtitle="Workflow session and storage status."/>
+   <div className="settings-layout"><Panel title="Local workflow session"><p>The role selector is a read-only preview choice. It does not sign in an advisor or share this case.</p><dl className="settings-details"><div><dt>Case</dt><dd>{snapshot.company}</dd></div><div><dt>Packet stage</dt><dd>{snapshot.status}</dd></div><div><dt>Legacy service sync</dt><dd>{snapshot.server_legacy_sync_status??'unconfigured'}</dd></div></dl><Link className="button button-outline" to={'/'+role+'/documents'}>View packet PDFs</Link></Panel><aside><Panel title="Storage"><p>Original files and packet PDFs are saved through the workflow backend. Each file shows its cloud status in Documents. Advisor access and live calls require authenticated sharing that this owner session does not provide.</p></Panel></aside></div>
+  </section>;
   const actor=role==='founder'?snapshot.founder:snapshot.advisors[0];
   const participant=snapshot.call?.participants.find(item=>item.actor.id===actor.id);
   return <section className="utility-page"><PageTitle title="Settings" subtitle="Your workspace identity and call privacy."/>
