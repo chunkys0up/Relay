@@ -14,6 +14,7 @@ test('input-driven packet through WebSocket, conflict confirmation, immutable PD
   await expect(page.getByText('Live updates connected', { exact: true })).toBeVisible();
   await page.getByLabel('Add source document').setInputFiles({ name: 'intake.txt', mimeType: 'text/plain', buffer: Buffer.from(source) });
   await expect(page.getByText('intake.txt', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('Add source document')).toBeEnabled();
   await page.getByLabel('Add source document').setInputFiles({ name: 'forecast.txt', mimeType: 'text/plain', buffer: Buffer.from('Annual revenue: 280000') });
   await expect(page.getByText('forecast.txt', { exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Continue in AI Chat' }).click();
