@@ -56,11 +56,11 @@ async function begin(): Promise<void> {
   await waitFor(() => expect(av.start).toHaveBeenCalledOnce());
 }
 
-function captureDeviceTimeouts(): { fire: () => void; restore: () => void } {
+function captureDeviceTimeouts(delayMs = 5000): { fire: () => void; restore: () => void } {
   const callbacks: Array<() => void> = [];
   const original = window.setTimeout.bind(window);
   const spy = vi.spyOn(window, 'setTimeout').mockImplementation((handler, delay) => {
-    if (delay === 5000 && typeof handler === 'function') {
+    if (delay === delayMs && typeof handler === 'function') {
       callbacks.push(handler);
       return 9999 as unknown as ReturnType<typeof setTimeout>;
     }
@@ -241,6 +241,19 @@ describe('LiveCall', () => {
     expect(screen.getByText(/Others may still be connected/)).toBeInTheDocument();
   });
 
+  it('stops captured tracks even if stopping the local tile throws', async () => {
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+    await waitFor(() => expect(screen.getByText(/Camera on ·/)).toBeInTheDocument());
+    av.stopLocalVideoTile.mockImplementationOnce(() => { throw new Error('tile failure'); });
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera off' }));
+    expect(cameraTrack.stop).toHaveBeenCalledOnce();
+    await waitFor(() => expect(av.stopVideoInput).toHaveBeenCalledOnce());
+    expect(screen.getByText(/Camera off ·/)).toBeInTheDocument();
+  });
+
   it('does not claim camera on when Chime returns no live video input', async () => {
     av.startVideoInput.mockResolvedValueOnce(undefined);
     render(<LiveCall />);
@@ -256,20 +269,138 @@ describe('LiveCall', () => {
   it('releases a camera stream granted after permission timeout', async () => {
     const pending = deferred<MediaStream>();
     vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValueOnce(pending.promise);
-    const timeout = captureDeviceTimeouts();
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    const timeout = captureDeviceTimeouts(30000);
     try {
-      render(<LiveCall />);
-      await begin();
-      act(() => observer.audioVideoDidStart?.());
       fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
       await waitFor(() => expect(navigator.mediaDevices.getUserMedia).toHaveBeenCalledOnce());
+      expect(screen.getByText(/Waiting for the browser or system to open your camera/)).toBeInTheDocument();
       act(() => timeout.fire());
-      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Camera permission is still pending'));
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Camera request is still waiting'));
       expect(av.startVideoInput).not.toHaveBeenCalled();
       await act(async () => pending.resolve(cameraStream));
       expect(cameraTrack.stop).toHaveBeenCalledOnce();
       expect(screen.getByText(/Camera off/)).toBeInTheDocument();
     } finally { timeout.restore(); }
+  });
+
+  it('leaves promptly while camera permission is pending and stops a late stream', async () => {
+    const pending = deferred<MediaStream>();
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockReturnValueOnce(pending.promise);
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+    expect(screen.getByText(/Waiting for the browser or system to open your camera/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+    expect(callsApi.leave).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Waiting for the browser or system to open your camera/)).not.toBeInTheDocument();
+    await act(async () => pending.resolve(cameraStream));
+    expect(cameraTrack.stop).toHaveBeenCalledOnce();
+    expect(av.startVideoInput).not.toHaveBeenCalled();
+  });
+
+  it('releases an opened camera immediately on leave while Chime startup is pending', async () => {
+    const pending = deferred<MediaStream | undefined>();
+    av.startVideoInput.mockReturnValueOnce(pending.promise);
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+    await waitFor(() => expect(av.startVideoInput).toHaveBeenCalledOnce());
+    expect(screen.getByText(/Starting video in Chime/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+    expect(cameraTrack.stop).toHaveBeenCalledOnce();
+    expect(callsApi.leave).toHaveBeenCalledOnce();
+    await act(async () => pending.resolve(cameraStream));
+    expect(screen.queryByText(/Camera on ·/)).not.toBeInTheDocument();
+  });
+
+  it('does not stop a newer camera when an older Chime start finishes after leave', async () => {
+    const oldStart = deferred<MediaStream | undefined>();
+    const nextTrack = { readyState: 'live', stop: vi.fn() };
+    const nextStream = { getTracks: () => [nextTrack], getVideoTracks: () => [nextTrack] } as unknown as MediaStream;
+    vi.mocked(navigator.mediaDevices.getUserMedia).mockResolvedValueOnce(cameraStream).mockResolvedValueOnce(nextStream);
+    av.startVideoInput.mockReturnValueOnce(oldStart.promise).mockResolvedValueOnce(nextStream);
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+    await waitFor(() => expect(av.startVideoInput).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+    expect(cameraTrack.stop).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Start or rejoin live call' }));
+    await waitFor(() => expect(av.start).toHaveBeenCalledTimes(2));
+    act(() => observer.audioVideoDidStart?.());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+    await waitFor(() => expect(av.startVideoInput).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getByText(/Camera on ·/)).toBeInTheDocument());
+    await act(async () => oldStart.resolve(cameraStream));
+    expect(nextTrack.stop).not.toHaveBeenCalled();
+    expect(screen.getByText(/Camera on ·/)).toBeInTheDocument();
+  });
+
+  it('distinguishes stalled Chime startup and blocks another attempt until leave', async () => {
+    const pending = deferred<MediaStream | undefined>();
+    av.startVideoInput.mockReturnValueOnce(pending.promise);
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    const timeout = captureDeviceTimeouts();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+      await waitFor(() => expect(av.startVideoInput).toHaveBeenCalledOnce());
+      act(() => timeout.fire());
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Chime did not start video'));
+      expect(screen.getByRole('button', { name: 'Turn camera on' })).toBeDisabled();
+      expect(cameraTrack.stop).toHaveBeenCalledOnce();
+      await act(async () => pending.resolve(cameraStream));
+      await waitFor(() => expect(av.stopVideoInput).toHaveBeenCalledOnce());
+      expect(screen.getByRole('button', { name: 'Turn camera on' })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+      expect(callsApi.leave).toHaveBeenCalledOnce();
+    } finally { timeout.restore(); }
+  });
+
+  it('does not remain busy if Chime cleanup stalls', async () => {
+    const pendingStop = deferred<void>();
+    av.startVideoInput.mockRejectedValueOnce(new Error('startup failure'));
+    av.stopVideoInput.mockReturnValueOnce(pendingStop.promise);
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    const timeout = captureDeviceTimeouts();
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+      await waitFor(() => expect(av.stopVideoInput).toHaveBeenCalledOnce());
+      act(() => timeout.fire());
+      await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Camera cleanup is still waiting'));
+      expect(screen.getByRole('button', { name: 'Turn camera on' })).toBeDisabled();
+      expect(screen.queryByText(/Starting video in Chime/)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+      expect(callsApi.leave).toHaveBeenCalledOnce();
+      await act(async () => pendingStop.resolve());
+    } finally { timeout.restore(); }
+  });
+
+  it('does not apply a stale cleanup error after leave and rejoin', async () => {
+    const pendingStop = deferred<void>();
+    av.startVideoInput.mockRejectedValueOnce(new Error('startup failure'));
+    av.stopVideoInput.mockReturnValueOnce(pendingStop.promise);
+    render(<LiveCall />);
+    await begin();
+    act(() => observer.audioVideoDidStart?.());
+    fireEvent.click(screen.getByRole('button', { name: 'Turn camera on' }));
+    await waitFor(() => expect(av.stopVideoInput).toHaveBeenCalledOnce());
+    fireEvent.click(screen.getByRole('button', { name: 'Leave' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start or rejoin live call' }));
+    await waitFor(() => expect(av.start).toHaveBeenCalledTimes(2));
+    act(() => observer.audioVideoDidStart?.());
+    await act(async () => pendingStop.resolve());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Turn camera on' })).toBeEnabled();
   });
 
   it.each([

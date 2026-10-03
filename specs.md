@@ -26,7 +26,7 @@ Explicit fixture mode preserves historical browser demo flows for regression tes
 
 ## Calls and privacy
 
-Both roles have pre-call and active layouts with a selected shared packet, call controls and human-message history; the advisor also has review actions. Amazon Chime live media uses the FastAPI/SDK path when configured and connected. The simulated call interface has been removed. Documents, packet review and conversations alongside that live call remain their separate demo/server workflows.
+Both roles have pre-call and active layouts with a selected shared packet, call controls and human-message history; the advisor also has review actions. Amazon Chime live media uses the FastAPI/SDK path when configured and connected. Camera activation explicitly requests video-only media. A pending browser/device request has a visible bounded wait; a stalled Chime video startup is reported separately. Leaving or ending releases camera tracks, including streams that arrive late. The simulated call interface has been removed. Documents, packet review and conversations alongside that live call remain their separate demo/server workflows.
 
 The UI has no recording, capture-consent, transcript or live call-AI controls. Call Settings state that recording and transcription are unavailable/off. Do not add capture or imply that a call is recorded or transcribed.
 
