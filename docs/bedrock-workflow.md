@@ -106,10 +106,10 @@ PYTHONPATH=backend backend/.venv/bin/python -m pytest backend/tests -q
 backend/.venv/bin/python backend/tests/make_browser_fixtures.py
 npm run lint
 npm run typecheck
-npm test
+npm test -- --maxWorkers=2
 npm run build
 npm run test:browser
-node_modules/.bin/playwright test --config playwright.workflow.config.ts
+npm run test:workflow
 ```
 
 The workflow browser config starts an explicitly labeled test-provider app and
@@ -118,4 +118,4 @@ The agent-action tests use a scripted model through the actual installed Strands
 SDK, including tool selection/execution. They do not demonstrate live Sonnet quality
 or account access. Live account access, model quality, real Textract and RDS remain
 separate tests.
-See `BEDROCK-LOOP.md` for the fixed acceptance criteria and iteration boundary.
+Keep run-specific logs outside the tracked documentation. Current product boundaries are in [specs.md](../specs.md) and [implementation.md](../implementation.md).

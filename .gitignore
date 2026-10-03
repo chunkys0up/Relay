@@ -229,6 +229,6 @@ playwright-report/
 # Local backend workflow data (never commit user inputs or session cookies)
 .relay/
 
-# Local verification artifacts; retain only the reviewed scenario log.
-/verification-evidence/*
-!/verification-evidence/LOG.md
+# Local run evidence is not product guidance.
+/verification-evidence/
+/screenshots/

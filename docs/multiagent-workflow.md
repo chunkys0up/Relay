@@ -51,8 +51,8 @@ Agents are created fresh per request with immutable case context. No cross-case
 agent memory, shell/web tools, automatic tool discovery, or hidden SDK retries.
 Reader and writer can each be delegated to once. Each gets up to four model turns;
 the orchestrator gets four, and verification gets one: at most 13 model turns for
-an edit job. Plan tool execution has a shared 12-call ceiling, plus each scoped
-toolset's eight-call ceiling. Planning times out after 90 seconds; verification
+an edit job. Plan tool execution has a shared 18-call ceiling, plus each scoped
+toolset's eight-call ceiling. Exceeding either ceiling remains a terminal failure even when the SDK converts a tool exception into a model-visible result. Planning times out after 90 seconds; verification
 after 35 seconds. Timed-out work cannot persist a late result.
 
 This replaces the earlier single-agent four-call budget to accommodate actual

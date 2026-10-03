@@ -1,6 +1,6 @@
 # Relay Backend
 
-The current source-aware AI Chat workflow runs through `app.workflow_app` on port 8001. Use [Bedrock role setup](../docs/bedrock-role-setup.md) for the verified five-role model configuration, Windows AWS login bridge, and live synthetic check. The legacy service below uses separate settings and endpoints.
+The separately linked source-aware backend packet workspace runs through `app.workflow_app` on port 8001. Use [Bedrock role setup](../docs/bedrock-role-setup.md) for the five-role model configuration, Windows AWS login bridge, and live synthetic check. The legacy service below uses separate settings and endpoints.
 
 FastAPI service: Strands-backed chat, S3 document upload (now recording a `documents` row per upload), and Amazon Chime live-call endpoints. An RDS Postgres schema and connection are wired up for documents; `cases`/`facts`/`drafts`/`messages`/`advisor_actions` have no endpoints yet.
 
@@ -19,7 +19,7 @@ FastAPI
 ```
 
 - **Chat:** [agents/factory.py](app/agents/factory.py) creates one agent per session ID, with both tool lists empty. The harness receives `SESSION_DIR` for session storage; this is separate from case/message records in Postgres. Bedrock is the default provider; `STRANDS_MODEL` selects the model.
-- **Upload:** [documents.py](app/api/routes/documents.py) reads the file, [storage/s3.py](app/storage/s3.py) uploads it to `S3_BUCKET` under `tenants/{DEMO_TENANT_ID}/cases/{case_id}/sources/{source_id}/versions/1/original.{ext}` (opaque IDs; only a validated extension is kept from the filename), then inserts a row into Postgres `documents` using that same `source_id` as the row's `id`. If the insert fails (e.g. `case_id` doesn't exist), the S3 object is deleted so nothing orphaned is left behind. `storage/s3.py` also provides presigned upload/download URLs, `head_object`, and `download_bytes` — not yet called from any route, ready for a future fetch/preview endpoint.
+- **Upload:** [documents.py](app/api/routes/documents.py) reads the file, [storage/s3.py](app/storage/s3.py) uploads it to `S3_BUCKET` under `tenants/{DEMO_TENANT_ID}/cases/{case_id}/sources/{source_id}/versions/1/original.{ext}` (opaque IDs; only a validated extension is kept from the filename), then inserts a row into Postgres `documents` using that same `source_id` as the row's `id`. A foreign-key failure for an unknown `case_id` triggers S3 deletion; other database failures do not currently have that cleanup path. `GET /api/documents/{document_id}/url` uses `presigned_download_url` to open stored originals. The presigned-upload, head and direct-download helpers have no current route callers.
 - **List:** `GET /api/documents?case_id=` reads a case's `documents` rows back out of Postgres (`id`, `filename`, `s3_key`, `uploaded_at`).
 - **Records:** [db/schema.sql](db/schema.sql) defines `cases`, `documents` (now the only table the app writes to), source-linked `facts`, versioned `drafts`, `messages`, and advisor decisions tied to a draft. [db/seed.sql](db/seed.sql) has sample cases. Schema isn't idempotent and isn't applied automatically — apply it once per fresh database.
 - **Postgres connection:** one `asyncpg` pool (`app/db/pool.py`), created on startup and closed on shutdown via `lifespan` in `app/main.py`. If `DB_HOST`/`DB_PASSWORD` aren't set, or RDS isn't reachable, startup logs a warning and continues — `/api/chat`/`/health` keep working, but any DB-backed route raises a clear `RuntimeError` at the point of use.
@@ -108,6 +108,7 @@ See [.env.example](.env.example) for all variables and [core/config.py](app/core
 | DELETE | `/api/chat/{session_id}` | Evicts the cached agent (fresh memory); doesn't delete stored session files |
 | POST | `/api/documents/upload` | Multipart `case_id` (UUID form field) + `file` → uploads to S3, inserts a `documents` row, returns it. 404 + S3 rollback if `case_id` doesn't exist |
 | GET | `/api/documents?case_id=` | List a case's documents (`id`, `filename`, `s3_key`, `uploaded_at`), oldest first |
+| GET | `/api/documents/{document_id}/url` | Return a short-lived S3 URL for the stored document |
 | POST | `/api/cases/{case_id}/calls` | Create or reuse this case's Chime meeting |
 | GET | `/api/cases/{case_id}/calls/{call_id}` | Read safe call metadata |
 | POST | `/api/cases/{case_id}/calls/{call_id}/join` | Obtain ephemeral SDK join configuration |
@@ -123,17 +124,17 @@ Tables: `cases` (the core entity, has a `status`), `documents` (**the only one t
 
 ## Frontend integration and remaining work
 
-The frontend currently creates a [MockRelayAdapter](../frontend-shared/src/context.tsx), so chat/messages/reviews don't reach these endpoints — document upload is the one path now wired to the real backend. The Call page separately connects to the Chime routes above when Amazon Chime mode is selected. Replace the mock adapter with a transport adapter once the [proposed API contract](../docs/api-contract.md) is agreed — that contract describes a two-phase presigned-upload flow (`POST /api/cases/{id}/uploads` → `POST .../uploads/{source_id}/complete`) that neither this upload endpoint nor anything else here implements yet; today's upload is a single direct multipart `POST`.
+The default UI uses `MockRelayAdapter` for synthetic workflow/review state. Separate live components call this legacy service: founder `LiveAssistant` uses generic chat; `useCaseDocuments`, founder Home controls and `CaseDocumentsPanel` use multipart upload and document list/URL endpoints. The Call page uses Chime only after explicit live selection. These paths do not synchronize the browser demo with a server-backed case workflow.
 
-The intended backend flow is upload → extract/source-link facts → clarify missing/conflicting values → generate a versioned draft → advisor review → founder revision. Beyond `documents`, database persistence, extraction/retrieval tools, task orchestration, sharing/version-bound reviews, and server-side role/case authorization remain unimplemented. Agent has no tools yet (`builtin_tools=[]`, `tools=[]` in `app/agents/factory.py`) — it can only chat.
+The legacy agent has no document retrieval tools; it must not be described as a grant-scoped advisor assistant. The Postgres application currently persists document rows. The separate `app.workflow_app` service implements source extraction, task orchestration, owner-scoped SQLite cases, confirmed facts and immutable PDFs; it does not implement production identity or the complete server-side founder/advisor handoff.
 
-See [specs.md](../specs.md) and [implementation.md](../implementation.md) for the full intended workflow.
+[Current transport boundaries](../docs/api-contract.md), [specs.md](../specs.md) and [implementation.md](../implementation.md) describe implemented behavior. The old proposed unified case API is not an implementation requirement.
 
 ## Chime in the V2 call design
 
 The Call connection selector defaults to the local demo. Select **Amazon Chime · live media** to use `frontend-shared/src/liveCall.tsx` and `callsApi.ts`. Set `VITE_API_URL` in the frontend process environment to the backend origin (default `http://127.0.0.1:8000`); permit that frontend origin through `CORS_ORIGINS`. Chime uses `CHIME_REGION` (default `us-east-1`) and the backend's AWS credential chain/profile. No credentials belong in the frontend.
 
-Both participants must independently choose Start or join for the same case; there's no remote invitation delivery. SDK connection events establish client readiness. Leaving closes this browser's media; ending for everyone invokes the backend. Recording and transcription remain off. Shared document selection is pinned locally while joining/active; it isn't synchronized through Chime. Messages, documents, and review actions alongside the call remain local simulations except for upload, as above.
+Both participants must independently choose Start or join for the same case; there's no remote invitation delivery. SDK connection events establish client readiness. Leaving closes this browser's media; ending for everyone invokes the backend. Recording and transcription remain off. Shared document selection is pinned locally while joining/active; it isn't synchronized through Chime. Conversation, packet review and shared-document selection alongside the call remain local simulations; separate upload/list/open controls use the legacy document endpoints.
 
 This inherited backend is a development prototype: actor identity is supplied by the caller and call records are in memory. Production authentication, server-side case authorization, and persistent meeting lifecycle management remain required. The frontend shared-document gate is not server authorization. Use only a trusted development environment until those backend requirements are implemented.
 
