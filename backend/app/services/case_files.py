@@ -243,6 +243,11 @@ async def add_packet_version(case_id: UUID, pdf: bytes, editor: Editor, note: st
     key = build_key(case_id, uuid.uuid4(), "packet.pdf")
     await run_in_threadpool(upload_bytes, pdf, key, "application/pdf")
     packet = await packet_store.create_packet(case_id, key, change_note=note, created_by=_who(editor))
+    # A new version answers the questions returned on earlier ones, so they stop showing as open.
+    await get_pool().execute(
+        "UPDATE advisor_actions SET resolved_at = now() WHERE case_id = $1 AND decision = 'questions_returned' AND resolved_at IS NULL",
+        case_id,
+    )
     await log_activity(case_id, editor, f"{_who(editor)} created packet v{packet['version']}" + (f": {note}" if note else ""))
     return packet
 
