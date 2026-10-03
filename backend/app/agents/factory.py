@@ -3,9 +3,11 @@ from __future__ import annotations
 import threading
 
 from strands.agent.agent import Agent
+from strands.models import BedrockModel
 from strands_harness import create_harness
 
 from app.agents.case_tools import ADVISOR_INSTRUCTIONS, CASE_TOOLS, INSTRUCTIONS
+from app.core.aws_session import create_aws_session
 from app.core.config import settings
 
 _agents: dict[str, Agent] = {}
@@ -21,8 +23,15 @@ def get_agent(session_id: str, role: str = "founder") -> Agent:
     with _lock:
         agent = _agents.get(session_id)
         if agent is None:
+            model: BedrockModel | str | None = settings.strands_model
+            if isinstance(model, str) and model.startswith("bedrock/"):
+                model = BedrockModel(
+                    model_id=model.removeprefix("bedrock/"),
+                    boto_session=create_aws_session(settings.aws_region, settings.aws_profile),
+                    additional_request_fields={"thinking": {"type": "disabled"}},
+                )
             agent = create_harness(
-                model=settings.strands_model,
+                model=model,
                 effort=settings.strands_effort,
                 instructions=ADVISOR_INSTRUCTIONS if role == "advisor" else INSTRUCTIONS,
                 builtin_tools=[],

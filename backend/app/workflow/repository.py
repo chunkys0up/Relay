@@ -32,6 +32,9 @@ class Repository:
                 CREATE TABLE IF NOT EXISTS sessions (
                     id TEXT PRIMARY KEY, csrf TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS session_roles (
+                    session_id TEXT PRIMARY KEY, role TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS cases (
                     id TEXT PRIMARY KEY, owner TEXT NOT NULL, revision INTEGER NOT NULL,
                     state TEXT NOT NULL
@@ -46,6 +49,19 @@ class Repository:
                     key TEXT NOT NULL, request_hash TEXT NOT NULL, response TEXT NOT NULL,
                     PRIMARY KEY(owner, case_id, operation, key)
                 );
+                CREATE TABLE IF NOT EXISTS share_invites (
+                    id TEXT PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE,
+                    case_id TEXT NOT NULL, owner TEXT NOT NULL,
+                    packet_id TEXT NOT NULL, packet_hash TEXT NOT NULL,
+                    source_ids TEXT NOT NULL, created_at TEXT NOT NULL,
+                    revoked INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE TABLE IF NOT EXISTS share_grants (
+                    id TEXT PRIMARY KEY, invite_id TEXT NOT NULL UNIQUE,
+                    case_id TEXT NOT NULL, advisor_session TEXT NOT NULL,
+                    created_at TEXT NOT NULL, revoked INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE INDEX IF NOT EXISTS grants_advisor ON share_grants(advisor_session, case_id);
             """)
 
     @contextmanager

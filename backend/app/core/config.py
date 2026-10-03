@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -8,12 +11,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # dependencies (boto3 inside strands' Bedrock provider, provider SDKs like
 # anthropic/openai) read os.environ directly — pydantic-settings parsing
 # .env into Settings below does NOT also export it to the process.
-load_dotenv()
+_ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
+if os.environ.get("PYTHON_DOTENV_DISABLED") != "1":
+    load_dotenv(_ROOT_ENV)
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore", enable_decoding=False
+        env_file=_ROOT_ENV, env_file_encoding="utf-8", extra="ignore", enable_decoding=False
     )
 
     app_name: str = "Relay Agent API"
@@ -62,4 +67,4 @@ class Settings(BaseSettings):
         return value
 
 
-settings = Settings()
+settings = Settings(_env_file=None) if os.environ.get("PYTHON_DOTENV_DISABLED") == "1" else Settings()
