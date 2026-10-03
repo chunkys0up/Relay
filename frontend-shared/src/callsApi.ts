@@ -19,7 +19,7 @@ export class CallsApiError extends Error {
   constructor(public readonly status: number, message: string) { super(message); this.name = 'CallsApiError'; }
 }
 
-async function post<T>(path: string, actor: Actor, signal?: AbortSignal): Promise<T> {
+async function post<T>(path: string, actor: Actor, signal?: AbortSignal, keepalive = false): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
@@ -27,6 +27,7 @@ async function post<T>(path: string, actor: Actor, signal?: AbortSignal): Promis
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ actor: { id: actor.id, name: actor.name, role: actor.role } }),
       signal,
+      keepalive,
     });
   } catch {
     throw new CallsApiError(0, `Cannot reach the backend at ${API_BASE}. Is it running?`);
@@ -47,6 +48,17 @@ export const callsApi = {
     post<LiveJoinConfig>(`${base(caseId)}/${encodeURIComponent(callId)}/join`, actor, signal),
   end: (caseId: string, callId: string, actor: Actor, signal?: AbortSignal) =>
     post<LiveCallSession>(`${base(caseId)}/${encodeURIComponent(callId)}/end`, actor, signal),
+  /** Keepalive, so a leave sent while the page is closing still reaches the backend. */
+  leave: (caseId: string, callId: string, actor: Actor) =>
+    post<LiveCallSession>(`${base(caseId)}/${encodeURIComponent(callId)}/leave`, actor, undefined, true),
+  /** The case's open call, or null when there is none. */
+  active: async (caseId: string, signal?: AbortSignal): Promise<LiveCallSession | null> => {
+    let response: Response;
+    try { response = await fetch(`${API_BASE}${base(caseId)}/active`, { signal }); }
+    catch { throw new CallsApiError(0, `Cannot reach the backend at ${API_BASE}. Is it running?`); }
+    if (!response.ok) throw new CallsApiError(response.status, `Request failed (${response.status})`);
+    return response.json() as Promise<LiveCallSession | null>;
+  },
 };
 
 export type ClientLogEvent =

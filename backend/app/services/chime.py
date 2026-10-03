@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 import uuid
 from dataclasses import dataclass, field
 
@@ -35,6 +36,7 @@ class _Call:
     meeting_id: str  # server-side only
     state: str = "ringing"
     participants: dict[str, _Participant] = field(default_factory=dict)
+    checked_at: float = 0.0  # last time the meeting was confirmed to still exist in Chime
 
 
 # In-memory registry: meeting references stay server-side. Lost on restart;
@@ -71,6 +73,12 @@ def create_call(case_id: str, actor: ActorIn) -> CallSession:
     with _lock:
         for existing in _calls.values():
             if existing.case_id == case_id and existing.state != "ended":
+                # Chime may have closed an abandoned meeting; start a fresh one instead of reusing it.
+                try:
+                    _chime.get_meeting(MeetingId=existing.meeting_id)
+                except _chime.exceptions.NotFoundException:
+                    existing.state = "ended"
+                    continue
                 existing.participants.setdefault(actor.id, _Participant(actor))
                 log.info("call reused call=%s case=%s actor=%s role=%s state=%s",
                          existing.id, case_id, actor.id, actor.role, existing.state)
@@ -175,3 +183,44 @@ def shutdown_calls() -> None:
                 _end_locked(call)
             except Exception as exc:
                 log.error("meeting cleanup failed call=%s error=%s", call.id, type(exc).__name__)
+
+
+# How often active_call re-checks with Chime that a meeting still exists. Chime ends a
+# meeting on its own a few minutes after everyone disconnects.
+_RECHECK_SECONDS = 30
+
+
+def active_call(case_id: str) -> CallSession | None:
+    """The case's open call, if any. Calls whose Chime meeting has gone away are marked ended."""
+    with _lock:
+        for call in _calls.values():
+            if call.case_id != case_id or call.state == "ended":
+                continue
+            if time.monotonic() - call.checked_at > _RECHECK_SECONDS:
+                try:
+                    _chime.get_meeting(MeetingId=call.meeting_id)
+                    call.checked_at = time.monotonic()
+                except _chime.exceptions.NotFoundException:
+                    call.state = "ended"
+                    log.info("call expired in Chime call=%s case=%s", call.id, case_id)
+                    continue
+            return _view(call)
+        return None
+
+
+def leave_call(case_id: str, call_id: str, actor: ActorIn) -> CallSession:
+    """Remove one person from the call; the meeting ends when nobody is left."""
+    with _lock:
+        call = _get(case_id, call_id)
+        part = call.participants.get(actor.id)
+        if call.state != "ended" and part is not None and part.attendee_id is not None:
+            try:
+                _chime.delete_attendee(MeetingId=call.meeting_id, AttendeeId=part.attendee_id)
+            except _chime.exceptions.NotFoundException:
+                pass
+            part.attendee_id = None
+            log.info("attendee left call=%s case=%s actor=%s", call.id, case_id, actor.id)
+            if not any(p.attendee_id for p in call.participants.values()):
+                _end_locked(call)
+                log.info("call ended, nobody left call=%s case=%s", call.id, case_id)
+        return _view(call)

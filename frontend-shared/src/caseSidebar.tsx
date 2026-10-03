@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CallControls } from './call';
+import { onJoinRequest } from './callPresence';
 import { Collapsible } from './collapsible';
 import { Conversation } from './conversation';
 import type { ChatThread } from './conversation';
@@ -78,6 +79,8 @@ export function ResizableSidebar({ label, className = '', children }: { label: s
 export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; onLiveCallChange?: (active: boolean) => void }): ReactNode {
   const checklist = useCaseChecklist();
   const [tab, setTab] = useState(() => readStored(TAB_KEY) ?? 'progress');
+  // Joining from the incoming-call notice brings the Call tab forward.
+  useEffect(() => onJoinRequest(() => { setTab('call'); store(TAB_KEY, 'call'); }), []);
   const tabs = [
     { id: 'progress', label: 'Progress', content: <><ChecklistSection id="sidebar-checklist" checklist={checklist}/><NextStepsSection id="sidebar-next" checklist={checklist}/><CaseDetailsSection id="sidebar-case"/></> },
     { id: 'call', label: 'Call', content: <CallPanel onLiveCallChange={onLiveCallChange}/> },

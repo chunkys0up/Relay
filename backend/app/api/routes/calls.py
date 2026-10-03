@@ -36,6 +36,11 @@ async def create_call(case_id: str, body: CreateCallRequest) -> CallSession:
     return await _run(chime.create_call, case_id, body.actor)
 
 
+@router.get("/active", response_model=CallSession | None)
+async def active_call(case_id: str) -> CallSession | None:
+    return await _run(chime.active_call, case_id)
+
+
 @router.get("/{call_id}", response_model=CallSession)
 async def get_call(case_id: str, call_id: str) -> CallSession:
     return await _run(chime.get_call, case_id, call_id)
@@ -49,3 +54,8 @@ async def join_call(case_id: str, call_id: str, body: JoinCallRequest) -> JoinCo
 @router.post("/{call_id}/end", response_model=CallSession)
 async def end_call(case_id: str, call_id: str, body: EndCallRequest) -> CallSession:
     return await _run(chime.end_call, case_id, call_id, body.actor)
+
+
+@router.post("/{call_id}/leave", response_model=CallSession)
+async def leave_call(case_id: str, call_id: str, body: EndCallRequest) -> CallSession:
+    return await _run(chime.leave_call, case_id, call_id, body.actor)

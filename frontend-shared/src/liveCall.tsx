@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { AudioVideoObserver, DefaultMeetingSession } from 'amazon-chime-sdk-js';
+import { useSearchParams } from 'react-router-dom';
 import { callsApi, CallsApiError } from './callsApi';
+import type { Actor } from './types';
+import { onJoinRequest, registerCallPanel, setInCall, useActiveCall } from './callPresence';
 import { useRelay } from './context';
 import { Badge, Button } from './ui';
 
@@ -65,6 +68,10 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
   const actor = snapshot ? (role === 'founder' ? snapshot.founder : snapshot.advisors[0]) : null;
   const other = snapshot ? (role === 'founder' ? snapshot.advisors[0] : snapshot.founder) : null;
   const caseId = snapshot?.id ?? null;
+  const { call: openCall } = useActiveCall(caseId);
+  const [params, setParams] = useSearchParams();
+  // Who to tell the backend about when this tab leaves the call.
+  const joinedAs = useRef<{ caseId: string; callId: string; actor: Actor } | null>(null);
   const [phase, setPhaseState] = useState<Phase>('idle');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -106,6 +113,7 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
 
   useEffect(() => {
     onActiveChangeRef.current?.(phase === 'starting' || phase === 'live');
+    setInCall(phase === 'starting' || phase === 'live');
   }, [phase]);
 
   const closeLocal = useCallback((next: Phase, message: string | null): void => {
@@ -115,13 +123,19 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
     const current = session.current;
     session.current = null;
     if (current) void dispose(current);
+    // Tell the backend we left, so the other person's view (and the meeting) stays accurate.
+    const left = joinedAs.current;
+    joinedAs.current = null;
+    if (left) void callsApi.leave(left.caseId, left.callId, left.actor).catch(() => undefined);
     // Stop our own camera tracks too, so the camera light turns off as soon as the call closes.
     stopTracks(cameraStream.current);
     cameraStream.current = null;
     localTileId.current = null;
     cameraChanging.current = false;
+    // Reset even while unmounted: React's dev double-mount closes and remounts the panel, and a stale
+    // 'starting' here would block the join that follows.
+    phaseRef.current = next;
     if (mounted.current) {
-      phaseRef.current = next;
       setPhaseState(next);
       setCameraOn(false);
       setCameraBusy(false);
@@ -177,6 +191,7 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
       const created = await callsApi.create(caseId, actor, controller.signal);
       if (!current()) return;
       callId.current = created.id;
+      joinedAs.current = { caseId, callId: created.id, actor };
       const joined = await callsApi.join(caseId, created.id, actor, controller.signal);
       if (!current()) return;
       const sdk = await import('amazon-chime-sdk-js');
@@ -336,6 +351,27 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
     }
   };
 
+  const startRef = useRef(start);
+  startRef.current = start;
+  useEffect(() => registerCallPanel(), []);
+  // "Join" on the incoming-call notice, or a link ending in ?join=1, joins from this panel.
+  useEffect(() => onJoinRequest(() => { void startRef.current(); }), []);
+  useEffect(() => {
+    if (params.get('join') !== '1' || !caseId) return;
+    const next = new URLSearchParams(params);
+    next.delete('join');
+    setParams(next, { replace: true });
+    void startRef.current();
+  }, [params, setParams, caseId]);
+  useEffect(() => {
+    const onHide = (): void => {
+      const left = joinedAs.current;
+      if (left) void callsApi.leave(left.caseId, left.callId, left.actor).catch(() => undefined);
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
+  }, []);
+
   const inCall = (): boolean => phaseRef.current === 'starting' || phaseRef.current === 'live';
 
   const togglePreview = async (): Promise<void> => {
@@ -384,6 +420,7 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
 
   if (!snapshot || !actor || !other) return null;
   const active = phase === 'starting' || phase === 'live';
+  const otherWaiting = Boolean(openCall?.participants.some(person => person.actor_id !== actor.id && person.joined));
   const live = phase === 'live';
   return <section className="relay-call-side-panel" aria-label="Live call controls">
     <div className="relay-call-side-title"><h2>Call · Amazon Chime</h2><Badge tone={live ? 'success' : phase === 'starting' ? 'attention' : 'neutral'}>{live ? 'Connected' : phase === 'starting' ? 'Connecting' : 'Not connected'}</Badge></div>
@@ -429,7 +466,8 @@ export function LiveCall({ onActiveChange }: { onActiveChange?: (active: boolean
         <button type="button" className={`relay-call-control relay-call-preview-toggle ${previewOn ? '' : 'is-off'}`} disabled={previewBusy} onClick={() => { void togglePreview(); }} aria-label={previewOn ? 'Turn camera off' : 'Turn camera on'} title={previewOn ? 'Turn camera off' : 'Turn camera on'}>{previewOn ? <CameraIcon/> : <CameraOffIcon/>}</button>
       </div>
       <p className="relay-call-disclaimer">A running backend with AWS Chime access is required. Joining uses your microphone if available. Your camera joins on only if you turn it on here.</p>
-      <div className="relay-call-invite"><Button onClick={() => { void start(); }}>{phase === 'ended' ? 'Start or rejoin live call' : 'Start or join live call'}</Button><span>No invitation is sent. The other person must open live call and join.</span></div>
+      {otherWaiting && <p className="relay-call-waiting" role="status"><span aria-hidden="true"/>{other.name} is in the call</p>}
+      <div className="relay-call-invite"><Button className={otherWaiting ? 'relay-call-join' : ''} onClick={() => { void start(); }}>{otherWaiting ? `Join call with ${other.name}` : 'Start call'}</Button><span>{otherWaiting ? 'Your camera and microphone settings above are used when you join.' : `${other.name} gets a notice to join when you start.`}</span></div>
     </>}
     <p className="relay-call-disclaimer">Live Chime media. This panel does not record or transcribe the call.</p>
   </section>;
