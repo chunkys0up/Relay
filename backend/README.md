@@ -1,5 +1,7 @@
 # Relay Backend
 
+The current source-aware AI Chat workflow runs through `app.workflow_app` on port 8001. Use [Bedrock role setup](../docs/bedrock-role-setup.md) for the verified five-role model configuration, Windows AWS login bridge, and live synthetic check. The legacy service below uses separate settings and endpoints.
+
 FastAPI service: Strands-backed chat, S3 document upload (now recording a `documents` row per upload), and Amazon Chime live-call endpoints. An RDS Postgres schema and connection are wired up for documents; `cases`/`facts`/`drafts`/`messages`/`advisor_actions` have no endpoints yet.
 
 ## Current architecture
