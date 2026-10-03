@@ -6,6 +6,7 @@ They never access repositories, blobs, files, or external services.
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from typing import Any
 
@@ -150,7 +151,10 @@ def validate_pdf_edit(
 class ScopedPdfTools:
     """Immutable case snapshot plus a bounded record of successful tool reads."""
 
-    def __init__(self, context: dict[str, Any], excerpts: list[dict[str, Any]]) -> None:
+    def __init__(
+        self, context: dict[str, Any], excerpts: list[dict[str, Any]],
+        reader_proposals: list[Proposal] | None = None,
+    ) -> None:
         self.context = deepcopy(context)
         self.excerpts = deepcopy(excerpts)
         self.sources = _index(self.context.get("sources", []))
@@ -165,6 +169,11 @@ class ScopedPdfTools:
         self.read_sources: set[str] = set()
         self.read_packets: set[str | None] = set()
         self.proposal: PdfEditProposal | None = None
+        self.last_stage_error: str | None = None
+        self.reader_proposals_json = (
+            json.dumps([proposal.model_dump(mode="json") for proposal in reader_proposals])
+            if reader_proposals is not None else None
+        )
         self.call_count = 0
 
     def _count(self) -> None:
@@ -174,6 +183,39 @@ class ScopedPdfTools:
 
     def build(self) -> list[Any]:
         scope = self
+
+        def stage(
+            changes: list[dict[str, Any]], packet_id: str | None,
+            template_id: str | None,
+        ) -> dict[str, Any]:
+            scope.proposal = None
+            scope.last_stage_error = None
+            selected = packet_id or scope.context.get("current_packet_id")
+            try:
+                if selected is not None and selected not in scope.read_packets:
+                    raise _failure("PACKET_NOT_READ")
+                if selected is None and None not in scope.read_packets:
+                    raise _failure("CONFIRMED_FACTS_NOT_READ")
+                parsed = [Proposal.model_validate(row) for row in changes]
+                if not parsed or len(parsed) > 6:
+                    raise _failure("INVALID_PDF_EDIT")
+                if any(e.source_id not in scope.read_sources
+                       for change in parsed for e in change.evidence):
+                    raise _failure("SOURCE_NOT_READ")
+                baseline, inherited_template = _baseline(scope.context, selected)
+                chosen_template = template_id if template_id is not None else inherited_template
+                updates = _validated_changes(parsed, scope.excerpts)
+                edit = PdfEditProposal(base_packet_id=selected,
+                    template_id=chosen_template, fields={**baseline, **updates}, changes=parsed)
+                scope.proposal = validate_pdf_edit(edit, scope.context, scope.excerpts)
+                return {"status": "staged_for_preview", "proposal": scope.proposal.model_dump()}
+            except Exception as exc:
+                from .model import ModelFailure
+
+                code = (exc.args[0] if exc.args else "INVALID_PDF_EDIT") if isinstance(
+                    exc, ModelFailure) else "INVALID_PDF_EDIT"
+                scope.last_stage_error = code
+                return {"error": code}
 
         @tool
         def list_documents() -> dict[str, Any]:
@@ -219,37 +261,45 @@ class ScopedPdfTools:
             fields, _ = _baseline(scope.context, None)
             return {"packet_id": None, "confirmed_fields": fields}
 
-        @tool
-        def propose_pdf_edit(
-            changes: list[dict[str, Any]], packet_id: str | None = None,
-            template_id: str | None = None,
-        ) -> dict[str, Any]:
-            """Stage cited field changes for a human-reviewed PDF preview; never save or send."""
-            scope._count()
-            selected = packet_id or scope.context.get("current_packet_id")
-            try:
-                if selected is not None and selected not in scope.read_packets:
-                    raise _failure("PACKET_NOT_READ")
-                if selected is None and None not in scope.read_packets:
-                    raise _failure("CONFIRMED_FACTS_NOT_READ")
-                parsed = [Proposal.model_validate(row) for row in changes]
-                if not parsed or len(parsed) > 6:
-                    raise _failure("INVALID_PDF_EDIT")
-                if any(e.source_id not in scope.read_sources
-                       for change in parsed for e in change.evidence):
-                    raise _failure("SOURCE_NOT_READ")
-                baseline, inherited_template = _baseline(scope.context, selected)
-                chosen_template = template_id if template_id is not None else inherited_template
-                updates = _validated_changes(parsed, scope.excerpts)
-                edit = PdfEditProposal(base_packet_id=selected,
-                    template_id=chosen_template, fields={**baseline, **updates}, changes=parsed)
-                scope.proposal = validate_pdf_edit(edit, scope.context, scope.excerpts)
-                return {"status": "staged_for_preview", "proposal": scope.proposal.model_dump()}
-            except Exception as exc:
-                from .model import ModelFailure
+        if scope.reader_proposals_json is None:
+            @tool
+            def propose_pdf_edit(
+                changes: list[dict[str, Any]], packet_id: str | None = None,
+                template_id: str | None = None,
+            ) -> dict[str, Any]:
+                """Stage cited field changes for a human-reviewed PDF preview; never save or send."""
+                scope._count()
+                return stage(changes, packet_id, template_id)
+        else:
+            @tool
+            def propose_pdf_edit(
+                changes: list[dict[str, Any]] | None = None,
+                packet_id: str | None = None,
+                template_id: str | None = None,
+            ) -> dict[str, Any]:
+                """Stage exact reader proposals after reads; omit changes to use held citations."""
+                scope._count()
+                if changes is None:
+                    current_packet_id = scope.context.get("current_packet_id")
+                    _, inherited_template = _baseline(scope.context, current_packet_id)
+                    if ((packet_id is not None and packet_id != current_packet_id)
+                            or (template_id is not None
+                                and template_id != inherited_template)):
+                        scope.proposal = None
+                        scope.last_stage_error = "WRITER_SCOPE_MISMATCH"
+                        return {"error": "WRITER_SCOPE_MISMATCH"}
+                    assert scope.reader_proposals_json is not None
+                    changes = json.loads(scope.reader_proposals_json)
+                return stage(changes, packet_id, template_id)
 
-                if isinstance(exc, ModelFailure):
-                    return {"error": exc.args[0] if exc.args else "INVALID_PDF_EDIT"}
-                return {"error": "INVALID_PDF_EDIT"}
+        tools = [list_documents, read_document, read_packet, propose_pdf_edit]
+        if scope.reader_proposals_json is not None:
+            @tool
+            def stage_reader_proposals() -> dict[str, Any]:
+                """Stage the exact validated reader proposals after reading cited sources and packet."""
+                scope._count()
+                assert scope.reader_proposals_json is not None
+                return stage(json.loads(scope.reader_proposals_json), None, None)
 
-        return [list_documents, read_document, read_packet, propose_pdf_edit]
+            tools.append(stage_reader_proposals)
+        return tools
