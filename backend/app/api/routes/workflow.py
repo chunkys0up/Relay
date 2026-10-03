@@ -178,7 +178,7 @@ def workflow_router(
         if source is None:
             raise WorkflowError("NOT_FOUND", 404)
         body = repository.blob(sid, case_id, source_id, "source")
-        media_type = source["mime_type"]
+        media_type = source["mime_type"].split(";", 1)[0].strip().lower()
         if media_type not in ("application/pdf", "text/plain", "text/csv"):
             raise WorkflowError("UNSUPPORTED_FILE", 415)
         return StreamingResponse(iter([body]), media_type=media_type,

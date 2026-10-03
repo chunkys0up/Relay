@@ -59,6 +59,7 @@ def test_real_agent_preview_confirm_edit_and_immutable_versions(tmp_path: Path) 
     assert client.get(f"{base}/packets/{packet['packet_id']}/download").content == preview
     assert hashlib.sha256(preview).hexdigest() == action['hash']
     state = client.get(base).json()
+    assert state['packets'][-1]['verification'] == action['verification']
     state = run(client, headers, state, 'Cash reserve: $75,000')
     assert state['jobs'][-1]['error'] is None, state
     next_action = state['pdf_actions'][-1]
@@ -138,3 +139,21 @@ def test_chat_only_agent_action_and_dismissed_action_cannot_save(tmp_path: Path)
     assert response.status_code == 409
     assert response.json()['error']['code'] == 'ACTION_NOT_PENDING'
     assert client.get(base).json()['packets'] == []
+
+
+def test_dismiss_preview_reconciles_review_task(tmp_path: Path) -> None:
+    client, headers, state = prepared(tmp_path)
+    action = state['pdf_actions'][-1]
+    base = f"/api/workflow/cases/{state['id']}"
+    review = next(task for task in state['tasks'] if task.get('key') == 'packet')
+    assert review['completion_rule']['action_id'] == action['id']
+    response = post(client, f"{base}/pdf-actions/{action['id']}/dismiss", headers,
+        {'expected_revision': state['revision'], 'preview_hash': action['hash']})
+    assert response.status_code == 200, response.text
+    after = client.get(base).json()
+    updated = next(task for task in after['tasks'] if task['id'] == review['id'])
+    assert updated['completion_rule']['kind'] == 'current_packet_matches_confirmed_facts'
+    assert 'action_id' not in updated['completion_rule']
+    assert updated['state'] == 'Blocked'
+    assert after['packets'] == []
+    assert after['facts'] == state['facts']
