@@ -17,9 +17,13 @@ describe('Founder Home detail tabs', () => {
     renderHome();
     const tabs = within(await screen.findByRole('tablist', { name: 'Workspace details' }));
     const progress = tabs.getByRole('tab', { name: 'Progress' });
+    const call = tabs.getByRole('tab', { name: 'Call' });
     const activity = tabs.getByRole('tab', { name: 'Activity' });
 
     progress.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(call).toHaveFocus();
+    expect(call).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{ArrowRight}');
     expect(activity).toHaveFocus();
     expect(activity).toHaveAttribute('aria-selected', 'true');
@@ -35,7 +39,7 @@ describe('Founder Home detail tabs', () => {
     expect(activity).toHaveFocus();
     expect(activity).toHaveAttribute('aria-selected', 'true');
     await user.keyboard('{ArrowLeft}');
-    expect(progress).toHaveFocus();
+    expect(call).toHaveFocus();
   });
 
   it('discloses only the known advisor identity and role', async () => {

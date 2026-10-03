@@ -62,3 +62,9 @@ main:has(:is(.founder-call-screen,.advisor-call-screen)) .app-footer{display:non
 .relay-call-pre-message .message-list>p.muted{margin:0}
 .relay-call-pre-message .composer textarea{min-height:44px}
 .relay-call-pre-message .conversation-footnote{font-size:11px;margin:0}
+/* Founder Documents page: the document fills the left, the shared case sidebar runs edge to edge on the right. */
+.founder-call-screen{max-width:none;width:auto}
+.founder-call-screen .relay-call-layout{grid-template-columns:minmax(0,1fr) auto;gap:0}
+.founder-call-screen .relay-call-document-column{padding:22px 26px 18px 30px}
+@media(max-width:900px){.founder-call-screen .relay-call-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.founder-call-screen .relay-call-document-column{padding:20px 14px}}

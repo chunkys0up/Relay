@@ -20,7 +20,7 @@ const Reviews=lazy(()=>import('../../advsior-frontend/src/reviews/Screen'));
 const AdvisorDocuments=lazy(()=>import('../../advsior-frontend/src/documents/Screen'));
 const AdvisorCall=lazy(()=>import('../../advsior-frontend/src/call/Screen'));
 const shortcutLabel=typeof navigator!=='undefined'&&/Mac|iPhone|iPad/.test(navigator.platform)?'⌘K':'Ctrl K';
-const founderNav=[['home','Home','home'],['chat','AI Chat','agent'],['call','Call','call']] as const;
+const founderNav=[['home','Home','home'],['chat','AI Chat','agent'],['call','Documents','file']] as const;
 const advisorNav=[['home','Home','home'],['clients','Clients','clients'],['call','Call','call']] as const;
 function Shell():ReactNode{
  const {role,snapshot,busy,error,notice,cancel}=useRelay();const navigate=useNavigate();const {pathname}=useLocation();const mainRef=useRef<HTMLElement>(null);useEffect(()=>{if(mainRef.current)mainRef.current.scrollTop=0;},[pathname]);

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { CallControls } from './call';
 import { Collapsible } from './collapsible';
+import { Conversation } from './conversation';
 import { useRelay } from './context';
 import { Tabs } from './tabs';
 import { plainText, timeAgo, useCaseActivity, useCaseChecklist, useCaseDocuments, useRecentMessages } from './live';
@@ -31,13 +33,14 @@ function store(key: string, value: string): void {
 }
 
 /**
- * The founder's case sidebar: Progress (checklist, next steps, case details) and Activity tabs.
+ * The founder's case sidebar: Progress (checklist, next steps, case details), Call and Activity tabs.
  * Drag its left edge to resize; the width and tab are shared by every screen that shows it.
+ * Every tab stays mounted while hidden, so switching tabs never drops a live call.
  */
-export function CaseSidebar({ footer }: { footer?: ReactNode }): ReactNode {
+export function CaseSidebar({ footer, onLiveCallChange }: { footer?: ReactNode; onLiveCallChange?: (active: boolean) => void }): ReactNode {
   const checklist = useCaseChecklist();
   const [width, setWidth] = useState(() => clampWidth(Number(readStored(WIDTH_KEY)) || DEFAULT_WIDTH));
-  const [tab, setTab] = useState(() => readStored(TAB_KEY) === 'activity' ? 'activity' : 'progress');
+  const [tab, setTab] = useState(() => readStored(TAB_KEY) ?? 'progress');
   const resize = (next: number): void => { const clamped = clampWidth(next); setWidth(clamped); store(WIDTH_KEY, String(clamped)); };
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>): void {
@@ -63,6 +66,7 @@ export function CaseSidebar({ footer }: { footer?: ReactNode }): ReactNode {
 
   const tabs = [
     { id: 'progress', label: 'Progress', content: <><ChecklistSection id="sidebar-checklist" checklist={checklist}/><NextStepsSection id="sidebar-next" checklist={checklist}/><CaseDetailsSection id="sidebar-case"/></> },
+    { id: 'call', label: 'Call', content: <CallPanel onLiveCallChange={onLiveCallChange}/> },
     { id: 'activity', label: 'Activity', content: <><ActivitySection id="sidebar-activity"/><RecentConversationSection id="sidebar-conversation"/></> },
   ];
   const current = tabs.find((item) => item.id === tab) ?? tabs[0];
@@ -70,7 +74,7 @@ export function CaseSidebar({ footer }: { footer?: ReactNode }): ReactNode {
     <div className="case-sidebar-resizer" role="separator" aria-orientation="vertical" aria-label="Resize sidebar" aria-valuemin={MIN_WIDTH} aria-valuemax={MAX_WIDTH} aria-valuenow={width} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown} onDoubleClick={() => resize(DEFAULT_WIDTH)}/>
     <aside className="case-sidebar-body" aria-label="Planning progress and activity">
       <div className="case-sidebar-tabs"><Tabs id="case-sidebar" label="Workspace details" items={tabs} value={current.id} onChange={(next) => { setTab(next); store(TAB_KEY, next); }}/></div>
-      <div id={`case-sidebar-${current.id}-panel`} role="tabpanel" aria-labelledby={`case-sidebar-${current.id}-tab`} tabIndex={0} className="case-sidebar-panel">{current.content}</div>
+      {tabs.map((item) => <div key={item.id} id={`case-sidebar-${item.id}-panel`} role="tabpanel" aria-labelledby={`case-sidebar-${item.id}-tab`} tabIndex={0} className="case-sidebar-panel" hidden={item.id !== current.id}>{item.content}</div>)}
       {footer && <p className="case-sidebar-footer">{footer}</p>}
     </aside>
   </div>;
@@ -153,4 +157,16 @@ export function CaseDetailsSection({ id }: { id: string }): ReactNode {
       <div><dt>Packet</dt><dd>{snapshot.current_packet_version_id ? <Link to={`/founder/documents?version=${encodeURIComponent(snapshot.current_packet_version_id)}`}>View current version</Link> : 'No draft yet'}</dd></div>
     </dl>
   </SidebarSection>;
+}
+
+/** Call controls for the advisor, with the message thread to them below. */
+function CallPanel({ onLiveCallChange }: { onLiveCallChange?: (active: boolean) => void }): ReactNode {
+  const { snapshot } = useRelay();
+  const [live, setLive] = useState(false);
+  const other = snapshot?.advisors[0]?.name ?? 'your advisor';
+  return <div className="case-sidebar-call">
+    <CallControls onLiveActiveChange={(active) => { setLive(active); onLiveCallChange?.(active); }}/>
+    {live ? <SidebarSection id="sidebar-call-messages" title="Messages"><Conversation humanOnly/></SidebarSection>
+      : <SidebarSection id="sidebar-call-message" title={`Message ${other}`}><Conversation humanOnly startNew/></SidebarSection>}
+  </div>;
 }
