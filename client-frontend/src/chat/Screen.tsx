@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { BackendWorkspace } from '../workflow/BackendWorkspace';
-import { Badge, CitationLink, Conversation, ScreenState, useRelay } from '@relay/shared';
+import { Badge, Conversation, ScreenState, useRelay } from '@relay/shared';
 import type { Task } from '@relay/shared';
 import './styles.css';
 
@@ -13,7 +13,6 @@ function taskTone(task: Task): 'neutral' | 'attention' | 'success' {
 function DemoScreen() {
   const { snapshot } = useRelay();
   const tasks = [...(snapshot?.tasks ?? [])].sort((a, b) => a.order - b.order);
-  const currentFlags = snapshot?.flags.filter((flag) => flag.packet_version_id === snapshot.current_packet_version_id && !flag.resolved) ?? [];
   const sentClarification = snapshot?.clarifications.find((question) => question.packet_version_id === snapshot.current_packet_version_id && question.status === 'sent');
   const nextTask = tasks.find((task) => task.state !== 'Done');
 
@@ -28,11 +27,8 @@ function DemoScreen() {
       </div>
       <div className="founder-chat-conversation">
         <Conversation large>
-      {currentFlags.length > 0 && <section className="founder-chat-clarification" aria-labelledby="founder-chat-clarification-title"><h2 id="founder-chat-clarification-title">Details to confirm</h2><p>Relay found source details that need your input before the next draft.</p>{currentFlags.map((flag) => <div key={flag.id} className="founder-chat-flag"><Badge tone="attention">{flag.kind === 'missing' ? 'Missing detail' : flag.kind === 'conflict' ? 'Source conflict' : 'Needs review'}</Badge><p>{flag.text}</p>{flag.citations.map((citation, index) => <CitationLink key={`${citation.source_id}-${index}`} citation={citation}/>)}</div>)}
-        {sentClarification ? <Link className="founder-chat-action" to="/founder/home/clarification">Answer clarification in chat</Link> : <><p className="founder-chat-simulation-note">No advisor question has been sent yet. Share your revenue and reserve details in this conversation to prepare the next draft.</p><Link className="founder-chat-action" to="/founder/chat#message-main">Answer in AI Chat</Link></>}
-      </section>}
+      {sentClarification && <section className="founder-chat-clarification" aria-label="Advisor question"><p>{snapshot.advisors[0]?.name ?? 'Your advisor'} sent you a question about your packet.</p><Link className="founder-chat-action" to="/founder/home/clarification">Answer the question</Link></section>}
 </Conversation>
-        <div className="founder-chat-upload-note"><Link to="/founder/home">Add documents on Home</Link><span> · Private uploads are available from your document workspace.</span></div>
       </div>
     </div>
     <aside className="founder-chat-aside" aria-label="Planning steps and case details">

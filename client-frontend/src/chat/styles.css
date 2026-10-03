@@ -22,7 +22,7 @@ main:has(.founder-chat)>:not(.founder-chat){flex:0 0 auto}
 .founder-chat{flex:1 1 auto;min-height:0;align-items:stretch}
 .founder-chat-main{min-height:0;overflow:hidden}
 .founder-chat-conversation .conversation{min-height:0;overflow:hidden}
-.founder-chat-conversation .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:contain}
+.founder-chat-conversation .message-list{flex:1 1 auto;min-height:0;max-height:none;overflow-y:auto;overscroll-behavior:none}
 .founder-chat-conversation .founder-chat-clarification{margin-bottom:8px}
 .founder-chat-aside{min-height:0;overflow-y:auto}
 @media(max-width:900px){.founder-chat{grid-template-rows:minmax(0,1fr)}.founder-chat-aside{display:none}.founder-chat-conversation .conversation{min-height:0}}
@@ -37,3 +37,21 @@ main:has(.founder-chat) .backend-workspace-entry{padding-block:6px}
 .founder-chat-conversation .audience-control{padding-bottom:4px}
 .founder-chat-upload-note{padding:0 0 8px}
 @media(max-width:600px){main:has(.founder-chat) .backend-workspace-entry span,.founder-chat-upload-note,.founder-chat-header p{display:none}main:has(.founder-chat) .backend-workspace-entry{margin-bottom:8px}}
+/* LLM-style thread: one centered reading column. User turns are compact right-aligned bubbles,
+   assistant turns are plain full-width text, and the composer sits centered under the thread. */
+.founder-chat-conversation{--chat-column:760px}
+.founder-chat-conversation .message-list{gap:28px;padding:24px 16px 32px}
+.founder-chat-conversation .message,.founder-chat-conversation .message-list>p.muted,.founder-chat-conversation .founder-chat-clarification,
+.founder-chat-conversation .composer,.founder-chat-conversation .conversation-footnote,.founder-chat-conversation .chat-attachments,
+.founder-chat-conversation .confirm-panel,.founder-chat-conversation .feedback{width:100%;max-width:var(--chat-column);margin-inline:auto;align-self:center}
+.founder-chat-conversation .message-list>p.muted{margin-block:auto;text-align:center;font-size:15px}
+.founder-chat-conversation .own-message{display:flex;flex-direction:column;align-items:flex-end}
+.founder-chat-conversation .own-message .message-author{display:none}
+.founder-chat-conversation .own-message .message-bubble{max-width:75%;background:#f1f4f9;border:0;border-radius:18px;padding:10px 16px;font-size:15px;line-height:1.5}
+.founder-chat-conversation .ai-message .message-author{margin-bottom:6px;gap:8px}
+.founder-chat-conversation .ai-message .message-author small{display:none}
+.founder-chat-conversation .ai-message .message-bubble{background:none;border:0;padding:0;font-size:15px;line-height:1.65;color:#1e293b}
+.founder-chat-conversation .composer{border:1px solid #d5dde8;border-radius:16px;padding:10px 10px 10px 16px;box-shadow:0 2px 12px rgba(15,23,42,.06);align-items:flex-end}
+.founder-chat-conversation .composer textarea{resize:none;min-height:24px;max-height:200px;padding:6px 0;font-size:15px;line-height:1.5}
+.founder-chat-conversation .composer-actions button{border-radius:10px;min-height:36px}
+.founder-chat-conversation .conversation-footnote{margin-top:-2px}

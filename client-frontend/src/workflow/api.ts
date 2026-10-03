@@ -1,7 +1,7 @@
 export type PacketField = 'company_name' | 'founder_name' | 'business_summary' | 'annual_revenue' | 'cash_reserve' | 'period';
 export interface Evidence { source_id: string; source_hash: string; page: number; quote: string }
 export interface WorkflowSource {
-  id: string; name: string; hash: string; excerpt_count: number;
+  id: string; name: string; hash: string; excerpt_count: number; mime_type?: string;
   extraction_status?: string; interpretation_status?: string;
   status_detail?: string | null;
   relationship_suggestion?: { related_source_id: string; reason: string } | null;
